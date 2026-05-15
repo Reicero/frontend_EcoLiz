@@ -159,14 +159,6 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-accent-400 transition-colors">
-                  Carrières
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-accent-400 transition-colors">
-                  Blog
-                </a>
               </li>
               <li>
                 <Link

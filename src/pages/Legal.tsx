@@ -15,11 +15,11 @@ const legalContent: Record<
     sections: [
     {
       heading: 'Éditeur du site',
-      body: 'EcoLiz SAS, société par actions simplifiée au capital de 50 000 €, immatriculée au RCS de Paris sous le numéro 853 421 098, dont le siège social est situé au 12 rue de la Circularité, 75011 Paris.'
+      body: 'EcoLiz SAS, société par actions simplifiée au capital de 300 €, immatriculée au RCS de Montpoellier sous le numéro 912 267 580, dont le siège social est situé au 15 avenue d\'Unterschleissheim, 34920 LE CRES.'
     },
     {
       heading: 'Directeur de la publication',
-      body: 'Le directeur de la publication est Madame Sophie Martin, en qualité de Présidente.'
+      body: 'Le directeur de la publication est Monsieur Arnaud Christophe, en qualité de Président.'
     },
     {
       heading: 'Hébergement',

@@ -179,27 +179,6 @@ export function Impact() {
           </div>
         </div>
       </section>
-
-      {/* CTA */}
-      <section className="py-24 lg:py-32 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl sm:text-5xl font-bold text-brand-950 mb-6 tracking-tight">
-            Mesurez votre{' '}
-            <span className="font-display italic text-accent-500">impact</span>.
-          </h2>
-          <p className="text-lg text-brand-900/70 mb-10">
-            Demandez un rapport d'impact personnalisé pour évaluer les économies
-            de CO₂ et financières qu'EcoLiz peut générer pour votre entreprise.
-          </p>
-          <Link
-            to="/contact"
-            className="inline-flex items-center gap-2 bg-brand-700 hover:bg-brand-800 text-white px-7 py-4 rounded-xl font-medium transition-all shadow-lg shadow-brand-900/20 group">
-            
-            Demander mon rapport d'impact
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </Link>
-        </div>
-      </section>
     </>);
 
 }

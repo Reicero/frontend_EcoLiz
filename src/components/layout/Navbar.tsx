@@ -69,12 +69,6 @@ export function Navbar() {
 
           {/* Actions */}
           <div className="hidden md:flex items-center gap-5">
-            <button
-              className="text-brand-900/70 hover:text-brand-900 transition-colors"
-              aria-label="Rechercher">
-              
-              <Search className="w-5 h-5" />
-            </button>
             <Link
               to="/compte"
               className="text-brand-900/70 hover:text-brand-900 transition-colors"

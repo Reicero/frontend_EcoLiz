@@ -16,6 +16,7 @@ import Cart from './pages/Cart'
 import Checkout from './pages/Checkout'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
+import { CookieBanner } from './components/layout/Cookies'
 const AUTH_ROUTES = ['/connexion', '/inscription']
 function AppLayout() {
   const { pathname } = useLocation()
@@ -45,6 +46,7 @@ function AppLayout() {
         </Routes>
       </main>
       {!isAuthRoute && <Footer />}
+      <CookieBanner />
     </div>
   )
 }
