@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { Component, ComponentType } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -211,7 +211,7 @@ export function Services() {
           </div>
           <div className="relative">
             <img
-              src="https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&q=80&w=1000"
+              src="/service.png"
               alt="Atelier de réparation EcoLiz"
               className="rounded-2xl shadow-2xl shadow-brand-900/10 border border-brand-100 w-full" />
             

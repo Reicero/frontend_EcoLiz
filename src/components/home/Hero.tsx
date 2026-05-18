@@ -97,7 +97,7 @@ export function Hero() {
             <div className="relative w-full max-w-lg mx-auto">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-brand-900/20 border border-white bg-white">
                 <img
-                  src="https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&q=80&w=1200"
+                  src="/PC_accueil.png"
                   alt="Modern laptop on desk"
                   className="w-full h-auto object-cover" />
                 

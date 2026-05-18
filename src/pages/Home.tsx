@@ -97,7 +97,7 @@ export function Home() {
               text: 'Ordinateurs portables, postes fixes, écrans et serveurs reconditionnés, garantis 24 mois.',
               cta: 'Voir le catalogue',
               image:
-              'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&q=80&w=900'
+              '/PC_réparation.png'
             },
             {
               to: '/services',
@@ -106,7 +106,7 @@ export function Home() {
               text: 'Une gamme complète de services IT pour prolonger la durée de vie de votre parc.',
               cta: 'Découvrir nos services',
               image:
-              'https://images.unsplash.com/photo-1601132359864-c974e79890ac?auto=format&fit=crop&q=80&w=900'
+              '/SAV.png'
             },
             {
               to: '/impact',
@@ -115,7 +115,7 @@ export function Home() {
               text: "Économie circulaire, réduction du CO₂, recyclage DEEE et reporting d'impact.",
               cta: 'Voir notre impact',
               image:
-              'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=900'
+              '/eco.png'
             }].
             map((pillar, i) =>
             <motion.div
