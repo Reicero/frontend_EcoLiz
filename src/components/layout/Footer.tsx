@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Linkedin, Twitter, Mail } from 'lucide-react';
+import { Linkedin, Mail, Instagram } from 'lucide-react';
 export function Footer() {
   return (
     <footer className="bg-brand-950 text-white pt-20 pb-8 relative overflow-hidden">
@@ -24,18 +24,18 @@ export function Footer() {
             </p>
             <div className="flex gap-4">
               <a
-                href="#"
+                href="https://fr.linkedin.com/company/ecoliz?trk=public_post_feed-actor-name"
                 className="text-brand-200/60 hover:text-accent-400 transition-colors"
                 aria-label="LinkedIn">
                 
                 <Linkedin className="w-5 h-5" />
               </a>
               <a
-                href="#"
+                href="https://www.instagram.com/ecoliz_eu/"
                 className="text-brand-200/60 hover:text-accent-400 transition-colors"
-                aria-label="Twitter">
+                aria-label="Instagram">
                 
-                <Twitter className="w-5 h-5" />
+                <Instagram className="w-5 h-5" />
               </a>
               <a
                 href="#"
