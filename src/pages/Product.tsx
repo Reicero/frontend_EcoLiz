@@ -167,14 +167,15 @@ export function ProductPage() {
             <div className="flex gap-4 mb-8">
 
               <button
-                onClick={handleAddToCart}
-                disabled={!product.stock}
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-700 hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed text-white px-7 py-4 rounded-xl text-base font-medium transition-all shadow-lg shadow-brand-900/20"
-              >
+                onClick={() => {
+                window.location.href =`http://90.51.128.107:12443/index.php/panier/?add-to-cart=${product.id}`;
+              }}
+              disabled={!product.stock}
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-700 hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed text-white px-7 py-4 rounded-xl text-base font-medium transition-all shadow-lg shadow-brand-900/20">
                 <ShoppingCart className="w-4 h-4" />
-                Ajouter au panier
+                  Ajouter au panier
               </button>
-
+              
               <Link
                 to="/contact"
                 className="inline-flex items-center justify-center gap-2 bg-white hover:bg-brand-50 text-brand-900 border border-brand-200 px-7 py-4 rounded-xl text-base font-medium transition-all"

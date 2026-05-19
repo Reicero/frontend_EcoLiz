@@ -40,7 +40,7 @@ export default function Cart() {
 
           <div className="flex flex-wrap gap-4 mb-10">
             <a
-              href="http://90.51.128.107:12443/index.php/panier"
+              href="http://90.51.128.107:12443/index.php/panier/"
               className="inline-flex items-center gap-2 bg-brand-700 hover:bg-brand-800 text-white px-7 py-4 rounded-xl font-medium transition-all shadow-lg shadow-brand-900/20 group"
             >
               Ouvrir le panier WooCommerce
