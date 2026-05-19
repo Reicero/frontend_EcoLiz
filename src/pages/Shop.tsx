@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Filter } from "lucide-react";
-import { productCategories } from "../data/mockProducts";
 import { formatPrice, calculateDiscount } from "../utils/formatPrice";
 import { Badge } from "../components/ui/Badge";
 import type { Product } from "../types/product";
@@ -23,6 +22,18 @@ export function Shop() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const productCategories = [
+    { value: "Tous", label: "Tous" },
+    ...Array.from(new Set(products.map((product) => product.category))).map(
+      (category) => ({ value: category, label: category })
+    ),
+  ];
+
+  const filteredProducts =
+    activeCategory === "Tous"
+      ? products
+      : products.filter((product) => product.category === activeCategory);
 
   return (
     <section className="pt-32 pb-24 bg-brand-50 min-h-screen">
@@ -67,13 +78,13 @@ export function Shop() {
           <div className="text-center py-20 text-brand-900/50">
             Chargement du catalogue…
           </div>
-        ) : products.length === 0 ? (
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-20 text-brand-900/50">
-            Aucun produit trouvé dans la boutique.
+            Aucun produit trouvé dans cette catégorie.
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-10">
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
               <Link
                 key={product.id}
                 to={`/produit/${product.slug}`}
@@ -101,23 +112,34 @@ export function Shop() {
                   {product.specs}
                 </p>
 
-                <p className="text-xs text-brand-700 font-medium mb-3 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
-                  {product.grade}
-                </p>
+                {product.grade && (
+                  <p className="text-xs text-brand-700 font-medium mb-3 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+                    {product.grade}
+                  </p>
+                )}
 
                 <div className="flex items-baseline gap-3">
                   <span className="text-2xl font-bold text-brand-950">
                     {formatPrice(product.price)}
                   </span>
 
-                  <span className="text-sm text-brand-900/40 line-through">
-                    {formatPrice(product.originalPrice)}
-                  </span>
+                  {product.originalPrice > product.price && (
+                    <>
+                      <span className="text-sm text-brand-900/40 line-through">
+                        {formatPrice(product.originalPrice)}
+                      </span>
 
-                  <span className="text-xs font-medium text-brand-700 bg-brand-100 px-2 py-1 rounded">
-                    -{calculateDiscount(product.price, product.originalPrice)}%
-                  </span>
+                      <span className="text-xs font-medium text-brand-700 bg-brand-100 px-2 py-1 rounded">
+                        -
+                        {calculateDiscount(
+                          product.price,
+                          product.originalPrice
+                        )}
+                        %
+                      </span>
+                    </>
+                  )}
                 </div>
               </Link>
             ))}

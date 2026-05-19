@@ -10,7 +10,7 @@ import type { FAQItem, PageMeta } from '../types/page';
 import { mockFAQ } from '../data/mockContent';
 
 const WP_GRAPHQL_ENDPOINT =
-import.meta?.env?.VITE_WP_GRAPHQL_URL ?? 'https://api.ecoliz.fr/graphql';
+  (import.meta as any)?.env?.VITE_WP_GRAPHQL_URL ?? 'https://api.ecoliz.fr/graphql';
 
 async function delay<T>(value: T, ms = 300): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms));

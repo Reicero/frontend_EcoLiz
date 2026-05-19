@@ -1,8 +1,7 @@
 import type { Product } from "../types/product";
 
 const WOO_API_URL =
-  (import.meta as any).env?.VITE_WOO_API_URL ?? "/wp-api/wc/store";
-  "";
+  (import.meta as any).env.VITE_WOO_API_URL ?? "/wp-api/wc/store";
 
 function mapWooProduct(product: any): Product {
   return {
@@ -10,14 +9,16 @@ function mapWooProduct(product: any): Product {
     name: product.name,
     slug: product.slug,
     price: Number(product.prices?.price ?? 0) / 100,
-    originalPrice: Number(product.prices?.regular_price ?? product.prices?.price ?? 0) / 100,
+    originalPrice:
+      Number(product.prices?.regular_price ?? product.prices?.price ?? 0) / 100,
     image: product.images?.[0]?.src ?? "",
     category: product.categories?.[0]?.name ?? "Non classé",
     description: product.short_description ?? product.description ?? "",
-    specs: product.specs ?? "",
-    grade: product.grade ?? "",
-    warranty: product.warranty ?? "",
-    stock: product.stock_availability?.text ?? "",
+    specs: product.attributes?.map((a: any) => a.terms?.map((t: any) => t.name).join(", ")).join(" · ") ?? "",
+    grade: product.attributes?.find((a: any) => a.name?.toLowerCase().includes("grade"))?.terms?.[0]?.name ?? "",
+    warranty: product.attributes?.find((a: any) => a.name?.toLowerCase().includes("garantie"))?.terms?.[0]?.name ?? "",
+    stock: product.is_in_stock,
+    stockCount: product.low_stock_remaining ?? undefined,
   };
 }
 
@@ -44,12 +45,25 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 }
 
 export async function addToCart(productId: number, quantity = 1) {
-  console.info("[woocommerce] addToCart à brancher plus tard", {
-    productId,
-    quantity,
-  });
+  window.location.href = `${(import.meta as any).env.VITE_WORDPRESS_URL}/?add-to-cart=${productId}&quantity=${quantity}`;
+}
 
-  return { ok: true };
+export async function listCategories() {
+  const res = await fetch(`${WOO_API_URL}/products/categories`)
+
+  if (!res.ok) {
+    throw new Error("Erreur lors de la récupération des catégories WooCommerce")
+  }
+
+  const data = await res.json()
+
+  return [
+    { label: "Tous", value: "Tous" },
+    ...data.map((cat: any) => ({
+      label: cat.name,
+      value: cat.name,
+    })),
+  ]
 }
 
 export const woocommerceEndpoint = WOO_API_URL;
