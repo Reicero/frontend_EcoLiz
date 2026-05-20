@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -11,6 +11,14 @@ import {
 import { formatPrice } from "../utils/formatPrice";
 
 const WORDPRESS_URL = "http://90.51.128.107:12443/index.php";
+
+type Order = {
+  id: string;
+  date: string;
+  total: number;
+  items: number;
+  status: string;
+};
 
 const equipment = [
   {
@@ -36,53 +44,39 @@ const equipment = [
   },
 ];
 
-const orders = [
-  {
-    id: "CMD-20240312",
-    date: "12 mars 2024",
-    total: 3490,
-    items: 3,
-    status: "Livrée",
-  },
-  {
-    id: "CMD-20240224",
-    date: "24 fév 2024",
-    total: 1290,
-    items: 1,
-    status: "Livrée",
-  },
-];
-
 const navItems = [
-  {
-    key: "parc",
-    label: "Parc IT",
-    icon: LayoutDashboard,
-  },
-  {
-    key: "commandes",
-    label: "Commandes",
-    icon: FileText,
-  },
-  {
-    key: "reparations",
-    label: "Réparations",
-    icon: PenTool,
-  },
-  {
-    key: "garanties",
-    label: "Garanties",
-    icon: ShieldCheck,
-  },
-  {
-    key: "parametres",
-    label: "Paramètres",
-    icon: Settings,
-  },
+  { key: "parc", label: "Parc IT", icon: LayoutDashboard },
+  { key: "commandes", label: "Commandes", icon: FileText },
+  { key: "reparations", label: "Réparations", icon: PenTool },
+  { key: "garanties", label: "Garanties", icon: ShieldCheck },
+  { key: "parametres", label: "Paramètres", icon: Settings },
 ];
 
 export function Account() {
   const [active, setActive] = useState("parc");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/wp-api/ecoliz/v1/my-orders")
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Erreur API commandes");
+        }
+
+        return res.json();
+      })
+      .then((data) => {
+        setOrders(Array.isArray(data) ? data : []);
+      })
+      .catch((error) => {
+        console.error("Erreur récupération commandes :", error);
+        setOrders([]);
+      })
+      .finally(() => {
+        setOrdersLoading(false);
+      });
+  }, []);
 
   return (
     <section className="pt-32 pb-24 bg-brand-50 min-h-screen">
@@ -119,9 +113,10 @@ export function Account() {
 
         <div className="bg-white border border-brand-100 rounded-2xl p-5 mb-8">
           <p className="text-sm text-brand-900/70">
-            Pour le moment, les données affichées ci-dessous sont des exemples.
-            Le vrai compte client, les commandes et les informations de
-            facturation sont gérés par WooCommerce.
+            Les commandes affichées ci-dessous sont récupérées depuis
+            WooCommerce via une API WordPress personnalisée. La sécurisation
+            définitive par client connecté sera finalisée avec le domaine et
+            l’authentification.
           </p>
         </div>
 
@@ -179,10 +174,10 @@ export function Account() {
 
               <div className="bg-white rounded-2xl border border-brand-100 p-6">
                 <p className="text-sm text-brand-900/60 mb-1">
-                  Économisé en 2024
+                  Commandes récentes
                 </p>
                 <p className="text-3xl font-bold text-brand-950">
-                  {formatPrice(8420)}
+                  {orders.length}
                 </p>
               </div>
             </div>
@@ -264,41 +259,51 @@ export function Account() {
               </div>
 
               <div className="divide-y divide-brand-50">
-                {orders.map((o) => (
-                  <div
-                    key={o.id}
-                    className="px-6 py-4 flex items-center justify-between"
-                  >
-                    <div>
-                      <p className="font-medium text-brand-950 text-sm">
-                        {o.id}
-                      </p>
-
-                      <p className="text-xs text-brand-900/60">
-                        {o.date} · {o.items} article(s)
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-brand-50 text-brand-700">
-                        {o.status}
-                      </span>
-
-                      <p className="font-bold text-brand-950">
-                        {formatPrice(o.total)}
-                      </p>
-
-                      <a
-                        href={`${WORDPRESS_URL}/mon-compte/downloads`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs text-brand-700 hover:underline font-medium"
-                      >
-                        Facture
-                      </a>
-                    </div>
+                {ordersLoading ? (
+                  <div className="px-6 py-8 text-sm text-brand-900/60">
+                    Chargement des commandes…
                   </div>
-                ))}
+                ) : orders.length === 0 ? (
+                  <div className="px-6 py-8 text-sm text-brand-900/60">
+                    Aucune commande trouvée pour le moment.
+                  </div>
+                ) : (
+                  orders.map((o) => (
+                    <div
+                      key={o.id}
+                      className="px-6 py-4 flex items-center justify-between"
+                    >
+                      <div>
+                        <p className="font-medium text-brand-950 text-sm">
+                          Commande #{o.id}
+                        </p>
+
+                        <p className="text-xs text-brand-900/60">
+                          {o.date} · {o.items} article(s)
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-brand-50 text-brand-700">
+                          {o.status}
+                        </span>
+
+                        <p className="font-bold text-brand-950">
+                          {formatPrice(o.total)}
+                        </p>
+
+                        <a
+                          href={`${WORDPRESS_URL}/mon-compte/orders`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-brand-700 hover:underline font-medium"
+                        >
+                          Détails
+                        </a>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
