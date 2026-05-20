@@ -70,7 +70,7 @@ export function Navbar() {
           {/* Actions */}
           <div className="hidden md:flex items-center gap-5">
             <Link
-              to="/compte"
+              to="/connexion"
               className="text-brand-900/70 hover:text-brand-900 transition-colors"
               aria-label="Mon compte">
               
@@ -82,10 +82,6 @@ export function Navbar() {
               aria-label="Panier"
 >
               <ShoppingCart className="w-5 h-5" />
-
-              <span className="absolute -top-1.5 -right-1.5 bg-accent-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                3
-            </span>
             </Link>
             <div className="w-px h-6 bg-brand-200 mx-1" />
             <Link
