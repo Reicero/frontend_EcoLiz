@@ -11,6 +11,7 @@ import {
 
 import type { Product } from '../types/product';
 import { getProductBySlug } from '../services/woocommerce';
+import { config } from '../config/env';
 import { formatPrice, calculateDiscount } from '../utils/formatPrice';
 import { Badge } from '../components/ui/Badge';
 
@@ -21,22 +22,32 @@ export function ProductPage() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!slug) return;
 
     setLoading(true);
+    setError(null);
 
     getProductBySlug(slug)
-      .then((p) => setProduct(p))
+      .then((p) => {
+        if (!p) {
+          setError("Produit non trouvé");
+        }
+        setProduct(p);
+      })
+      .catch((err) => {
+        console.error("Failed to load product:", err);
+        setError("Erreur lors du chargement du produit");
+        setProduct(null);
+      })
       .finally(() => setLoading(false));
   }, [slug]);
 
   const handleAddToCart = () => {
     if (!product) return;
-
-    window.location.href =
-      `http://90.51.128.107:12443/index.php/panier?add-to-cart=${product.id}`;
+    window.location.href = config.getAddToCartUrl(product.id);
   };
 
   if (loading) {
@@ -47,11 +58,11 @@ export function ProductPage() {
     );
   }
 
-  if (!product) {
+  if (error || !product) {
     return (
       <div className="pt-40 text-center min-h-screen">
         <h1 className="text-2xl font-bold text-brand-950 mb-4">
-          Produit introuvable
+          {error || "Produit introuvable"}
         </h1>
 
         <Link
@@ -92,9 +103,11 @@ export function ProductPage() {
 
             {/* BADGES */}
             <div className="flex gap-2 mb-4">
-              <Badge tone="brand">
-                {product.grade}
-              </Badge>
+              {product.grade && (
+                <Badge tone="brand">
+                  {product.grade}
+                </Badge>
+              )}
 
               <Badge tone={product.stock ? 'success' : 'warning'}>
                 {product.stock
@@ -102,9 +115,11 @@ export function ProductPage() {
                   : 'Sur commande'}
               </Badge>
 
-              <Badge tone="accent">
-                Garantie {product.warranty}
-              </Badge>
+              {product.warranty && (
+                <Badge tone="accent">
+                  Garantie {product.warranty}
+                </Badge>
+              )}
             </div>
 
             {/* TITLE */}
@@ -113,9 +128,11 @@ export function ProductPage() {
             </h1>
 
             {/* SPECS */}
-            <p className="text-brand-900/60 mb-6">
-              {product.specs}
-            </p>
+            {product.specs && (
+              <p className="text-brand-900/60 mb-6">
+                {product.specs}
+              </p>
+            )}
 
             {/* PRICE */}
             <div className="flex items-baseline gap-3 mb-8 pb-8 border-b border-brand-200">
@@ -124,18 +141,22 @@ export function ProductPage() {
                 {formatPrice(product.price)}
               </span>
 
-              <span className="text-lg text-brand-900/40 line-through">
-                {formatPrice(product.originalPrice)}
-              </span>
+              {product.originalPrice > product.price && (
+                <>
+                  <span className="text-lg text-brand-900/40 line-through">
+                    {formatPrice(product.originalPrice)}
+                  </span>
 
-              <Badge tone="brand">
-                -
-                {calculateDiscount(
-                  product.price,
-                  product.originalPrice,
-                )}
-                %
-              </Badge>
+                  <Badge tone="brand">
+                    -
+                    {calculateDiscount(
+                      product.price,
+                      product.originalPrice,
+                    )}
+                    %
+                  </Badge>
+                </>
+              )}
             </div>
 
             {/* DESCRIPTION */}
@@ -167,13 +188,12 @@ export function ProductPage() {
             <div className="flex gap-4 mb-8">
 
               <button
-                onClick={() => {
-                window.location.href =`http://90.51.128.107:12443/index.php/panier/?add-to-cart=${product.id}`;
-              }}
-              disabled={!product.stock}
-              className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-700 hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed text-white px-7 py-4 rounded-xl text-base font-medium transition-all shadow-lg shadow-brand-900/20">
+                onClick={handleAddToCart}
+                disabled={!product.stock}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-700 hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed text-white px-7 py-4 rounded-xl text-base font-medium transition-all"
+              >
                 <ShoppingCart className="w-4 h-4" />
-                  Ajouter au panier
+                Ajouter au panier
               </button>
               
               <Link
@@ -189,7 +209,7 @@ export function ProductPage() {
 
               <div className="flex items-center gap-2 text-sm text-brand-900/70">
                 <ShieldCheck className="w-5 h-5 text-brand-600" />
-                <span>Garantie {product.warranty}</span>
+                <span>Garantie {product.warranty || '24 mois'}</span>
               </div>
 
               <div className="flex items-center gap-2 text-sm text-brand-900/70">

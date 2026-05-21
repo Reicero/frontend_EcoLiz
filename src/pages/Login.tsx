@@ -1,21 +1,8 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, ArrowRight } from "lucide-react";
+import { config } from "../config/env";
 import { Button } from "../components/ui/Button";
-
-interface ImportMetaEnv {
-  readonly VITE_WORDPRESS_URL?: string;
-}
-
-declare global {
-  interface ImportMeta {
-    readonly env: ImportMetaEnv;
-  }
-}
-
-const WORDPRESS_URL =
-  import.meta.env.VITE_WORDPRESS_URL ??
-  "http://90.51.128.107:12443/index.php";
 
 export function Login() {
   const [formData, setFormData] = useState({
@@ -27,9 +14,9 @@ export function Login() {
     e.preventDefault();
 
     // V1 : WooCommerce gère la vraie authentification client.
-    // V2 : remplacer cette redirection par un vrai login React
-    // via JWT / WordPress REST API quand domaine + HTTPS seront prêts.
-    window.location.href = `${WORDPRESS_URL}/mon-compte`;
+    // Cette page est une passerelle vers WooCommerce.
+    // V2 : remplacer par vrai JWT / React auth quand domaine + HTTPS seront prêts.
+    window.location.href = config.myAccountUrl;
   };
 
   return (
@@ -73,7 +60,7 @@ export function Login() {
             </h2>
 
             <p className="text-brand-900/70">
-              Accédez à votre espace client EcoLiz.
+              Accédez à votre espace client EcoLiz via WooCommerce.
             </p>
           </div>
 
@@ -107,7 +94,7 @@ export function Login() {
                 </label>
 
                 <a
-                  href={`${WORDPRESS_URL}/mon-compte/lost-password/`}
+                  href={config.lostPasswordUrl}
                   className="text-sm font-medium text-brand-700 hover:text-brand-800"
                 >
                   Oublié ?

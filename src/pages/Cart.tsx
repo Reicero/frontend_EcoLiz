@@ -8,6 +8,7 @@ import {
   Leaf,
   ArrowRight,
 } from "lucide-react";
+import { config } from "../config/env";
 import { Card } from "../components/ui/Card";
 
 export default function Cart() {
@@ -35,12 +36,12 @@ export default function Cart() {
 
           <p className="text-brand-900/70 mb-8 max-w-2xl">
             Le panier et le paiement sont conservés côté WooCommerce pour
-            sécuriser le parcours d’achat, les commandes et la gestion client.
+            sécuriser le parcours d'achat, les commandes et la gestion client.
           </p>
 
           <div className="flex flex-wrap gap-4 mb-10">
             <a
-              href="http://90.51.128.107:12443/index.php/panier/"
+              href={config.cartUrl}
               className="inline-flex items-center gap-2 bg-brand-700 hover:bg-brand-800 text-white px-7 py-4 rounded-xl font-medium transition-all shadow-lg shadow-brand-900/20 group"
             >
               Ouvrir le panier WooCommerce

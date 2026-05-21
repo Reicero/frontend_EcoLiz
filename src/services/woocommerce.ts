@@ -1,7 +1,5 @@
 import type { Product } from "../types/product";
-
-const WOO_API_URL =
-  (import.meta as any).env.VITE_WOO_API_URL ?? "/wp-api/wc/store";
+import { config } from "../config/env";
 
 function mapWooProduct(product: any): Product {
   return {
@@ -23,47 +21,56 @@ function mapWooProduct(product: any): Product {
 }
 
 export async function listProducts(): Promise<Product[]> {
-  const res = await fetch(`${WOO_API_URL}/products`);
+  try {
+    const res = await fetch(`${config.wooApiUrl}/products`);
 
-  if (!res.ok) {
-    throw new Error("Erreur lors de la récupération des produits WooCommerce");
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: Failed to fetch products`);
+    }
+
+    const data = await res.json();
+    return (Array.isArray(data) ? data : []).map(mapWooProduct);
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    throw error;
   }
-
-  const data = await res.json();
-  return data.map(mapWooProduct);
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  const res = await fetch(`${WOO_API_URL}/products?slug=${slug}`);
+  try {
+    const res = await fetch(`${config.wooApiUrl}/products?slug=${slug}`);
 
-  if (!res.ok) {
-    throw new Error("Erreur lors de la récupération du produit WooCommerce");
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: Failed to fetch product`);
+    }
+
+    const data = await res.json();
+    return data.length > 0 ? mapWooProduct(data[0]) : null;
+  } catch (error) {
+    console.error("Error fetching product:", error);
+    throw error;
   }
-
-  const data = await res.json();
-  return data.length > 0 ? mapWooProduct(data[0]) : null;
-}
-
-export async function addToCart(productId: number, quantity = 1) {
-  window.location.href = `${(import.meta as any).env.VITE_WORDPRESS_URL}/?add-to-cart=${productId}&quantity=${quantity}`;
 }
 
 export async function listCategories() {
-  const res = await fetch(`${WOO_API_URL}/products/categories`)
+  try {
+    const res = await fetch(`${config.wooApiUrl}/products/categories`);
 
-  if (!res.ok) {
-    throw new Error("Erreur lors de la récupération des catégories WooCommerce")
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: Failed to fetch categories`);
+    }
+
+    const data = await res.json();
+
+    return [
+      { label: "Tous", value: "Tous" },
+      ...data.map((cat: any) => ({
+        label: cat.name,
+        value: cat.name,
+      })),
+    ];
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    throw error;
   }
-
-  const data = await res.json()
-
-  return [
-    { label: "Tous", value: "Tous" },
-    ...data.map((cat: any) => ({
-      label: cat.name,
-      value: cat.name,
-    })),
-  ]
 }
-
-export const woocommerceEndpoint = WOO_API_URL;

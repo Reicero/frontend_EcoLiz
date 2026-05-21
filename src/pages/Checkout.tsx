@@ -8,9 +8,8 @@ import {
   FileText,
   ArrowRight,
 } from "lucide-react";
+import { config } from "../config/env";
 import { Card } from "../components/ui/Card";
-
-const WORDPRESS_URL = "http://90.51.128.107:12443/index.php";
 
 export default function Checkout() {
   return (
@@ -39,12 +38,12 @@ export default function Checkout() {
           <p className="text-brand-900/70 mb-8 max-w-2xl">
             La validation de commande, le paiement et la création de commande
             sont conservés côté WooCommerce afin de sécuriser le parcours
-            d’achat.
+            d'achat.
           </p>
 
           <div className="flex flex-wrap gap-4 mb-10">
             <a
-              href={`${WORDPRESS_URL}/validation-de-la-commande`}
+              href={config.checkoutUrl}
               className="inline-flex items-center gap-2 bg-brand-700 hover:bg-brand-800 text-white px-7 py-4 rounded-xl font-medium transition-all shadow-lg shadow-brand-900/20 group"
             >
               Continuer vers le checkout WooCommerce

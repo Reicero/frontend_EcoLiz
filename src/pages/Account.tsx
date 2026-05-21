@@ -7,13 +7,14 @@ import {
   Settings,
   LogOut,
   ExternalLink,
+  AlertCircle,
 } from "lucide-react";
+import { config } from "../config/env";
+import { fetchMyOrders } from "../services/ecoliz-api";
 import { formatPrice } from "../utils/formatPrice";
 
-const WORDPRESS_URL = "http://90.51.128.107:12443/index.php";
-
 type Order = {
-  id: string;
+  id: string | number;
   date: string;
   total: number;
   items: number;
@@ -56,21 +57,17 @@ export function Account() {
   const [active, setActive] = useState("parc");
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/wp-api/ecoliz/v1/my-orders")
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Erreur API commandes");
-        }
-
-        return res.json();
-      })
+    fetchMyOrders()
       .then((data) => {
         setOrders(Array.isArray(data) ? data : []);
+        setOrdersError(null);
       })
       .catch((error) => {
         console.error("Erreur récupération commandes :", error);
+        setOrdersError("Impossible de charger les commandes. Veuillez réessayer.");
         setOrders([]);
       })
       .finally(() => {
@@ -95,28 +92,27 @@ export function Account() {
             </h1>
 
             <p className="text-brand-900/70 max-w-2xl">
-              Cette interface présente la vision future de l’espace client :
-              parc informatique, commandes, garanties et suivi SAV.
+              Accédez à votre parc informatique, vos commandes, garanties et suivi SAV.
+              Gestion complète via WooCommerce.
             </p>
           </div>
 
           <a
-            href={`${WORDPRESS_URL}/mon-compte`}
+            href={config.myAccountUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center justify-center gap-2 bg-brand-700 hover:bg-brand-800 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg shadow-brand-900/20"
           >
-            Accéder à mon compte
+            Mon compte WooCommerce
             <ExternalLink className="w-4 h-4" />
           </a>
         </header>
 
         <div className="bg-white border border-brand-100 rounded-2xl p-5 mb-8">
           <p className="text-sm text-brand-900/70">
-            Les commandes affichées ci-dessous sont récupérées depuis
-            WooCommerce via une API WordPress personnalisée. La sécurisation
-            définitive par client connecté sera finalisée avec le domaine et
-            l’authentification.
+            <strong>V1 Production:</strong> Les commandes affichées ci-dessous sont récupérées via l'API custom EcoLiz.
+            Vous pouvez consulter l'intégralité de votre compte dans WooCommerce.
+            L'authentification sécurisée par JWT sera implémentée en V2.
           </p>
         </div>
 
@@ -143,7 +139,7 @@ export function Account() {
               })}
 
               <a
-                href={`${WORDPRESS_URL}/mon-compte/customer-logout`}
+                href={config.logoutUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 text-brand-900/60 hover:bg-brand-50 mt-4 border-t border-brand-100 pt-4"
@@ -189,10 +185,10 @@ export function Account() {
                 </h2>
 
                 <a
-                  href={`${WORDPRESS_URL}/mon-compte`}
+                  href={config.myAccountUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="bg-brand-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
+                  className="bg-brand-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-brand-800 transition-colors"
                 >
                   Déclarer un incident
                 </a>
@@ -249,25 +245,39 @@ export function Account() {
                 </h2>
 
                 <a
-                  href={`${WORDPRESS_URL}/mon-compte/orders`}
+                  href={config.myOrdersUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="text-sm text-brand-700 font-medium hover:underline"
                 >
-                  Voir dans WooCommerce
+                  Voir toutes les commandes
                 </a>
               </div>
 
               <div className="divide-y divide-brand-50">
-                {ordersLoading ? (
+                {ordersError && (
+                  <div className="px-6 py-6 text-sm text-amber-700 bg-amber-50 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Erreur de chargement</p>
+                      <p className="text-xs mt-1">{ordersError}</p>
+                    </div>
+                  </div>
+                )}
+
+                {ordersLoading && !ordersError && (
                   <div className="px-6 py-8 text-sm text-brand-900/60">
                     Chargement des commandes…
                   </div>
-                ) : orders.length === 0 ? (
+                )}
+
+                {!ordersLoading && !ordersError && orders.length === 0 && (
                   <div className="px-6 py-8 text-sm text-brand-900/60">
                     Aucune commande trouvée pour le moment.
                   </div>
-                ) : (
+                )}
+
+                {!ordersLoading && !ordersError && orders.length > 0 && (
                   orders.map((o) => (
                     <div
                       key={o.id}
@@ -293,7 +303,7 @@ export function Account() {
                         </p>
 
                         <a
-                          href={`${WORDPRESS_URL}/mon-compte/orders`}
+                          href={config.myOrdersUrl}
                           target="_blank"
                           rel="noreferrer"
                           className="text-xs text-brand-700 hover:underline font-medium"
