@@ -1,6 +1,8 @@
 import type { Product } from "../types/product";
 import { config } from "../config/env";
 
+const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, "");
+
 function mapWooProduct(product: any): Product {
   return {
     id: product.id,
@@ -22,14 +24,34 @@ function mapWooProduct(product: any): Product {
 
 export async function listProducts(): Promise<Product[]> {
   try {
-    const res = await fetch(`${config.wooApiUrl}/products`);
+    const perPage = 100;
+    let page = 1;
+    let totalPages = 1;
+    const allProducts: any[] = [];
 
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: Failed to fetch products`);
-    }
+    do {
+      const res = await fetch(
+        `${WOO_API_URL}/products?per_page=${perPage}&page=${page}`,
+        { cache: "no-store" }
+      );
 
-    const data = await res.json();
-    return (Array.isArray(data) ? data : []).map(mapWooProduct);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: Failed to fetch products page ${page}`);
+      }
+
+      const data = await res.json();
+
+      if (Array.isArray(data)) {
+        allProducts.push(...data);
+      }
+
+      const totalPagesHeader = res.headers.get("X-WP-TotalPages");
+      totalPages = totalPagesHeader ? Number(totalPagesHeader) : 1;
+
+      page++;
+    } while (page <= totalPages);
+
+    return allProducts.map(mapWooProduct);
   } catch (error) {
     console.error("Error fetching products:", error);
     throw error;
@@ -38,7 +60,7 @@ export async function listProducts(): Promise<Product[]> {
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   try {
-    const res = await fetch(`${config.wooApiUrl}/products?slug=${slug}`);
+    const res = await fetch(`${WOO_API_URL}/products?slug=${slug}`);
 
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: Failed to fetch product`);
@@ -54,7 +76,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 
 export async function listCategories() {
   try {
-    const res = await fetch(`${config.wooApiUrl}/products/categories`);
+    const res = await fetch(`${WOO_API_URL}/products/categories`);
 
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: Failed to fetch categories`);
