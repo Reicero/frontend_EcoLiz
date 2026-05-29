@@ -1,6 +1,6 @@
 /**
  * EcoLiz Custom API Service
- * 
+ *
  * This service handles all calls to the custom WordPress REST API endpoints
  * at /wp-json/ecoliz/v1/
  */
@@ -17,28 +17,24 @@ const ECOLIZ_API_URL = "/wp-api/ecoliz/v1";
 
 /**
  * Fetch orders for the current logged-in user.
- * 
- * V1: Returns all recent orders (not filtered by user)
- * V2: Will filter by authenticated user via JWT
  */
 export async function fetchMyOrders(): Promise<Order[]> {
   try {
     const response = await fetch(`${ECOLIZ_API_URL}/my-orders`, {
       method: "GET",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        // V2: Add Authorization header here when JWT is ready
-        // "Authorization": `Bearer ${token}`,
       },
     });
 
     if (!response.ok) {
-      // V2: Handle 401 Unauthorized (user not authenticated)
       if (response.status === 401) {
-        console.warn("User not authenticated, redirecting to login");
-        // Optionally redirect to /connexion
+        console.warn("User not authenticated.");
       }
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
@@ -54,7 +50,6 @@ export async function fetchMyOrders(): Promise<Order[]> {
  * Currently not connected to any backend.
  */
 export async function fetchMyEquipment() {
-  // TODO V2: Implement equipment list from WooCommerce custom post type or custom endpoint
   return [];
 }
 
@@ -65,7 +60,9 @@ export async function checkEcolizApiHealth(): Promise<boolean> {
   try {
     const response = await fetch(`${ECOLIZ_API_URL}/health`, {
       method: "GET",
+      credentials: "include",
     });
+
     return response.ok;
   } catch {
     return false;
