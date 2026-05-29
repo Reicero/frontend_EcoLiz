@@ -24,6 +24,8 @@ export function ProductPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [cartSuccess, setCartSuccess] = useState(false);
+  const [cartError, setCartError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -46,16 +48,24 @@ export function ProductPage() {
       .finally(() => setLoading(false));
   }, [slug]);
 
- const handleAddToCart = async () => {
+const handleAddToCart = async () => {
   if (!product) return;
 
   try {
     setAddingToCart(true);
+    setCartSuccess(false);
+    setCartError(null);
+
     await addToCart(product.id, 1);
-    alert("Produit ajouté au panier !");
+
+    setCartSuccess(true);
+
+    setTimeout(() => {
+      setCartSuccess(false);
+    }, 5000);
   } catch (error) {
     console.error("Erreur ajout panier :", error);
-    alert("Impossible d'ajouter le produit au panier.");
+    setCartError("Impossible d'ajouter le produit au panier.");
   } finally {
     setAddingToCart(false);
   }
@@ -194,18 +204,42 @@ export function ProductPage() {
                 ))}
               </ul>
             )}
+            {cartSuccess && (
+              <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-brand-950">
+                    Produit ajouté au panier !
+                  </p>
+                  <p className="text-sm text-brand-900/60">
+                    Vous pouvez continuer vos achats ou consulter votre panier.
+                  </p>
+                </div>
 
+                <Link
+                  to="/panier"
+                  className="inline-flex items-center justify-center rounded-full bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 transition-colors"
+                >
+                  Voir le panier
+                </Link>
+              </div>
+            )}
+
+            {cartError && (
+              <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
+                <p className="font-semibold text-red-700">{cartError}</p>
+              </div>
+            )}
             {/* ACTIONS */}
             <div className="flex gap-4 mb-8">
 
               <button
-  onClick={handleAddToCart}
-  disabled={!product.stock || addingToCart}
-  className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-700 hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed text-white px-7 py-4 rounded-xl text-base font-medium transition-all shadow-lg shadow-brand-900/20"
->
-  <ShoppingCart className="w-4 h-4" />
-  {addingToCart ? "Ajout en cours..." : "Ajouter au panier"}
-</button>
+                onClick={handleAddToCart}
+                disabled={!product.stock || addingToCart}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-700 hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed text-white px-7 py-4 rounded-xl text-base font-medium transition-all shadow-lg shadow-brand-900/20"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                {addingToCart ? "Ajout en cours..." : "Ajouter au panier"}
+              </button>
               
               <Link
                 to="/contact"
