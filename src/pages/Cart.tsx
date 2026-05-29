@@ -293,7 +293,7 @@ export default function Cart() {
               </div>
 
               <Link
-                to="/commande"
+                to="/checkout"
                 className="mt-6 w-full inline-flex items-center justify-center rounded-full bg-brand-700 px-6 py-3 text-white font-semibold hover:bg-brand-800 transition-colors"
               >
                 Passer commande
