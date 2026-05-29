@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
@@ -13,9 +13,15 @@ import { registerCustomer } from "../services/auth";
 export function Register() {
   const navigate = useNavigate();
   const location = useLocation();
+  const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo || "/compte";
 
-  const redirectTo =
-  (location.state as { redirectTo?: string } | null)?.redirectTo || "/compte";
+useEffect(() => {
+  const user = localStorage.getItem("ecoliz_user");
+
+  if (user) {
+    navigate(redirectTo, { replace: true });
+  }
+}, [navigate, redirectTo]);
 
   const [formData, setFormData] = useState({
     company: "",

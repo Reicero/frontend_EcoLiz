@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, ArrowRight } from "lucide-react";
 import { Button } from "../components/ui/Button";
@@ -9,6 +9,13 @@ export function Login() {
   const location = useLocation();
   const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo || "/compte";
 
+useEffect(() => {
+  const user = localStorage.getItem("ecoliz_user");
+
+  if (user) {
+    navigate(redirectTo, { replace: true });
+  }
+}, [navigate, redirectTo]);
   const [formData, setFormData] = useState({
     email: "",
     password: "",

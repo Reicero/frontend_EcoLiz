@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Search, User, ShoppingCart, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 const navLinks = [
@@ -31,6 +31,12 @@ const navLinks = [
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+useEffect(() => {
+  setIsLoggedIn(Boolean(localStorage.getItem("ecoliz_user")));
+}, [location.pathname]);
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
@@ -70,11 +76,11 @@ export function Navbar() {
           {/* Actions */}
           <div className="hidden md:flex items-center gap-5">
             <Link
-              to="/connexion"
-              className="text-brand-900/70 hover:text-brand-900 transition-colors"
-              aria-label="Mon compte">
-              
-              <User className="w-5 h-5" />
+  to={isLoggedIn ? "/compte" : "/connexion"}
+  className="text-brand-900/70 hover:text-brand-900 transition-colors"
+  aria-label={isLoggedIn ? "Mon compte" : "Se connecter"}
+>
+  <User className="w-5 h-5" />
             </Link>
             <Link
               to="/panier"
