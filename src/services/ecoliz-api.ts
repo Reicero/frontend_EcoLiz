@@ -20,7 +20,14 @@ const ECOLIZ_API_URL = "/wp-api/ecoliz/v1";
  */
 export async function fetchMyOrders(): Promise<Order[]> {
   try {
-    const response = await fetch(`${ECOLIZ_API_URL}/my-orders`, {
+    const user = JSON.parse(localStorage.getItem("ecoliz_user") || "{}");
+    const customerId = user?.id;
+
+    const url = customerId
+      ? `${ECOLIZ_API_URL}/my-orders?customer_id=${customerId}`
+      : `${ECOLIZ_API_URL}/my-orders`;
+
+    const response = await fetch(url, {
       method: "GET",
       credentials: "include",
       headers: {
