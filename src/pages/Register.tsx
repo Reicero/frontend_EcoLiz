@@ -83,7 +83,7 @@ export function Register() {
     setSuccess("Compte créé avec succès. Redirection vers la commande...");
 
     setTimeout(() => {
-      navigate("/commande");
+      navigate("/checkout");
     }, 800);
   } catch (error) {
     console.error("Erreur inscription :", error);

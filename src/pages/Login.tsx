@@ -1,22 +1,78 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, ArrowRight } from "lucide-react";
-import { config } from "../config/env";
 import { Button } from "../components/ui/Button";
+import { loginCustomer } from "../services/auth";
 
 export function Login() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const validateForm = () => {
+    if (!formData.email.trim()) {
+      return "L’adresse email est obligatoire.";
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(formData.email)) {
+      return "L’adresse email n’est pas valide.";
+    }
+
+    if (!formData.password) {
+      return "Le mot de passe est obligatoire.";
+    }
+
+    return null;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // V1 : WooCommerce gère la vraie authentification client.
-    // Cette page est une passerelle vers WooCommerce.
-    // V2 : remplacer par vrai JWT / React auth quand domaine + HTTPS seront prêts.
-    window.location.href = config.myAccountUrl;
+    setError(null);
+    setSuccess(null);
+
+    const validationError = validateForm();
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const result = await loginCustomer({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      localStorage.setItem("ecoliz_user", JSON.stringify(result.user));
+
+      setSuccess("Connexion réussie. Redirection vers la commande...");
+
+      setTimeout(() => {
+        navigate("/checkout");
+      }, 800);
+    } catch (error) {
+      console.error("Erreur connexion :", error);
+
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("Impossible de se connecter pour le moment.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -27,12 +83,19 @@ export function Login() {
 
         <div className="relative z-10">
           <Link to="/" className="inline-block bg-white p-2.5 rounded-xl mb-16">
-            <img src="/logo.png" alt="EcoLiz" className="h-8 w-auto object-contain" />
+            <img
+              src="/logo.png"
+              alt="EcoLiz"
+              className="h-8 w-auto object-contain"
+            />
           </Link>
 
           <h1 className="text-5xl lg:text-6xl font-bold text-white leading-[1.1] tracking-tight max-w-xl">
             Bienvenue dans la nouvelle économie du{" "}
-            <span className="font-display italic text-accent-300">réemploi</span>.
+            <span className="font-display italic text-accent-300">
+              réemploi
+            </span>
+            .
           </h1>
         </div>
 
@@ -60,13 +123,28 @@ export function Login() {
             </h2>
 
             <p className="text-brand-900/70">
-              Accédez à votre espace client EcoLiz via WooCommerce.
+              Connectez-vous à votre espace client EcoLiz.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {success}
+              </div>
+            )}
+
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-brand-900 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-brand-900 mb-2"
+              >
                 Email professionnel
               </label>
 
@@ -89,16 +167,16 @@ export function Login() {
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label htmlFor="password" className="block text-sm font-medium text-brand-900">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-brand-900"
+                >
                   Mot de passe
                 </label>
 
-                <a
-                  href={config.lostPasswordUrl}
-                  className="text-sm font-medium text-brand-700 hover:text-brand-800"
-                >
+                <span className="text-sm font-medium text-brand-900/40">
                   Oublié ?
-                </a>
+                </span>
               </div>
 
               <div className="relative">
@@ -118,8 +196,14 @@ export function Login() {
               </div>
             </div>
 
-            <Button type="submit" fullWidth size="lg" className="group">
-              Se connecter
+            <Button
+              type="submit"
+              fullWidth
+              size="lg"
+              className="group"
+              disabled={loading}
+            >
+              {loading ? "Connexion en cours..." : "Se connecter"}
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Button>
           </form>

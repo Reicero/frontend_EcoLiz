@@ -9,6 +9,11 @@ export type RegisterPayload = {
   password: string;
 };
 
+export type LoginPayload = {
+  email: string;
+  password: string;
+};
+
 async function authRequest(endpoint: string, body?: unknown) {
   const response = await fetch(`${ECOLIZ_API_URL}${endpoint}`, {
     method: body ? "POST" : "GET",
@@ -30,4 +35,12 @@ async function authRequest(endpoint: string, body?: unknown) {
 
 export async function registerCustomer(payload: RegisterPayload) {
   return authRequest("/register", payload);
+}
+
+export async function loginCustomer(payload: LoginPayload) {
+  return authRequest("/login", payload);
+}
+
+export async function getCurrentCustomer() {
+  return authRequest("/me");
 }
