@@ -11,7 +11,7 @@ import {
 
 import type { Product } from '../types/product';
 import { getProductBySlug } from '../services/woocommerce';
-import { config } from '../config/env';
+import { addToCart } from '../services/cart';
 import { formatPrice, calculateDiscount } from '../utils/formatPrice';
 import { Badge } from '../components/ui/Badge';
 
@@ -23,6 +23,7 @@ export function ProductPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [addingToCart, setAddingToCart] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -45,10 +46,20 @@ export function ProductPage() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  const handleAddToCart = () => {
-    if (!product) return;
-    window.location.href = config.getAddToCartUrl(product.id);
-  };
+ const handleAddToCart = async () => {
+  if (!product) return;
+
+  try {
+    setAddingToCart(true);
+    await addToCart(product.id, 1);
+    alert("Produit ajouté au panier !");
+  } catch (error) {
+    console.error("Erreur ajout panier :", error);
+    alert("Impossible d'ajouter le produit au panier.");
+  } finally {
+    setAddingToCart(false);
+  }
+};
 
   if (loading) {
     return (
@@ -188,13 +199,13 @@ export function ProductPage() {
             <div className="flex gap-4 mb-8">
 
               <button
-                onClick={handleAddToCart}
-                disabled={!product.stock}
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-700 hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed text-white px-7 py-4 rounded-xl text-base font-medium transition-all shadow-lg shadow-brand-900/20"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                Ajouter au panier
-              </button>
+  onClick={handleAddToCart}
+  disabled={!product.stock || addingToCart}
+  className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-700 hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed text-white px-7 py-4 rounded-xl text-base font-medium transition-all shadow-lg shadow-brand-900/20"
+>
+  <ShoppingCart className="w-4 h-4" />
+  {addingToCart ? "Ajout en cours..." : "Ajouter au panier"}
+</button>
               
               <Link
                 to="/contact"
