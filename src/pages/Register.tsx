@@ -1,30 +1,106 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   Mail,
   Lock,
   Building2,
   ArrowRight,
-} from 'lucide-react'
-import { Button } from '../components/ui/Button'
+} from "lucide-react";
+import { Button } from "../components/ui/Button";
 
 export function Register() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
-    company: '',
-    siret: '',
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-  })
+    company: "",
+    siret: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-    window.location.href =
-      'http://90.51.128.107:12443/index.php/mon-compte'
-  }
+  const validateForm = () => {
+    if (!formData.company.trim()) {
+      return "Le nom de l’entreprise est obligatoire.";
+    }
+
+    if (!formData.firstName.trim()) {
+      return "Le prénom est obligatoire.";
+    }
+
+    if (!formData.lastName.trim()) {
+      return "Le nom est obligatoire.";
+    }
+
+    if (!formData.email.trim()) {
+      return "L’adresse email est obligatoire.";
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(formData.email)) {
+      return "L’adresse email n’est pas valide.";
+    }
+
+    if (!formData.password) {
+      return "Le mot de passe est obligatoire.";
+    }
+
+    if (formData.password.length < 8) {
+      return "Le mot de passe doit contenir au moins 8 caractères.";
+    }
+
+    return null;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    setError(null);
+    setSuccess(null);
+
+    const validationError = validateForm();
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // TEMPORAIRE :
+      // Pour l’instant, on simule un compte connecté côté React.
+      // On ne stocke surtout pas le mot de passe.
+      localStorage.setItem(
+        "ecoliz_user",
+        JSON.stringify({
+          company: formData.company,
+          siret: formData.siret,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+        })
+      );
+
+      setSuccess("Compte créé temporairement. Redirection vers la commande...");
+
+      setTimeout(() => {
+        navigate("/commande");
+      }, 800);
+    } catch (error) {
+      console.error("Erreur inscription :", error);
+      setError("Impossible de créer le compte pour le moment.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-white">
@@ -42,8 +118,10 @@ export function Register() {
           </Link>
 
           <h1 className="text-5xl lg:text-6xl font-bold text-white leading-[1.1] tracking-tight max-w-xl">
-            Équipez votre entreprise de manière{' '}
-            <span className="font-display italic text-accent-300">durable</span>
+            Équipez votre entreprise de manière{" "}
+            <span className="font-display italic text-accent-300">
+              durable
+            </span>
             .
           </h1>
         </div>
@@ -54,10 +132,12 @@ export function Register() {
               <div className="w-1.5 h-1.5 rounded-full bg-accent-400" />
               Matériel premium garanti 24 mois
             </li>
+
             <li className="flex items-center gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-accent-400" />
               Paiement à 30 jours net
             </li>
+
             <li className="flex items-center gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-accent-400" />
               Certificats d’économie CO₂
@@ -87,13 +167,25 @@ export function Register() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {success}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-5">
               <div className="col-span-2">
                 <label
                   htmlFor="company"
                   className="block text-sm font-medium text-brand-900 mb-2"
                 >
-                  Nom de l’entreprise
+                  Nom de l’entreprise *
                 </label>
 
                 <div className="relative">
@@ -121,7 +213,7 @@ export function Register() {
                   htmlFor="siret"
                   className="block text-sm font-medium text-brand-900 mb-2"
                 >
-                  Numéro SIRET{' '}
+                  Numéro SIRET{" "}
                   <span className="text-brand-900/40 font-normal">
                     optionnel
                   </span>
@@ -151,7 +243,7 @@ export function Register() {
                   htmlFor="firstName"
                   className="block text-sm font-medium text-brand-900 mb-2"
                 >
-                  Prénom
+                  Prénom *
                 </label>
 
                 <input
@@ -174,7 +266,7 @@ export function Register() {
                   htmlFor="lastName"
                   className="block text-sm font-medium text-brand-900 mb-2"
                 >
-                  Nom
+                  Nom *
                 </label>
 
                 <input
@@ -197,7 +289,7 @@ export function Register() {
                   htmlFor="email"
                   className="block text-sm font-medium text-brand-900 mb-2"
                 >
-                  Email professionnel
+                  Email professionnel *
                 </label>
 
                 <div className="relative">
@@ -225,7 +317,7 @@ export function Register() {
                   htmlFor="password"
                   className="block text-sm font-medium text-brand-900 mb-2"
                 >
-                  Mot de passe
+                  Mot de passe *
                 </label>
 
                 <div className="relative">
@@ -243,22 +335,32 @@ export function Register() {
                       })
                     }
                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-brand-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition bg-white"
-                    placeholder="••••••••"
+                    placeholder="8 caractères minimum"
                   />
                 </div>
+
+                <p className="mt-2 text-xs text-brand-900/50">
+                  Le mot de passe doit contenir au moins 8 caractères.
+                </p>
               </div>
             </div>
 
             <div className="pt-2">
-              <Button type="submit" fullWidth size="lg" className="group">
-                Créer mon compte
+              <Button
+                type="submit"
+                fullWidth
+                size="lg"
+                className="group"
+                disabled={loading}
+              >
+                {loading ? "Création en cours..." : "Créer mon compte"}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </div>
           </form>
 
           <div className="mt-8 text-center text-sm text-brand-900/70">
-            Déjà client ?{' '}
+            Déjà client ?{" "}
             <Link
               to="/connexion"
               className="font-semibold text-brand-700 hover:text-brand-800 transition-colors"
@@ -269,5 +371,5 @@ export function Register() {
         </div>
       </div>
     </div>
-  )
+  );
 }
