@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   Mail,
@@ -12,6 +12,10 @@ import { registerCustomer } from "../services/auth";
 
 export function Register() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const redirectTo =
+  (location.state as { redirectTo?: string } | null)?.redirectTo || "/compte";
 
   const [formData, setFormData] = useState({
     company: "",
@@ -83,8 +87,8 @@ export function Register() {
     setSuccess("Compte créé avec succès. Redirection vers la commande...");
 
     setTimeout(() => {
-      navigate("/checkout");
-    }, 800);
+    navigate(redirectTo);    
+  }, 800);
   } catch (error) {
     console.error("Erreur inscription :", error);
 
@@ -359,6 +363,7 @@ export function Register() {
             Déjà client ?{" "}
             <Link
               to="/connexion"
+              state={{ redirectTo }}
               className="font-semibold text-brand-700 hover:text-brand-800 transition-colors"
             >
               Se connecter

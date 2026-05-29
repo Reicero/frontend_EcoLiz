@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, ArrowRight } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { loginCustomer } from "../services/auth";
 
 export function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo || "/compte";
 
   const [formData, setFormData] = useState({
     email: "",
@@ -60,7 +62,7 @@ export function Login() {
       setSuccess("Connexion réussie. Redirection vers la commande...");
 
       setTimeout(() => {
-        navigate("/checkout");
+        navigate(redirectTo);
       }, 800);
     } catch (error) {
       console.error("Erreur connexion :", error);
@@ -212,6 +214,7 @@ export function Login() {
             Pas encore de compte ?{" "}
             <Link
               to="/inscription"
+              state={{ redirectTo }}
               className="font-semibold text-brand-700 hover:text-brand-800 transition-colors"
             >
               Créer un compte pro

@@ -67,6 +67,7 @@ export default function Checkout() {
             <div className="grid sm:grid-cols-2 gap-4 mb-8">
               <Link
                 to="/connexion"
+                state={{ redirectTo: "/checkout" }}
                 className="group rounded-2xl border border-brand-100 bg-brand-700 text-white p-6 hover:bg-brand-800 transition-all shadow-lg shadow-brand-900/20"
               >
                 <div className="flex items-center gap-3 mb-4">
@@ -90,6 +91,7 @@ export default function Checkout() {
 
               <Link
                 to="/inscription"
+                state={{ redirectTo: "/checkout" }}
                 className="group rounded-2xl border border-brand-100 bg-white p-6 hover:bg-brand-50 transition-all"
               >
                 <div className="flex items-center gap-3 mb-4">
