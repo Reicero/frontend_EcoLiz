@@ -8,6 +8,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
+import { registerCustomer } from "../services/auth";
 
 export function Register() {
   const navigate = useNavigate();
@@ -59,48 +60,43 @@ export function Register() {
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    setError(null);
-    setSuccess(null);
+  setError(null);
+  setSuccess(null);
 
-    const validationError = validateForm();
+  const validationError = validateForm();
 
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+  if (validationError) {
+    setError(validationError);
+    return;
+  }
 
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      // TEMPORAIRE :
-      // Pour l’instant, on simule un compte connecté côté React.
-      // On ne stocke surtout pas le mot de passe.
-      localStorage.setItem(
-        "ecoliz_user",
-        JSON.stringify({
-          company: formData.company,
-          siret: formData.siret,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-        })
-      );
+    const result = await registerCustomer(formData);
 
-      setSuccess("Compte créé temporairement. Redirection vers la commande...");
+    localStorage.setItem("ecoliz_user", JSON.stringify(result.user));
 
-      setTimeout(() => {
-        navigate("/commande");
-      }, 800);
-    } catch (error) {
-      console.error("Erreur inscription :", error);
+    setSuccess("Compte créé avec succès. Redirection vers la commande...");
+
+    setTimeout(() => {
+      navigate("/commande");
+    }, 800);
+  } catch (error) {
+    console.error("Erreur inscription :", error);
+
+    if (error instanceof Error) {
+      setError(error.message);
+    } else {
       setError("Impossible de créer le compte pour le moment.");
-    } finally {
-      setLoading(false);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-white">
