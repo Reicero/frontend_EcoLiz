@@ -1,24 +1,110 @@
-import type { Product } from "../types/product";
+import type { Product, ProductGrade } from "../types/product";
 import { config } from "../config/env";
 
 const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, "");
 
+// Ici on part sur TVA 20%.
+const VAT_RATE = 0.2;
+
+function roundPrice(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function cleanHtml(value: string) {
+  return value?.replace(/<[^>]*>/g, "").trim() ?? "";
+}
+
+function getAttributeValue(product: any, names: string[]) {
+  const attribute = product.attributes?.find((a: any) =>
+    names.some((name) => a.name?.toLowerCase().includes(name.toLowerCase()))
+  );
+
+  return (
+    attribute?.terms?.[0]?.name ??
+    attribute?.options?.[0] ??
+    ""
+  );
+}
+
+function mapGrade(product: any): ProductGrade {
+  const rawGrade = getAttributeValue(product, ["grade", "état", "etat"]);
+
+  if (rawGrade === "N1") return "Neuf";
+  if (rawGrade === "R4") return "Reconditionné";
+  if (rawGrade === "G5") return "Grade B";
+
+  if (rawGrade === "Grade A+" || rawGrade === "Grade A" || rawGrade === "Grade B" || rawGrade === "Grade C") {
+    return rawGrade;
+  }
+
+  return "Non renseigné";
+}
+
 function mapWooProduct(product: any): Product {
+  // Dans ton cas, ce prix doit correspondre au prix HT venant de WooCommerce.
+  const priceHT = Number(product.prices?.price ?? product.price ?? 0) / 100;
+
+  const originalPriceHT =
+    Number(product.prices?.regular_price ?? product.prices?.price ?? product.regular_price ?? 0) / 100;
+
+  const priceTTC = roundPrice(priceHT * (1 + VAT_RATE));
+  const vatAmount = roundPrice(priceTTC - priceHT);
+
+  const stockCount =
+    product.stock_quantity ??
+    product.low_stock_remaining ??
+    undefined;
+
+  const isInStock =
+    product.is_in_stock === true ||
+    product.stock_status === "instock" ||
+    (typeof stockCount === "number" && stockCount > 0);
+
+  const image =
+    product.images?.[0]?.src ||
+    "/placeholder-product.png";
+
+  const description = cleanHtml(
+    product.short_description ?? product.description ?? ""
+  );
+
   return {
     id: product.id,
     name: product.name,
     slug: product.slug,
-    price: Number(product.prices?.price ?? 0) / 100,
-    originalPrice:
-      Number(product.prices?.regular_price ?? product.prices?.price ?? 0) / 100,
-    image: product.images?.[0]?.src ?? "",
+
+    price: priceHT,
+    originalPrice: originalPriceHT,
+    priceTTC,
+    vatAmount,
+
+    image,
+    images: product.images?.map((img: any) => img.src) ?? [],
+
     category: product.categories?.[0]?.name ?? "Non classé",
-    description: product.short_description ?? product.description ?? "",
-    specs: product.attributes?.map((a: any) => a.terms?.map((t: any) => t.name).join(", ")).join(" · ") ?? "",
-    grade: product.attributes?.find((a: any) => a.name?.toLowerCase().includes("grade"))?.terms?.[0]?.name ?? "",
-    warranty: product.attributes?.find((a: any) => a.name?.toLowerCase().includes("garantie"))?.terms?.[0]?.name ?? "",
-    stock: product.is_in_stock,
-    stockCount: product.low_stock_remaining ?? undefined,
+    description,
+
+    specs:
+      product.attributes
+        ?.map((a: any) => {
+          const values =
+            a.terms?.map((t: any) => t.name).join(", ") ||
+            a.options?.join(", ") ||
+            "";
+
+          return values ? `${a.name}: ${values}` : "";
+        })
+        .filter(Boolean)
+        .join(" · ") ?? "",
+
+    grade: mapGrade(product),
+
+    warranty: "Garantie : sur devis",
+
+    stock: isInStock,
+    stockCount,
+
+    availability: isInStock ? "En stock" : "Rupture de stock",
   };
 }
 
