@@ -20,6 +20,11 @@ export interface Product {
   name: string;
   specs: string;
 
+  // Identifiants
+  sku?: string;
+  ean?: string;
+  manufacturerPartNumber?: string;
+
   // Prix
   price: number; // prix HT
   originalPrice: number;
@@ -39,6 +44,7 @@ export interface Product {
   category: ProductCategory;
   manufacturer?: string;
   status?: string;
+  conditionLabel?: string;
   productGroup?: string;
   os?: string;
 

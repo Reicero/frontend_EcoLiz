@@ -3,7 +3,7 @@ import { config } from "../config/env";
 
 const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, "");
 
-// Ici on part sur 20%.
+// TVA 20%
 const VAT_RATE = 0.2;
 
 function roundPrice(value: number) {
@@ -32,14 +32,26 @@ function getWooPrice(product: any, field: "price" | "regular_price") {
 
 function getAttributeValue(product: any, names: string[]) {
   const attribute = product.attributes?.find((a: any) =>
-    names.some((name) => a.name?.toLowerCase().includes(name.toLowerCase()))
+    names.some((name) =>
+      a.name?.toLowerCase().includes(name.toLowerCase())
+    )
   );
 
   return attribute?.terms?.[0]?.name ?? attribute?.options?.[0] ?? "";
 }
 
+function getMetaValue(product: any, key: string) {
+  const meta = product.meta_data?.find((m: any) => m.key === key);
+  return meta?.value ?? "";
+}
+
 function mapGrade(product: any): ProductGrade {
-  const rawGrade = getAttributeValue(product, ["grade", "état", "etat"]);
+  const rawGrade = getAttributeValue(product, [
+    "grade",
+    "état",
+    "etat",
+    "condition",
+  ]);
 
   if (rawGrade === "N1") return "Neuf";
   if (rawGrade === "R4") return "Reconditionné";
@@ -55,6 +67,25 @@ function mapGrade(product: any): ProductGrade {
   }
 
   return "Non renseigné";
+}
+
+function mapConditionLabel(status?: string) {
+  if (!status) return "Non renseigné";
+
+  const labels: Record<string, string> = {
+    N1: "Neuf",
+    N2: "Neuf",
+    N3: "Neuf",
+    R4: "Reconditionné",
+    G5: "Grade B",
+    AS: "As-is",
+    W1: "Reconditionné",
+    W2: "Reconditionné",
+    D1: "Déstockage",
+    D2: "Déstockage",
+  };
+
+  return labels[status] ?? status;
 }
 
 function mapWooProduct(product: any): Product {
@@ -74,18 +105,55 @@ function mapWooProduct(product: any): Product {
   const image = product.images?.[0]?.src || "/placeholder-product.png";
 
   const description = cleanHtml(
-    product.short_description ?? product.description ?? ""
+    product.description ?? product.short_description ?? ""
   );
 
-  const manufacturer = getAttributeValue(product, ["marque", "manufacturer"]);
-  const status = getAttributeValue(product, ["état", "etat", "status"]);
-  const os = getAttributeValue(product, ["os"]);
-  const productGroup = getAttributeValue(product, ["product group", "groupe produit"]);
+  const manufacturer =
+    getAttributeValue(product, ["marque", "manufacturer"]) ||
+    getMetaValue(product, "manufacturer");
+
+  const status =
+    getAttributeValue(product, ["état", "etat", "status", "condition"]) ||
+    getMetaValue(product, "condition_status");
+
+  const os =
+    getAttributeValue(product, ["os", "operating system"]) ||
+    getMetaValue(product, "os");
+
+  const productGroup =
+    getAttributeValue(product, ["product group", "groupe produit"]) ||
+    getMetaValue(product, "product_group");
+
+  const manufacturerPartNumber =
+    getAttributeValue(product, [
+      "référence constructeur",
+      "reference constructeur",
+      "manufacturer part number",
+    ]) || getMetaValue(product, "manufacturer_part_number");
+
+  const ean = getMetaValue(product, "ean");
+
+  const specs =
+    product.attributes
+      ?.map((a: any) => {
+        const values =
+          a.terms?.map((t: any) => t.name).join(", ") ||
+          a.options?.join(", ") ||
+          "";
+
+        return values ? `${a.name}: ${values}` : "";
+      })
+      .filter(Boolean)
+      .join(" · ") ?? "";
 
   return {
     id: product.id,
     name: product.name,
     slug: product.slug,
+
+    sku: product.sku,
+    ean,
+    manufacturerPartNumber,
 
     price: priceHT,
     originalPrice: originalPriceHT,
@@ -98,30 +166,25 @@ function mapWooProduct(product: any): Product {
     category: product.categories?.[0]?.name ?? "Non classé",
     manufacturer,
     status,
+    conditionLabel: mapConditionLabel(status),
     os,
     productGroup,
 
-    specs:
-      product.attributes
-        ?.map((a: any) => {
-          const values =
-            a.terms?.map((t: any) => t.name).join(", ") ||
-            a.options?.join(", ") ||
-            "";
-
-          return values ? `${a.name}: ${values}` : "";
-        })
-        .filter(Boolean)
-        .join(" · ") ?? "",
+    specs,
 
     grade: mapGrade(product),
 
     warranty: "sur devis",
 
+    description,
+
     stock: isInStock,
     stockCount,
 
     availability: isInStock ? "En stock" : "Rupture de stock",
+
+    incomingQuantity: Number(getMetaValue(product, "incoming_quantity")) || undefined,
+    incomingDate: getMetaValue(product, "incoming_date") || undefined,
   };
 }
 
