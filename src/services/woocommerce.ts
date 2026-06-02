@@ -188,38 +188,51 @@ function mapWooProduct(product: any): Product {
   };
 }
 
-export async function listProducts(): Promise<Product[]> {
+export type ProductListParams = {
+  page?: number;
+  perPage?: number;
+  search?: string;
+};
+
+export type ProductListResult = {
+  products: Product[];
+  total: number;
+  totalPages: number;
+};
+
+export async function listProducts({
+  page = 1,
+  perPage = 20,
+  search = "",
+}: ProductListParams = {}): Promise<ProductListResult> {
   try {
-    const perPage = 100;
-    let page = 1;
-    let totalPages = 1;
-    const allProducts: any[] = [];
+    const params = new URLSearchParams({
+      per_page: String(perPage),
+      page: String(page),
+    });
 
-    do {
-      const res = await fetch(
-        `${WOO_API_URL}/products?per_page=${perPage}&page=${page}`,
-        { cache: "no-store" }
-      );
+    if (search.trim()) {
+      params.set("search", search.trim());
+    }
 
-      if (!res.ok) {
-        throw new Error(
-          `HTTP ${res.status}: Failed to fetch products page ${page}`
-        );
-      }
+    const res = await fetch(`${WOO_API_URL}/products?${params.toString()}`, {
+      cache: "no-store",
+    });
 
-      const data = await res.json();
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: Failed to fetch products page ${page}`);
+    }
 
-      if (Array.isArray(data)) {
-        allProducts.push(...data);
-      }
+    const data = await res.json();
 
-      const totalPagesHeader = res.headers.get("X-WP-TotalPages");
-      totalPages = totalPagesHeader ? Number(totalPagesHeader) : 1;
+    const total = Number(res.headers.get("X-WP-Total") ?? data.length ?? 0);
+    const totalPages = Number(res.headers.get("X-WP-TotalPages") ?? 1);
 
-      page++;
-    } while (page <= totalPages);
-
-    return allProducts.map(mapWooProduct);
+    return {
+      products: Array.isArray(data) ? data.map(mapWooProduct) : [],
+      total,
+      totalPages,
+    };
   } catch (error) {
     console.error("Error fetching products:", error);
     throw error;

@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Filter,
   Grid3X3,
   List,
   RotateCcw,
@@ -20,158 +19,87 @@ export function Shop() {
   const [loading, setLoading] = useState(false);
 
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
 
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedManufacturers, setSelectedManufacturers] = useState<string[]>([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
-  const [selectedProductGroups, setSelectedProductGroups] = useState<string[]>([]);
-  const [selectedAvailability, setSelectedAvailability] = useState<string[]>([]);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setCurrentPage(1);
+      setSearchTerm(searchInput.trim());
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
 
   useEffect(() => {
     setLoading(true);
 
-    listProducts()
-      .then((data) => {
-        setProducts(data);
+    listProducts({
+      page: currentPage,
+      perPage: PRODUCTS_PER_PAGE,
+      search: searchTerm,
+    })
+      .then((result) => {
+        setProducts(result.products);
+        setTotalProducts(result.total);
+        setTotalPages(result.totalPages);
       })
       .catch((error) => {
         console.error("Erreur lors de la récupération des produits :", error);
         setProducts([]);
+        setTotalProducts(0);
+        setTotalPages(1);
       })
       .finally(() => {
         setLoading(false);
       });
-  }, []);
+  }, [currentPage, searchTerm]);
 
-  function getUniqueValues(values: Array<string | undefined>) {
-    return Array.from(
-      new Set(values.filter((value): value is string => Boolean(value)))
-    ).sort((a, b) => a.localeCompare(b));
-  }
-
-  function toggleFilter(
-    value: string,
-    selectedValues: string[],
-    setSelectedValues: React.Dispatch<React.SetStateAction<string[]>>
-  ) {
-    setCurrentPage(1);
-
-    if (selectedValues.includes(value)) {
-      setSelectedValues(selectedValues.filter((item) => item !== value));
-    } else {
-      setSelectedValues([...selectedValues, value]);
-    }
-  }
-
-  function resetFilters() {
+  function resetSearch() {
+    setSearchInput("");
     setSearchTerm("");
-    setSelectedCategories([]);
-    setSelectedManufacturers([]);
-    setSelectedStatuses([]);
-    setSelectedProductGroups([]);
-    setSelectedAvailability([]);
     setCurrentPage(1);
   }
 
-  const categoryFilters = useMemo(
-    () => getUniqueValues(products.map((product) => product.category)),
-    [products]
-  );
+  function getPaginationPages() {
+    const pages: Array<number | "..."> = [];
 
-  const manufacturerFilters = useMemo(
-    () => getUniqueValues(products.map((product) => product.manufacturer)),
-    [products]
-  );
+    if (totalPages <= 7) {
+      for (let page = 1; page <= totalPages; page++) {
+        pages.push(page);
+      }
 
-  const statusFilters = useMemo(
-    () =>
-      getUniqueValues(
-        products.map((product) => product.conditionLabel || product.status)
-      ),
-    [products]
-  );
+      return pages;
+    }
 
-  const productGroupFilters = useMemo(
-    () => getUniqueValues(products.map((product) => product.productGroup)),
-    [products]
-  );
+    if (currentPage <= 4) {
+      pages.push(1, 2, 3, 4, 5, "...", totalPages);
+      return pages;
+    }
 
-  const availabilityFilters = ["En stock", "Rupture de stock"];
+    if (currentPage >= totalPages - 3) {
+      pages.push(
+        1,
+        "...",
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages
+      );
+      return pages;
+    }
 
-  const filteredProducts = products.filter((product) => {
-    const search = searchTerm.toLowerCase().trim();
+    pages.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages);
+    return pages;
+  }
 
-    const searchContent = [
-      product.name,
-      product.sku,
-      product.manufacturer,
-      product.manufacturerPartNumber,
-      product.category,
-      product.productGroup,
-      product.os,
-      product.specs,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-
-    const matchSearch = search.length === 0 || searchContent.includes(search);
-
-    const matchCategory =
-      selectedCategories.length === 0 ||
-      selectedCategories.includes(product.category);
-
-    const matchManufacturer =
-      selectedManufacturers.length === 0 ||
-      (product.manufacturer &&
-        selectedManufacturers.includes(product.manufacturer));
-
-    const productStatus = product.conditionLabel || product.status;
-
-    const matchStatus =
-      selectedStatuses.length === 0 ||
-      (productStatus && selectedStatuses.includes(productStatus));
-
-    const matchProductGroup =
-      selectedProductGroups.length === 0 ||
-      (product.productGroup &&
-        selectedProductGroups.includes(product.productGroup));
-
-    const availability = product.stock ? "En stock" : "Rupture de stock";
-
-    const matchAvailability =
-      selectedAvailability.length === 0 ||
-      selectedAvailability.includes(availability);
-
-    return (
-      matchSearch &&
-      matchCategory &&
-      matchManufacturer &&
-      matchStatus &&
-      matchProductGroup &&
-      matchAvailability
-    );
-  });
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE)
-  );
-
-  const paginatedProducts = filteredProducts.slice(
-    (currentPage - 1) * PRODUCTS_PER_PAGE,
-    currentPage * PRODUCTS_PER_PAGE
-  );
-
-  const activeFilterCount =
-    selectedCategories.length +
-    selectedManufacturers.length +
-    selectedStatuses.length +
-    selectedProductGroups.length +
-    selectedAvailability.length +
-    (searchTerm ? 1 : 0);
+  const paginationPages = getPaginationPages();
 
   return (
     <section className="pt-32 pb-24 bg-brand-50 min-h-screen">
@@ -197,9 +125,9 @@ export function Shop() {
             </div>
 
             <div className="bg-white rounded-2xl border border-brand-100 px-5 py-4 shadow-sm">
-              <p className="text-sm text-brand-900/60">Produits affichés</p>
+              <p className="text-sm text-brand-900/60">Produits disponibles</p>
               <p className="text-2xl font-bold text-brand-950">
-                {filteredProducts.length}
+                {totalProducts}
               </p>
             </div>
           </div>
@@ -208,83 +136,42 @@ export function Shop() {
         <div className="grid lg:grid-cols-[290px_1fr] gap-8">
           <aside className="bg-white rounded-2xl border border-brand-100 p-5 h-fit sticky top-28">
             <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-brand-900/60" />
-                <h2 className="font-semibold text-brand-950">Filtres</h2>
-              </div>
-
-              {activeFilterCount > 0 && (
-                <span className="text-xs bg-brand-100 text-brand-700 rounded-full px-2 py-1">
-                  {activeFilterCount}
-                </span>
-              )}
+              <h2 className="font-semibold text-brand-950">Filtres</h2>
             </div>
 
-            <FilterGroup
-              title="Catégorie"
-              values={categoryFilters}
-              selectedValues={selectedCategories}
-              onToggle={(value) =>
-                toggleFilter(value, selectedCategories, setSelectedCategories)
-              }
-            />
+            <div className="rounded-2xl bg-brand-50 border border-brand-100 p-4 text-sm text-brand-900/70">
+              <p className="font-semibold text-brand-950 mb-2">
+                Recherche catalogue
+              </p>
 
-            <FilterGroup
-              title="Marque"
-              values={manufacturerFilters}
-              selectedValues={selectedManufacturers}
-              onToggle={(value) =>
-                toggleFilter(
-                  value,
-                  selectedManufacturers,
-                  setSelectedManufacturers
-                )
-              }
-            />
+              <p>
+                La recherche et la pagination sont maintenant faites côté
+                WooCommerce pour éviter de charger tout le catalogue d’un coup.
+              </p>
+            </div>
 
-            <FilterGroup
-              title="État"
-              values={statusFilters}
-              selectedValues={selectedStatuses}
-              onToggle={(value) =>
-                toggleFilter(value, selectedStatuses, setSelectedStatuses)
-              }
-            />
+            <div className="mt-5 rounded-2xl bg-white border border-brand-100 p-4 text-sm text-brand-900/60">
+              <p className="font-semibold text-brand-950 mb-2">
+                Filtres avancés
+              </p>
 
-            <FilterGroup
-              title="Famille produit"
-              values={productGroupFilters}
-              selectedValues={selectedProductGroups}
-              onToggle={(value) =>
-                toggleFilter(
-                  value,
-                  selectedProductGroups,
-                  setSelectedProductGroups
-                )
-              }
-            />
+              <p>
+                Les filtres Marque, État, OS et Product Group seront reliés
+                proprement quand les attributs seront synchronisés dans
+                WooCommerce via le flux SFTP/API.
+              </p>
+            </div>
 
-            <FilterGroup
-              title="Disponibilité"
-              values={availabilityFilters}
-              selectedValues={selectedAvailability}
-              onToggle={(value) =>
-                toggleFilter(
-                  value,
-                  selectedAvailability,
-                  setSelectedAvailability
-                )
-              }
-            />
-
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="mt-2 inline-flex items-center gap-2 text-sm text-brand-700 hover:text-brand-800 underline"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Réinitialiser
-            </button>
+            {(searchInput || searchTerm) && (
+              <button
+                type="button"
+                onClick={resetSearch}
+                className="mt-5 inline-flex items-center gap-2 text-sm text-brand-700 hover:text-brand-800 underline"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Réinitialiser la recherche
+              </button>
+            )}
           </aside>
 
           <div>
@@ -293,11 +180,8 @@ export function Shop() {
                 <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-900/40" />
 
                 <input
-                  value={searchTerm}
-                  onChange={(event) => {
-                    setSearchTerm(event.target.value);
-                    setCurrentPage(1);
-                  }}
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
                   placeholder="Rechercher par nom, marque, référence..."
                   className="w-full rounded-xl border border-brand-100 bg-brand-50 py-3 pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
                 />
@@ -306,9 +190,7 @@ export function Shop() {
               <div className="flex items-center justify-between lg:justify-end gap-4">
                 <div className="flex items-center gap-2 text-sm text-brand-900/60">
                   <SlidersHorizontal className="w-4 h-4" />
-                  {filteredProducts.length} produit
-                  {filteredProducts.length > 1 ? "s" : ""} trouvé
-                  {filteredProducts.length > 1 ? "s" : ""}
+                  Page {currentPage} / {totalPages}
                 </div>
 
                 <div className="flex items-center gap-1 bg-brand-50 border border-brand-100 rounded-xl p-1">
@@ -345,19 +227,19 @@ export function Shop() {
               <div className="bg-white rounded-2xl border border-brand-100 py-20 text-center text-brand-900/50">
                 Chargement du catalogue…
               </div>
-            ) : filteredProducts.length === 0 ? (
+            ) : products.length === 0 ? (
               <div className="bg-white rounded-2xl border border-brand-100 py-20 text-center text-brand-900/50">
                 Aucun produit ne correspond à votre recherche.
               </div>
             ) : viewMode === "list" ? (
               <div className="space-y-3">
-                {paginatedProducts.map((product) => (
+                {products.map((product) => (
                   <ProductListItem key={product.id} product={product} />
                 ))}
               </div>
             ) : (
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                {paginatedProducts.map((product) => (
+                {products.map((product) => (
                   <ProductGridItem key={product.id} product={product} />
                 ))}
               </div>
@@ -368,35 +250,43 @@ export function Shop() {
                 <button
                   type="button"
                   onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || loading}
                   className="px-4 py-2 rounded-full border border-emerald-200 bg-white/70 text-brand-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-50 transition-colors"
                 >
                   Précédent
                 </button>
 
-                {Array.from({ length: totalPages }, (_, index) => index + 1)
-                  .slice(Math.max(0, currentPage - 3), currentPage + 2)
-                  .map((page) => (
+                {paginationPages.map((page, index) =>
+                  page === "..." ? (
+                    <span
+                      key={`ellipsis-${index}`}
+                      className="px-3 py-2 text-brand-900/50"
+                    >
+                      ...
+                    </span>
+                  ) : (
                     <button
                       key={page}
                       type="button"
                       onClick={() => setCurrentPage(page)}
+                      disabled={loading}
                       className={`w-11 h-11 rounded-full border transition-colors ${
                         currentPage === page
                           ? "bg-brand-700 text-white border-brand-700"
                           : "bg-white/70 text-brand-900 border-emerald-200 hover:bg-emerald-50"
-                      }`}
+                      } disabled:opacity-40 disabled:cursor-not-allowed`}
                     >
                       {page}
                     </button>
-                  ))}
+                  )
+                )}
 
                 <button
                   type="button"
                   onClick={() =>
                     setCurrentPage((page) => Math.min(page + 1, totalPages))
                   }
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === totalPages || loading}
                   className="px-4 py-2 rounded-full border border-emerald-200 bg-white/70 text-brand-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-50 transition-colors"
                 >
                   Suivant
@@ -449,12 +339,15 @@ function ProductListItem({ product }: { product: Product }) {
 
         <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-x-4 gap-y-1 text-xs text-brand-900/60 mb-3">
           {product.sku && <InfoLine label="SKU" value={product.sku} />}
+
           {product.manufacturerPartNumber && (
             <InfoLine label="Réf." value={product.manufacturerPartNumber} />
           )}
+
           {product.category && (
             <InfoLine label="Catégorie" value={product.category} />
           )}
+
           {product.productGroup && (
             <InfoLine label="Famille" value={product.productGroup} />
           )}
@@ -519,9 +412,11 @@ function ProductGridItem({ product }: { product: Product }) {
           {product.manufacturer && (
             <InfoLine label="Marque" value={product.manufacturer} />
           )}
+
           {product.conditionLabel && (
             <InfoLine label="État" value={product.conditionLabel} />
           )}
+
           {product.sku && <InfoLine label="SKU" value={product.sku} />}
         </div>
 
@@ -538,43 +433,6 @@ function ProductGridItem({ product }: { product: Product }) {
         </div>
       </div>
     </Link>
-  );
-}
-
-function FilterGroup({
-  title,
-  values,
-  selectedValues,
-  onToggle,
-}: {
-  title: string;
-  values: string[];
-  selectedValues: string[];
-  onToggle: (value: string) => void;
-}) {
-  if (values.length === 0) return null;
-
-  return (
-    <div className="mb-6">
-      <h3 className="text-sm font-semibold text-brand-950 mb-3">{title}</h3>
-
-      <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-        {values.map((value) => (
-          <label
-            key={value}
-            className="flex items-center gap-2 text-sm text-brand-900/70 cursor-pointer"
-          >
-            <input
-              type="checkbox"
-              checked={selectedValues.includes(value)}
-              onChange={() => onToggle(value)}
-              className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
-            />
-            <span>{value}</span>
-          </label>
-        ))}
-      </div>
-    </div>
   );
 }
 
