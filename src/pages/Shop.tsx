@@ -1,22 +1,21 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Filter,
-  SlidersHorizontal,
-  List,
   Grid3X3,
-  Search,
+  List,
   RotateCcw,
+  Search,
+  SlidersHorizontal,
 } from "lucide-react";
 
-import { formatPrice } from "../utils/formatPrice";
-import { Badge } from "../components/ui/Badge";
 import type { Product } from "../types/product";
 import { listProducts } from "../services/woocommerce";
+import { formatPrice } from "../utils/formatPrice";
 
 const PRODUCTS_PER_PAGE = 20;
 
-export function ProductPage() {
+export function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -34,15 +33,19 @@ export function ProductPage() {
     setLoading(true);
 
     listProducts()
-      .then((data) => setProducts(data))
+      .then((data) => {
+        setProducts(data);
+      })
       .catch((error) => {
         console.error("Erreur lors de la récupération des produits :", error);
         setProducts([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
-  function getUniqueValues(values: (string | undefined)[]) {
+  function getUniqueValues(values: Array<string | undefined>) {
     return Array.from(
       new Set(values.filter((value): value is string => Boolean(value)))
     ).sort((a, b) => a.localeCompare(b));
@@ -63,12 +66,12 @@ export function ProductPage() {
   }
 
   function resetFilters() {
+    setSearchTerm("");
     setSelectedCategories([]);
     setSelectedManufacturers([]);
     setSelectedStatuses([]);
     setSelectedProductGroups([]);
     setSelectedAvailability([]);
-    setSearchTerm("");
     setCurrentPage(1);
   }
 
@@ -98,23 +101,23 @@ export function ProductPage() {
   const availabilityFilters = ["En stock", "Rupture de stock"];
 
   const filteredProducts = products.filter((product) => {
-    const normalizedSearch = searchTerm.toLowerCase().trim();
+    const search = searchTerm.toLowerCase().trim();
 
-    const matchSearch =
-      normalizedSearch.length === 0 ||
-      [
-        product.name,
-        product.sku,
-        product.manufacturer,
-        product.manufacturerPartNumber,
-        product.category,
-        product.productGroup,
-        product.os,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedSearch);
+    const searchContent = [
+      product.name,
+      product.sku,
+      product.manufacturer,
+      product.manufacturerPartNumber,
+      product.category,
+      product.productGroup,
+      product.os,
+      product.specs,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    const matchSearch = search.length === 0 || searchContent.includes(search);
 
     const matchCategory =
       selectedCategories.length === 0 ||
@@ -157,10 +160,9 @@ export function ProductPage() {
     Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE)
   );
 
-  const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
   const paginatedProducts = filteredProducts.slice(
-    startIndex,
-    startIndex + PRODUCTS_PER_PAGE
+    (currentPage - 1) * PRODUCTS_PER_PAGE,
+    currentPage * PRODUCTS_PER_PAGE
   );
 
   const activeFilterCount =
@@ -171,44 +173,11 @@ export function ProductPage() {
     selectedAvailability.length +
     (searchTerm ? 1 : 0);
 
-  const getPaginationPages = () => {
-    const pages: (number | "...")[] = [];
-
-    if (totalPages <= 8) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-      return pages;
-    }
-
-    if (currentPage <= 4) {
-      pages.push(1, 2, 3, 4, "...", totalPages - 2, totalPages - 1, totalPages);
-      return pages;
-    }
-
-    if (currentPage >= totalPages - 3) {
-      pages.push(
-        1,
-        2,
-        3,
-        "...",
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-        totalPages
-      );
-      return pages;
-    }
-
-    pages.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages);
-    return pages;
-  };
-
-  const paginationPages = getPaginationPages();
-
   return (
     <section className="pt-32 pb-24 bg-brand-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <header className="mb-10">
-          <p className="text-brand-700 font-semibold tracking-wide uppercase text-sm mb-3">
+          <p className="text-brand-700 font-semibold uppercase tracking-wide text-sm mb-3">
             Catalogue professionnel
           </p>
 
@@ -222,13 +191,13 @@ export function ProductPage() {
               </h1>
 
               <p className="text-lg text-brand-900/70 max-w-3xl">
-                Matériel informatique professionnel, neuf et reconditionné,
-                avec prix HT/TTC, stock et informations techniques.
+                Matériel informatique professionnel, neuf et reconditionné, avec
+                prix HT/TTC, disponibilité et informations techniques.
               </p>
             </div>
 
-            <div className="bg-white border border-brand-100 rounded-2xl px-5 py-4 shadow-sm">
-              <p className="text-sm text-brand-900/60">Produits disponibles</p>
+            <div className="bg-white rounded-2xl border border-brand-100 px-5 py-4 shadow-sm">
+              <p className="text-sm text-brand-900/60">Produits affichés</p>
               <p className="text-2xl font-bold text-brand-950">
                 {filteredProducts.length}
               </p>
@@ -238,14 +207,14 @@ export function ProductPage() {
 
         <div className="grid lg:grid-cols-[290px_1fr] gap-8">
           <aside className="bg-white rounded-2xl border border-brand-100 p-5 h-fit sticky top-28">
-            <div className="flex items-center justify-between gap-2 mb-5">
+            <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-brand-900/60" />
                 <h2 className="font-semibold text-brand-950">Filtres</h2>
               </div>
 
               {activeFilterCount > 0 && (
-                <span className="text-xs font-medium bg-brand-100 text-brand-700 rounded-full px-2 py-1">
+                <span className="text-xs bg-brand-100 text-brand-700 rounded-full px-2 py-1">
                   {activeFilterCount}
                 </span>
               )}
@@ -309,11 +278,12 @@ export function ProductPage() {
             />
 
             <button
+              type="button"
               onClick={resetFilters}
               className="mt-2 inline-flex items-center gap-2 text-sm text-brand-700 hover:text-brand-800 underline"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Réinitialiser les filtres
+              Réinitialiser
             </button>
           </aside>
 
@@ -321,6 +291,7 @@ export function ProductPage() {
             <div className="bg-white border border-brand-100 rounded-2xl p-4 mb-6 flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
               <div className="relative flex-1 max-w-xl">
                 <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-900/40" />
+
                 <input
                   value={searchTerm}
                   onChange={(event) => {
@@ -342,6 +313,7 @@ export function ProductPage() {
 
                 <div className="flex items-center gap-1 bg-brand-50 border border-brand-100 rounded-xl p-1">
                   <button
+                    type="button"
                     onClick={() => setViewMode("list")}
                     className={`p-2 rounded-lg transition-colors ${
                       viewMode === "list"
@@ -354,6 +326,7 @@ export function ProductPage() {
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => setViewMode("grid")}
                     className={`p-2 rounded-lg transition-colors ${
                       viewMode === "grid"
@@ -369,12 +342,12 @@ export function ProductPage() {
             </div>
 
             {loading ? (
-              <div className="text-center py-20 text-brand-900/50">
+              <div className="bg-white rounded-2xl border border-brand-100 py-20 text-center text-brand-900/50">
                 Chargement du catalogue…
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-brand-100 text-center py-20 text-brand-900/50">
-                Aucun produit ne correspond aux filtres sélectionnés.
+              <div className="bg-white rounded-2xl border border-brand-100 py-20 text-center text-brand-900/50">
+                Aucun produit ne correspond à votre recherche.
               </div>
             ) : viewMode === "list" ? (
               <div className="space-y-3">
@@ -393,26 +366,20 @@ export function ProductPage() {
             {totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-12 flex-wrap">
                 <button
-                  onClick={() =>
-                    setCurrentPage((page) => Math.max(page - 1, 1))
-                  }
+                  type="button"
+                  onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
                   disabled={currentPage === 1}
                   className="px-4 py-2 rounded-full border border-emerald-200 bg-white/70 text-brand-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-50 transition-colors"
                 >
                   Précédent
                 </button>
 
-                {paginationPages.map((page, index) =>
-                  page === "..." ? (
-                    <span
-                      key={`ellipsis-${index}`}
-                      className="px-3 py-2 text-brand-900/60"
-                    >
-                      ...
-                    </span>
-                  ) : (
+                {Array.from({ length: totalPages }, (_, index) => index + 1)
+                  .slice(Math.max(0, currentPage - 3), currentPage + 2)
+                  .map((page) => (
                     <button
                       key={page}
+                      type="button"
                       onClick={() => setCurrentPage(page)}
                       className={`w-11 h-11 rounded-full border transition-colors ${
                         currentPage === page
@@ -422,10 +389,10 @@ export function ProductPage() {
                     >
                       {page}
                     </button>
-                  )
-                )}
+                  ))}
 
                 <button
+                  type="button"
                   onClick={() =>
                     setCurrentPage((page) => Math.min(page + 1, totalPages))
                   }
@@ -460,15 +427,13 @@ function ProductListItem({ product }: { product: Product }) {
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2 mb-2">
-          <Badge tone={product.stock ? "success" : "warning"} outline>
-            {product.availability ??
-              (product.stock ? "En stock" : "Rupture de stock")}
-          </Badge>
+          <StatusPill
+            label={product.stock ? "En stock" : "Rupture"}
+            variant={product.stock ? "success" : "warning"}
+          />
 
           {product.conditionLabel && product.conditionLabel !== "Non renseigné" && (
-            <Badge tone="brand" outline>
-              {product.conditionLabel}
-            </Badge>
+            <StatusPill label={product.conditionLabel} variant="brand" />
           )}
 
           {product.manufacturer && (
@@ -538,9 +503,10 @@ function ProductGridItem({ product }: { product: Product }) {
         />
 
         <div className="absolute top-3 right-3">
-          <Badge tone={product.stock ? "success" : "warning"} outline>
-            {product.stock ? "En stock" : "Rupture"}
-          </Badge>
+          <StatusPill
+            label={product.stock ? "En stock" : "Rupture"}
+            variant={product.stock ? "success" : "warning"}
+          />
         </div>
       </div>
 
@@ -618,5 +584,27 @@ function InfoLine({ label, value }: { label: string; value: string }) {
       <span className="font-medium text-brand-900/70">{label} :</span>{" "}
       <span>{value}</span>
     </p>
+  );
+}
+
+function StatusPill({
+  label,
+  variant,
+}: {
+  label: string;
+  variant: "success" | "warning" | "brand";
+}) {
+  const styles = {
+    success: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    warning: "bg-amber-50 text-amber-700 border-amber-200",
+    brand: "bg-brand-50 text-brand-700 border-brand-100",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${styles[variant]}`}
+    >
+      {label}
+    </span>
   );
 }
