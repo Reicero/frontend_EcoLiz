@@ -19,7 +19,7 @@ import { addToCart } from "../services/cart";
 import { formatPrice, calculateDiscount } from "../utils/formatPrice";
 import { Badge } from "../components/ui/Badge";
 
-export function ProductPage() {
+export function Shop() {
   const { slug } = useParams<{ slug: string }>();
 
   const [product, setProduct] = useState<Product | null>(null);
