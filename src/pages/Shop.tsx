@@ -20,14 +20,33 @@ export function Shop() {
 
   useEffect(() => {
     setLoading(true);
+listProducts()
+  .then((data) => {
+    console.log("Produits récupérés :", data);
+    console.log("Premier produit :", data[0]);
 
-    listProducts()
-      .then((data) => setProducts(data))
-      .catch((error) => {
-        console.error("Erreur lors de la récupération des produits :", error);
-        setProducts([]);
-      })
-      .finally(() => setLoading(false));
+    console.log(
+      "Marques trouvées :",
+      data.map((p) => p.manufacturer).filter(Boolean)
+    );
+
+    console.log(
+      "États trouvés :",
+      data.map((p) => p.status).filter(Boolean)
+    );
+
+    console.log(
+      "OS trouvés :",
+      data.map((p) => p.os).filter(Boolean)
+    );
+
+    setProducts(data);
+  })
+  .catch((error) => {
+    console.error("Erreur lors de la récupération des produits :", error);
+    setProducts([]);
+  })
+  .finally(() => setLoading(false));
   }, []);
 
   function getUniqueValues(values: (string | undefined)[]) {

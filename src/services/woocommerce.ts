@@ -3,7 +3,6 @@ import { config } from "../config/env";
 
 const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, "");
 
-// TVA à confirmer avec ton tuteur / la compta.
 // Ici on part sur 20%.
 const VAT_RATE = 0.2;
 
