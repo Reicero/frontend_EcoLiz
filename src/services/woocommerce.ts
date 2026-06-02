@@ -78,6 +78,11 @@ function mapWooProduct(product: any): Product {
     product.short_description ?? product.description ?? ""
   );
 
+  const manufacturer = getAttributeValue(product, ["marque", "manufacturer"]);
+  const status = getAttributeValue(product, ["état", "etat", "status"]);
+  const os = getAttributeValue(product, ["os"]);
+  const productGroup = getAttributeValue(product, ["product group", "groupe produit"]);
+
   return {
     id: product.id,
     name: product.name,
@@ -92,7 +97,10 @@ function mapWooProduct(product: any): Product {
     images: product.images?.map((img: any) => img.src) ?? [],
 
     category: product.categories?.[0]?.name ?? "Non classé",
-    description,
+    manufacturer,
+    status,
+    os,
+    productGroup,
 
     specs:
       product.attributes

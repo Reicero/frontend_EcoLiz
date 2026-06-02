@@ -37,6 +37,11 @@ export interface Product {
   availability?: ProductAvailability;
 
   category: ProductCategory;
+  manufacturer?: string;
+  status?: string;
+  productGroup?: string;
+  os?: string;
+
   warranty: string;
   description?: string;
   features?: string[];
