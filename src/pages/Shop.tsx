@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { Link } from "react-router-dom";
 import {
+  Filter,
   Grid3X3,
   List,
   RotateCcw,
@@ -9,23 +11,51 @@ import {
 } from "lucide-react";
 
 import type { Product } from "../types/product";
-import { listProducts } from "../services/woocommerce";
+import {
+  listCategories,
+  listProducts,
+  type WooCategory,
+} from "../services/woocommerce";
 import { formatPrice } from "../utils/formatPrice";
 
 const PRODUCTS_PER_PAGE = 20;
 
 export function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<WooCategory[]>([]);
+
   const [loading, setLoading] = useState(false);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
 
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+  const [selectedStockStatuses, setSelectedStockStatuses] = useState<
+    Array<"instock" | "outofstock">
+  >([]);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    setCategoriesLoading(true);
+
+    listCategories()
+      .then((data) => {
+        setCategories(data);
+      })
+      .catch((error) => {
+        console.error("Erreur lors de la récupération des catégories :", error);
+        setCategories([]);
+      })
+      .finally(() => {
+        setCategoriesLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -39,10 +69,15 @@ export function Shop() {
   useEffect(() => {
     setLoading(true);
 
+    const stockStatus =
+      selectedStockStatuses.length === 1 ? selectedStockStatuses[0] : null;
+
     listProducts({
       page: currentPage,
       perPage: PRODUCTS_PER_PAGE,
       search: searchTerm,
+      categoryIds: selectedCategoryIds,
+      stockStatus,
     })
       .then((result) => {
         setProducts(result.products);
@@ -58,11 +93,39 @@ export function Shop() {
       .finally(() => {
         setLoading(false);
       });
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, selectedCategoryIds, selectedStockStatuses]);
 
-  function resetSearch() {
+  function toggleNumberFilter(
+    value: number,
+    selectedValues: number[],
+    setSelectedValues: Dispatch<SetStateAction<number[]>>
+  ) {
+    setCurrentPage(1);
+
+    if (selectedValues.includes(value)) {
+      setSelectedValues(selectedValues.filter((item) => item !== value));
+    } else {
+      setSelectedValues([...selectedValues, value]);
+    }
+  }
+
+  function toggleStockFilter(value: "instock" | "outofstock") {
+    setCurrentPage(1);
+
+    if (selectedStockStatuses.includes(value)) {
+      setSelectedStockStatuses(
+        selectedStockStatuses.filter((item) => item !== value)
+      );
+    } else {
+      setSelectedStockStatuses([...selectedStockStatuses, value]);
+    }
+  }
+
+  function resetFilters() {
     setSearchInput("");
     setSearchTerm("");
+    setSelectedCategoryIds([]);
+    setSelectedStockStatuses([]);
     setCurrentPage(1);
   }
 
@@ -95,9 +158,23 @@ export function Shop() {
       return pages;
     }
 
-    pages.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages);
+    pages.push(
+      1,
+      "...",
+      currentPage - 1,
+      currentPage,
+      currentPage + 1,
+      "...",
+      totalPages
+    );
+
     return pages;
   }
+
+  const activeFilterCount =
+    selectedCategoryIds.length +
+    selectedStockStatuses.length +
+    (searchTerm ? 1 : 0);
 
   const paginationPages = getPaginationPages();
 
@@ -125,7 +202,7 @@ export function Shop() {
             </div>
 
             <div className="bg-white rounded-2xl border border-brand-100 px-5 py-4 shadow-sm">
-              <p className="text-sm text-brand-900/60">Produits disponibles</p>
+              <p className="text-sm text-brand-900/60">Produits trouvés</p>
               <p className="text-2xl font-bold text-brand-950">
                 {totalProducts}
               </p>
@@ -136,40 +213,113 @@ export function Shop() {
         <div className="grid lg:grid-cols-[290px_1fr] gap-8">
           <aside className="bg-white rounded-2xl border border-brand-100 p-5 h-fit sticky top-28">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-semibold text-brand-950">Filtres</h2>
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-brand-900/60" />
+                <h2 className="font-semibold text-brand-950">Filtres</h2>
+              </div>
+
+              {activeFilterCount > 0 && (
+                <span className="text-xs bg-brand-100 text-brand-700 rounded-full px-2 py-1">
+                  {activeFilterCount}
+                </span>
+              )}
             </div>
 
-            <div className="rounded-2xl bg-brand-50 border border-brand-100 p-4 text-sm text-brand-900/70">
-              <p className="font-semibold text-brand-950 mb-2">
-                Recherche catalogue
-              </p>
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-brand-950 mb-3">
+                Catégorie
+              </h3>
 
-              <p>
-                La recherche et la pagination sont maintenant faites côté
-                WooCommerce pour éviter de charger tout le catalogue d’un coup.
-              </p>
+              {categoriesLoading ? (
+                <p className="text-sm text-brand-900/50">
+                  Chargement des catégories…
+                </p>
+              ) : categories.length === 0 ? (
+                <p className="text-sm text-brand-900/50">
+                  Aucune catégorie disponible.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {categories.map((category) => (
+                    <label
+                      key={category.id}
+                      className="flex items-center justify-between gap-2 text-sm text-brand-900/70 cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={selectedCategoryIds.includes(category.id)}
+                          onChange={() =>
+                            toggleNumberFilter(
+                              category.id,
+                              selectedCategoryIds,
+                              setSelectedCategoryIds
+                            )
+                          }
+                          className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
+                        />
+                        <span className="truncate">{category.name}</span>
+                      </span>
+
+                      {typeof category.count === "number" && (
+                        <span className="text-xs text-brand-900/40">
+                          {category.count}
+                        </span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="mt-5 rounded-2xl bg-white border border-brand-100 p-4 text-sm text-brand-900/60">
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-brand-950 mb-3">
+                Disponibilité
+              </h3>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-brand-900/70 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedStockStatuses.includes("instock")}
+                    onChange={() => toggleStockFilter("instock")}
+                    className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
+                  />
+                  <span>En stock</span>
+                </label>
+
+                <label className="flex items-center gap-2 text-sm text-brand-900/70 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedStockStatuses.includes("outofstock")}
+                    onChange={() => toggleStockFilter("outofstock")}
+                    className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
+                  />
+                  <span>Rupture de stock</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="mb-6 rounded-2xl bg-brand-50 border border-brand-100 p-4 text-sm text-brand-900/60">
               <p className="font-semibold text-brand-950 mb-2">
                 Filtres avancés
               </p>
 
               <p>
-                Les filtres Marque, État, OS et Product Group seront reliés
-                proprement quand les attributs seront synchronisés dans
-                WooCommerce via le flux SFTP/API.
+                Les filtres Marque, État, OS et Product Group seront ajoutés
+                quand les attributs seront synchronisés proprement dans
+                WooCommerce.
               </p>
             </div>
 
-            {(searchInput || searchTerm) && (
+            {activeFilterCount > 0 && (
               <button
                 type="button"
-                onClick={resetSearch}
-                className="mt-5 inline-flex items-center gap-2 text-sm text-brand-700 hover:text-brand-800 underline"
+                onClick={resetFilters}
+                className="inline-flex items-center gap-2 text-sm text-brand-700 hover:text-brand-800 underline"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                Réinitialiser la recherche
+                Réinitialiser les filtres
               </button>
             )}
           </aside>
@@ -229,7 +379,7 @@ export function Shop() {
               </div>
             ) : products.length === 0 ? (
               <div className="bg-white rounded-2xl border border-brand-100 py-20 text-center text-brand-900/50">
-                Aucun produit ne correspond à votre recherche.
+                Aucun produit ne correspond aux filtres sélectionnés.
               </div>
             ) : viewMode === "list" ? (
               <div className="space-y-3">
@@ -249,7 +399,9 @@ export function Shop() {
               <div className="flex justify-center items-center gap-2 mt-12 flex-wrap">
                 <button
                   type="button"
-                  onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                  onClick={() =>
+                    setCurrentPage((page) => Math.max(page - 1, 1))
+                  }
                   disabled={currentPage === 1 || loading}
                   className="px-4 py-2 rounded-full border border-emerald-200 bg-white/70 text-brand-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-50 transition-colors"
                 >
@@ -322,9 +474,10 @@ function ProductListItem({ product }: { product: Product }) {
             variant={product.stock ? "success" : "warning"}
           />
 
-          {product.conditionLabel && product.conditionLabel !== "Non renseigné" && (
-            <StatusPill label={product.conditionLabel} variant="brand" />
-          )}
+          {product.conditionLabel &&
+            product.conditionLabel !== "Non renseigné" && (
+              <StatusPill label={product.conditionLabel} variant="brand" />
+            )}
 
           {product.manufacturer && (
             <span className="text-xs text-brand-900/50">

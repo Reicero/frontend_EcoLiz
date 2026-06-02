@@ -6,6 +6,29 @@ const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, "");
 // TVA 20%
 const VAT_RATE = 0.2;
 
+export type WooCategory = {
+  id: number;
+  name: string;
+  slug: string;
+  count?: number;
+  label: string;
+  value: string;
+};
+
+export type ProductListParams = {
+  page?: number;
+  perPage?: number;
+  search?: string;
+  categoryIds?: number[];
+  stockStatus?: "instock" | "outofstock" | null;
+};
+
+export type ProductListResult = {
+  products: Product[];
+  total: number;
+  totalPages: number;
+};
+
 function roundPrice(value: number) {
   return Math.round(value * 100) / 100;
 }
@@ -173,9 +196,7 @@ function mapWooProduct(product: any): Product {
     specs,
 
     grade: mapGrade(product),
-
     warranty: "sur devis",
-
     description,
 
     stock: isInStock,
@@ -183,27 +204,18 @@ function mapWooProduct(product: any): Product {
 
     availability: isInStock ? "En stock" : "Rupture de stock",
 
-    incomingQuantity: Number(getMetaValue(product, "incoming_quantity")) || undefined,
+    incomingQuantity:
+      Number(getMetaValue(product, "incoming_quantity")) || undefined,
     incomingDate: getMetaValue(product, "incoming_date") || undefined,
   };
 }
-
-export type ProductListParams = {
-  page?: number;
-  perPage?: number;
-  search?: string;
-};
-
-export type ProductListResult = {
-  products: Product[];
-  total: number;
-  totalPages: number;
-};
 
 export async function listProducts({
   page = 1,
   perPage = 20,
   search = "",
+  categoryIds = [],
+  stockStatus = null,
 }: ProductListParams = {}): Promise<ProductListResult> {
   try {
     const params = new URLSearchParams({
@@ -215,12 +227,22 @@ export async function listProducts({
       params.set("search", search.trim());
     }
 
+    if (categoryIds.length > 0) {
+      params.set("category", categoryIds.join(","));
+    }
+
+    if (stockStatus) {
+      params.set("stock_status", stockStatus);
+    }
+
     const res = await fetch(`${WOO_API_URL}/products?${params.toString()}`, {
       cache: "no-store",
     });
 
     if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: Failed to fetch products page ${page}`);
+      throw new Error(
+        `HTTP ${res.status}: Failed to fetch products page ${page}`
+      );
     }
 
     const data = await res.json();
@@ -231,7 +253,7 @@ export async function listProducts({
     return {
       products: Array.isArray(data) ? data.map(mapWooProduct) : [],
       total,
-      totalPages,
+      totalPages: Math.max(1, totalPages),
     };
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -257,11 +279,14 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   }
 }
 
-export async function listCategories() {
+export async function listCategories(): Promise<WooCategory[]> {
   try {
-    const res = await fetch(`${WOO_API_URL}/products/categories`, {
-      cache: "no-store",
-    });
+    const res = await fetch(
+      `${WOO_API_URL}/products/categories?per_page=100`,
+      {
+        cache: "no-store",
+      }
+    );
 
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: Failed to fetch categories`);
@@ -269,13 +294,14 @@ export async function listCategories() {
 
     const data = await res.json();
 
-    return [
-      { label: "Tous", value: "Tous" },
-      ...data.map((cat: any) => ({
-        label: cat.name,
-        value: cat.name,
-      })),
-    ];
+    return data.map((cat: any) => ({
+      id: cat.id,
+      name: cat.name,
+      slug: cat.slug,
+      count: cat.count,
+      label: cat.name,
+      value: cat.name,
+    }));
   } catch (error) {
     console.error("Error fetching categories:", error);
     throw error;
