@@ -16,7 +16,7 @@ import { listProducts } from "../services/woocommerce";
 
 const PRODUCTS_PER_PAGE = 20;
 
-export function Shop() {
+export function ProductPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
 
