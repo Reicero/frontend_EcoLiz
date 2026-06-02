@@ -3,7 +3,8 @@ import { config } from "../config/env";
 
 const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, "");
 
-// Ici on part sur TVA 20%.
+// TVA à confirmer avec ton tuteur / la compta.
+// Ici on part sur 20%.
 const VAT_RATE = 0.2;
 
 function roundPrice(value: number) {
@@ -14,16 +15,28 @@ function cleanHtml(value: string) {
   return value?.replace(/<[^>]*>/g, "").trim() ?? "";
 }
 
+function getWooPrice(product: any, field: "price" | "regular_price") {
+  if (product.prices?.[field] !== undefined) {
+    return Number(product.prices[field]) / 100;
+  }
+
+  if (field === "price" && product.price !== undefined) {
+    return Number(product.price);
+  }
+
+  if (field === "regular_price" && product.regular_price !== undefined) {
+    return Number(product.regular_price);
+  }
+
+  return 0;
+}
+
 function getAttributeValue(product: any, names: string[]) {
   const attribute = product.attributes?.find((a: any) =>
     names.some((name) => a.name?.toLowerCase().includes(name.toLowerCase()))
   );
 
-  return (
-    attribute?.terms?.[0]?.name ??
-    attribute?.options?.[0] ??
-    ""
-  );
+  return attribute?.terms?.[0]?.name ?? attribute?.options?.[0] ?? "";
 }
 
 function mapGrade(product: any): ProductGrade {
@@ -33,7 +46,12 @@ function mapGrade(product: any): ProductGrade {
   if (rawGrade === "R4") return "Reconditionné";
   if (rawGrade === "G5") return "Grade B";
 
-  if (rawGrade === "Grade A+" || rawGrade === "Grade A" || rawGrade === "Grade B" || rawGrade === "Grade C") {
+  if (
+    rawGrade === "Grade A+" ||
+    rawGrade === "Grade A" ||
+    rawGrade === "Grade B" ||
+    rawGrade === "Grade C"
+  ) {
     return rawGrade;
   }
 
@@ -41,28 +59,20 @@ function mapGrade(product: any): ProductGrade {
 }
 
 function mapWooProduct(product: any): Product {
-  // Dans ton cas, ce prix doit correspondre au prix HT venant de WooCommerce.
-  const priceHT = Number(product.prices?.price ?? product.price ?? 0) / 100;
-
-  const originalPriceHT =
-    Number(product.prices?.regular_price ?? product.prices?.price ?? product.regular_price ?? 0) / 100;
+  const priceHT = getWooPrice(product, "price");
+  const originalPriceHT = getWooPrice(product, "regular_price") || priceHT;
 
   const priceTTC = roundPrice(priceHT * (1 + VAT_RATE));
   const vatAmount = roundPrice(priceTTC - priceHT);
 
-  const stockCount =
-    product.stock_quantity ??
-    product.low_stock_remaining ??
-    undefined;
+  const stockCount = product.stock_quantity ?? undefined;
 
   const isInStock =
     product.is_in_stock === true ||
     product.stock_status === "instock" ||
     (typeof stockCount === "number" && stockCount > 0);
 
-  const image =
-    product.images?.[0]?.src ||
-    "/placeholder-product.png";
+  const image = product.images?.[0]?.src || "/placeholder-product.png";
 
   const description = cleanHtml(
     product.short_description ?? product.description ?? ""
@@ -99,7 +109,7 @@ function mapWooProduct(product: any): Product {
 
     grade: mapGrade(product),
 
-    warranty: "Garantie : sur devis",
+    warranty: "sur devis",
 
     stock: isInStock,
     stockCount,
@@ -122,7 +132,9 @@ export async function listProducts(): Promise<Product[]> {
       );
 
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: Failed to fetch products page ${page}`);
+        throw new Error(
+          `HTTP ${res.status}: Failed to fetch products page ${page}`
+        );
       }
 
       const data = await res.json();
@@ -146,7 +158,9 @@ export async function listProducts(): Promise<Product[]> {
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   try {
-    const res = await fetch(`${WOO_API_URL}/products?slug=${slug}`);
+    const res = await fetch(`${WOO_API_URL}/products?slug=${slug}`, {
+      cache: "no-store",
+    });
 
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: Failed to fetch product`);
@@ -162,7 +176,9 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 
 export async function listCategories() {
   try {
-    const res = await fetch(`${WOO_API_URL}/products/categories`);
+    const res = await fetch(`${WOO_API_URL}/products/categories`, {
+      cache: "no-store",
+    });
 
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: Failed to fetch categories`);

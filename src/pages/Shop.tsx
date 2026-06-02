@@ -46,39 +46,39 @@ export function Shop() {
   const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
 
   const getPaginationPages = () => {
-  const pages: (number | "...")[] = [];
+    const pages: (number | "...")[] = [];
 
-  if (totalPages <= 8) {
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
+    if (totalPages <= 8) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+      return pages;
     }
+
+    if (currentPage <= 4) {
+      pages.push(1, 2, 3, 4, "...", totalPages - 2, totalPages - 1, totalPages);
+      return pages;
+    }
+
+    if (currentPage >= totalPages - 3) {
+      pages.push(1, 2, 3, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      return pages;
+    }
+
+    pages.push(
+      1,
+      "...",
+      currentPage - 1,
+      currentPage,
+      currentPage + 1,
+      "...",
+      totalPages
+    );
+
     return pages;
-  }
+  };
 
-  if (currentPage <= 4) {
-    pages.push(1, 2, 3, 4, "...", totalPages - 2, totalPages - 1, totalPages);
-    return pages;
-  }
-
-  if (currentPage >= totalPages - 3) {
-    pages.push(1, 2, 3, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-    return pages;
-  }
-
-  pages.push(
-    1,
-    "...",
-    currentPage - 1,
-    currentPage,
-    currentPage + 1,
-    "...",
-    totalPages
-  );
-
-  return pages;
-};
-
-const paginationPages = getPaginationPages();
+  const paginationPages = getPaginationPages();
 
   return (
     <section className="pt-32 pb-24 bg-brand-50 min-h-screen">
@@ -141,14 +141,16 @@ const paginationPages = getPaginationPages();
                 >
                   <div className="relative aspect-[4/3] bg-white rounded-2xl overflow-hidden mb-5 border border-brand-100 group-hover:shadow-lg group-hover:shadow-brand-900/10 transition-all duration-300">
                     <img
-                      src={product.image}
+                      src={product.image || "/placeholder-product.png"}
                       alt={product.name}
+                      loading="lazy"
                       className="w-full h-full object-cover mix-blend-multiply group-hover:scale-[1.02] transition-transform duration-500"
                     />
 
                     <div className="absolute top-3 right-3">
                       <Badge tone={product.stock ? "success" : "warning"} outline>
-                        {product.stock ? "En stock" : "Sur commande"}
+                        {product.availability ??
+                          (product.stock ? "En stock" : "Rupture de stock")}
                       </Badge>
                     </div>
                   </div>
@@ -157,85 +159,101 @@ const paginationPages = getPaginationPages();
                     {product.name}
                   </h3>
 
-                  <p className="text-sm text-brand-900/60 mb-1">
-                    {product.specs}
-                  </p>
+                  {product.specs && (
+                    <p className="text-sm text-brand-900/60 mb-1 line-clamp-2">
+                      {product.specs}
+                    </p>
+                  )}
 
-                  {product.grade && (
+                  {product.grade && product.grade !== "Non renseigné" && (
                     <p className="text-xs text-brand-700 font-medium mb-3 flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
                       {product.grade}
                     </p>
                   )}
 
-                  <div className="flex items-baseline gap-3">
-                    <span className="text-2xl font-bold text-brand-950">
-                      {formatPrice(product.price)}
-                    </span>
+                  <div className="mt-auto">
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-2xl font-bold text-brand-950">
+                        {formatPrice(product.price)} HT
+                      </span>
 
-                    {product.originalPrice > product.price && (
-                      <>
-                        <span className="text-sm text-brand-900/40 line-through">
-                          {formatPrice(product.originalPrice)}
-                        </span>
+                      {product.originalPrice > product.price && (
+                        <>
+                          <span className="text-sm text-brand-900/40 line-through">
+                            {formatPrice(product.originalPrice)} HT
+                          </span>
 
-                        <span className="text-xs font-medium text-brand-700 bg-brand-100 px-2 py-1 rounded">
-                          -
-                          {calculateDiscount(
-                            product.price,
-                            product.originalPrice
-                          )}
-                          %
-                        </span>
-                      </>
+                          <span className="text-xs font-medium text-brand-700 bg-brand-100 px-2 py-1 rounded">
+                            -
+                            {calculateDiscount(
+                              product.price,
+                              product.originalPrice
+                            )}
+                            %
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    {product.priceTTC && (
+                      <p className="text-sm text-brand-900/60 mt-1">
+                        {formatPrice(product.priceTTC)} TTC
+                      </p>
                     )}
+
+                    <p className="text-xs text-brand-900/50 mt-2">
+                      Garantie : sur devis
+                    </p>
                   </div>
                 </Link>
               ))}
             </div>
 
-{totalPages > 1 && (
-  <div className="flex justify-center items-center gap-2 mt-12 flex-wrap">
-    <button
-      onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
-      disabled={currentPage === 1}
-      className="px-4 py-2 rounded-full border border-emerald-200 bg-white/70 text-brand-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-50 transition-colors"
-    >
-      Précédent
-    </button>
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-12 flex-wrap">
+                <button
+                  onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 rounded-full border border-emerald-200 bg-white/70 text-brand-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-50 transition-colors"
+                >
+                  Précédent
+                </button>
 
-    {paginationPages.map((page, index) =>
-      page === "..." ? (
-        <span
-          key={`ellipsis-${index}`}
-          className="px-3 py-2 text-brand-900/60"
-        >
-          ...
-        </span>
-      ) : (
-        <button
-          key={page}
-          onClick={() => setCurrentPage(page)}
-          className={`w-11 h-11 rounded-full border transition-colors ${
-            currentPage === page
-              ? "bg-brand-700 text-white border-brand-700"
-              : "bg-white/70 text-brand-900 border-emerald-200 hover:bg-emerald-50"
-          }`}
-        >
-          {page}
-        </button>
-      )
-    )}
+                {paginationPages.map((page, index) =>
+                  page === "..." ? (
+                    <span
+                      key={`ellipsis-${index}`}
+                      className="px-3 py-2 text-brand-900/60"
+                    >
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-11 h-11 rounded-full border transition-colors ${
+                        currentPage === page
+                          ? "bg-brand-700 text-white border-brand-700"
+                          : "bg-white/70 text-brand-900 border-emerald-200 hover:bg-emerald-50"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
 
-    <button
-      onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
-      disabled={currentPage === totalPages}
-      className="px-4 py-2 rounded-full border border-emerald-200 bg-white/70 text-brand-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-50 transition-colors"
-    >
-      Suivant
-    </button>
-  </div>
-)}
+                <button
+                  onClick={() =>
+                    setCurrentPage((page) => Math.min(page + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 rounded-full border border-emerald-200 bg-white/70 text-brand-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-50 transition-colors"
+                >
+                  Suivant
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
