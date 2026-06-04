@@ -10,39 +10,47 @@ export type ContactPayload = {
   message: string;
 };
 
-const CONTACT_FORM_ID = import.meta.env.VITE_CF7_CONTACT_FORM_ID || 6567;
-const WORDPRESS_URL = import.meta.env.VITE_WORDPRESS_URL;
+const CONTACT_FORM_ID = import.meta.env.VITE_CF7_CONTACT_FORM_ID || "6567";
 
 export async function sendContactMessage(payload: ContactPayload) {
   if (!CONTACT_FORM_ID) {
     throw new Error("ID du formulaire de contact manquant.");
   }
 
+  const wordpressUrl = config.wordpressUrl.replace(/\/+$/, "");
+
   const formData = new FormData();
 
   formData.append("your-firstname", payload.firstname);
   formData.append("your-lastname", payload.lastname);
   formData.append("your-email", payload.email);
+  formData.append("your-phone", payload.phone ?? "");
   formData.append("your-company", payload.company ?? "");
   formData.append("your-subject", payload.subject);
   formData.append("your-message", payload.message);
-  formData.append("your-phone", payload.phone ?? "");
 
-  const wordpressUrl = WORDPRESS_URL?.replace(/\/+$/, "") || config.wordpressUrl.replace(/\/+$/, "");
+  const contactUrl = `${wordpressUrl}/wp-json/contact-form-7/v1/contact-forms/${CONTACT_FORM_ID}/feedback`;
 
-  const res = await fetch(
-    `${wordpressUrl}/wp-json/contact-form-7/v1/contact-forms/${CONTACT_FORM_ID}/feedback`,
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
+  console.log("URL Contact Form 7 :", contactUrl);
+
+  const res = await fetch(contactUrl, {
+    method: "POST",
+    body: formData,
+  });
 
   const data = await res.json().catch(() => null);
 
+  console.log("Réponse Contact Form 7 :", {
+    statusHttp: res.status,
+    ok: res.ok,
+    data,
+  });
+
   if (!res.ok || data?.status !== "mail_sent") {
     throw new Error(
-      data?.message || "Impossible d'envoyer le message pour le moment."
+      data?.message ||
+        data?.status ||
+        "Impossible d'envoyer le message pour le moment."
     );
   }
 
