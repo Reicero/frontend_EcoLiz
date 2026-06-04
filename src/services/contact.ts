@@ -10,7 +10,7 @@ export type ContactPayload = {
   message: string;
 };
 
-const CONTACT_FORM_ID = import.meta.env.VITE_CF7_CONTACT_FORM_ID;
+const CONTACT_FORM_ID = import.meta.env.VITE_CF7_CONTACT_FORM_ID || 6567;
 
 export async function sendContactMessage(payload: ContactPayload) {
   if (!CONTACT_FORM_ID) {
