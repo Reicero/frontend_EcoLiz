@@ -18,8 +18,15 @@ export async function sendContactMessage(payload: ContactPayload) {
   }
 
   const wordpressUrl = config.wordpressUrl.replace(/\/+$/, "");
+  const contactUrl = `${wordpressUrl}/wp-json/contact-form-7/v1/contact-forms/${CONTACT_FORM_ID}/feedback`;
 
   const formData = new FormData();
+
+  formData.append("_wpcf7", CONTACT_FORM_ID);
+  formData.append("_wpcf7_version", "6.0");
+  formData.append("_wpcf7_locale", "fr_FR");
+  formData.append("_wpcf7_unit_tag", `wpcf7-f${CONTACT_FORM_ID}-o1`);
+  formData.append("_wpcf7_container_post", "0");
 
   formData.append("your-firstname", payload.firstname);
   formData.append("your-lastname", payload.lastname);
@@ -28,8 +35,6 @@ export async function sendContactMessage(payload: ContactPayload) {
   formData.append("your-company", payload.company ?? "");
   formData.append("your-subject", payload.subject);
   formData.append("your-message", payload.message);
-
-  const contactUrl = `${wordpressUrl}/wp-json/contact-form-7/v1/contact-forms/${CONTACT_FORM_ID}/feedback`;
 
   console.log("URL Contact Form 7 :", contactUrl);
 
