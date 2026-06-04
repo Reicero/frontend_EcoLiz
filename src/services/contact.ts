@@ -11,6 +11,7 @@ export type ContactPayload = {
 };
 
 const CONTACT_FORM_ID = import.meta.env.VITE_CF7_CONTACT_FORM_ID || 6567;
+const WORDPRESS_URL = import.meta.env.VITE_WORDPRESS_URL;
 
 export async function sendContactMessage(payload: ContactPayload) {
   if (!CONTACT_FORM_ID) {
@@ -27,7 +28,7 @@ export async function sendContactMessage(payload: ContactPayload) {
   formData.append("your-message", payload.message);
   formData.append("your-phone", payload.phone ?? "");
 
-  const wordpressUrl = config.wordpressUrl.replace(/\/+$/, "");
+  const wordpressUrl = WORDPRESS_URL?.replace(/\/+$/, "") || config.wordpressUrl.replace(/\/+$/, "");
 
   const res = await fetch(
     `${wordpressUrl}/wp-json/contact-form-7/v1/contact-forms/${CONTACT_FORM_ID}/feedback`,
