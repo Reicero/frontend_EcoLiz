@@ -117,7 +117,7 @@ useEffect(() => {
         <div className="relative z-10">
           <Link to="/" className="inline-block bg-white p-2.5 rounded-xl mb-16">
             <img
-              src="https://cdn.magicpatterns.com/uploads/x5AU1Pa7razmtXWC8GGCP4/LOGO-ECOLIZ-CARRe.png"
+              src="/logo-ecoliz.svg"
               alt="EcoLiz"
               className="h-8 w-auto object-contain"
             />
