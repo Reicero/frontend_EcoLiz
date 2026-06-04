@@ -4,6 +4,7 @@ export type ContactPayload = {
   firstname: string;
   lastname: string;
   email: string;
+  phone?: string;
   company?: string;
   subject: string;
   message: string;
@@ -24,6 +25,7 @@ export async function sendContactMessage(payload: ContactPayload) {
   formData.append("your-company", payload.company ?? "");
   formData.append("your-subject", payload.subject);
   formData.append("your-message", payload.message);
+  formData.append("your-phone", payload.phone ?? "");
 
   const wordpressUrl = config.wordpressUrl.replace(/\/+$/, "");
 
