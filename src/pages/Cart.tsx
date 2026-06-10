@@ -213,7 +213,7 @@ export default function Cart() {
                           </h2>
 
                           <p className="text-brand-900/60">
-                            Prix unitaire :{" "}
+                            Prix unitaire HT:{" "}
                             <span className="font-semibold text-brand-950">
                               {formatWooPrice(unitPrice, itemMinorUnit)}
                             </span>
@@ -244,9 +244,20 @@ export default function Cart() {
                             <Minus className="w-4 h-4" />
                           </button>
 
-                          <span className="w-12 text-center font-semibold text-brand-950">
-                            {item.quantity}
-                          </span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(event) => {
+                              const quantity = Number(event.target.value);
+
+                              if (!Number.isNaN(quantity) && quantity >= 1) {
+                                handleUpdateQuantity(item, quantity);
+                              }
+                            }}
+                            disabled={isUpdating}
+                            className="w-16 h-10 bg-transparent text-center font-semibold text-brand-950 outline-none disabled:opacity-50"
+                          />
 
                           <button
                             type="button"
@@ -262,7 +273,7 @@ export default function Cart() {
 
                         <div className="text-right">
                           <p className="text-sm text-brand-900/50">
-                            Sous-total
+                            Sous-total HT
                           </p>
                           <p className="text-xl font-bold text-brand-950">
                             {formatWooPrice(lineTotal, itemMinorUnit)}
@@ -277,7 +288,7 @@ export default function Cart() {
 
             <aside className="bg-white rounded-3xl border border-brand-100 p-6 shadow-sm h-fit">
               <h2 className="text-2xl font-bold text-brand-950 mb-6">
-                Total panier
+                Total panier HT
               </h2>
 
               <div className="space-y-4 pb-6 border-b border-brand-100">
@@ -287,7 +298,7 @@ export default function Cart() {
                 </div>
 
                 <div className="flex items-center justify-between text-brand-950 font-bold text-xl">
-                  <span>Total</span>
+                  <span>Total HT</span>
                   <span>{formatWooPrice(total, minorUnit)}</span>
                 </div>
               </div>
