@@ -157,9 +157,28 @@ export default function Cart() {
     }
   }
 
-  const items = cart?.items ?? [];
-  const minorUnit = cart?.totals?.currency_minor_unit ?? 2;
-  const total = cart?.totals?.total_price ?? "0";
+const items = cart?.items ?? [];
+const minorUnit = cart?.totals?.currency_minor_unit ?? 2;
+
+const totalHT =
+  cart?.totals?.total_items ??
+  String(
+    items.reduce((sum, item) => {
+      const itemMinorUnit =
+        item.totals?.currency_minor_unit ??
+        item.prices?.currency_minor_unit ??
+        minorUnit;
+
+      const lineTotal =
+        item.totals?.line_total ?? item.totals?.line_subtotal ?? "0";
+
+      if (itemMinorUnit !== minorUnit) {
+        return sum;
+      }
+
+      return sum + Number(lineTotal ?? 0);
+    }, 0)
+  );
 
   if (loading) {
     return (
@@ -271,7 +290,7 @@ export default function Cart() {
                           <p className="text-brand-900/60">
                             Prix unitaire HT :{" "}
                             <span className="font-semibold text-brand-950">
-                              {formatWooPrice(unitPrice, itemMinorUnit)}
+                            {formatWooPrice(totalHT, minorUnit)}
                             </span>
                           </p>
                         </div>
