@@ -3,6 +3,8 @@ import { config } from "../config/env";
 const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, "");
 const CART_TOKEN_KEY = "ecoliz_cart_token";
 
+export const CART_UPDATED_EVENT = "ecoliz_cart_updated";
+
 function getStoredCartToken() {
   return localStorage.getItem(CART_TOKEN_KEY);
 }
@@ -11,6 +13,16 @@ function saveCartToken(token: string | null) {
   if (token) {
     localStorage.setItem(CART_TOKEN_KEY, token);
   }
+}
+
+function notifyCartUpdated(cart: any) {
+  window.dispatchEvent(
+    new CustomEvent(CART_UPDATED_EVENT, {
+      detail: {
+        items_count: cart?.items_count ?? 0,
+      },
+    })
+  );
 }
 
 async function requestCart(endpoint = "/cart", options: RequestInit = {}) {
@@ -46,19 +58,31 @@ export async function getCart() {
 export async function addToCart(productId: number, quantity = 1) {
   await getCart();
 
-  return requestCart(`/cart/add-item?id=${productId}&quantity=${quantity}`, {
+  const cart = await requestCart(`/cart/add-item?id=${productId}&quantity=${quantity}`, {
     method: "POST",
   });
+
+  notifyCartUpdated(cart);
+
+  return cart;
 }
 
 export async function updateCartItem(key: string, quantity: number) {
-  return requestCart(`/cart/update-item?key=${key}&quantity=${quantity}`, {
+  const cart = await requestCart(`/cart/update-item?key=${key}&quantity=${quantity}`, {
     method: "POST",
   });
+
+  notifyCartUpdated(cart);
+
+  return cart;
 }
 
 export async function removeCartItem(key: string) {
-  return requestCart(`/cart/remove-item?key=${key}`, {
+  const cart = await requestCart(`/cart/remove-item?key=${key}`, {
     method: "POST",
   });
+
+  notifyCartUpdated(cart);
+
+  return cart;
 }
