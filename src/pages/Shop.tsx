@@ -18,7 +18,34 @@ import {
 } from "../services/woocommerce";
 import { formatPrice } from "../utils/formatPrice";
 
-const PRODUCTS_PER_PAGE = 20;
+const PRODUCTS_PER_PAGE_OPTIONS = [12, 24, 48, 96] as const;
+
+type SortOption =
+  | "default"
+  | "price-asc"
+  | "price-desc"
+  | "name-asc"
+  | "name-desc";
+
+function getSortParams(sortOption: SortOption) {
+  if (sortOption === "price-asc") {
+    return { orderby: "price" as const, order: "asc" as const };
+  }
+
+  if (sortOption === "price-desc") {
+    return { orderby: "price" as const, order: "desc" as const };
+  }
+
+  if (sortOption === "name-asc") {
+    return { orderby: "title" as const, order: "asc" as const };
+  }
+
+  if (sortOption === "name-desc") {
+    return { orderby: "title" as const, order: "desc" as const };
+  }
+
+  return {};
+}
 
 export function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -28,6 +55,9 @@ export function Shop() {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
 
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+
+  const [sortOption, setSortOption] = useState<SortOption>("default");
+  const [productsPerPage, setProductsPerPage] = useState(24);
 
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,10 +104,11 @@ export function Shop() {
 
     listProducts({
       page: currentPage,
-      perPage: PRODUCTS_PER_PAGE,
+      perPage: productsPerPage,
       search: searchTerm,
       categoryIds: selectedCategoryIds,
       stockStatus,
+      ...getSortParams(sortOption),
     })
       .then((result) => {
         setProducts(result.products);
@@ -93,7 +124,14 @@ export function Shop() {
       .finally(() => {
         setLoading(false);
       });
-  }, [currentPage, searchTerm, selectedCategoryIds, selectedStockStatuses]);
+  }, [
+  currentPage,
+  searchTerm,
+  selectedCategoryIds,
+  selectedStockStatuses,
+  sortOption,
+  productsPerPage,
+]);
 
   function toggleNumberFilter(
     value: number,
@@ -121,14 +159,15 @@ export function Shop() {
     }
   }
 
-  function resetFilters() {
-    setSearchInput("");
-    setSearchTerm("");
-    setSelectedCategoryIds([]);
-    setSelectedStockStatuses([]);
-    setCurrentPage(1);
-  }
-
+function resetFilters() {
+  setSearchInput("");
+  setSearchTerm("");
+  setSelectedCategoryIds([]);
+  setSelectedStockStatuses([]);
+  setSortOption("default");
+  setProductsPerPage(24);
+  setCurrentPage(1);
+}
   function getPaginationPages() {
     const pages: Array<number | "..."> = [];
 
@@ -325,53 +364,95 @@ export function Shop() {
           </aside>
 
           <div>
-            <div className="bg-white border border-brand-100 rounded-2xl p-4 mb-6 flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
-              <div className="relative flex-1 max-w-xl">
-                <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-900/40" />
+<div className="bg-white border border-brand-100 rounded-2xl p-4 mb-6 flex flex-col gap-4">
+  <div className="flex flex-col xl:flex-row gap-4 xl:items-center xl:justify-between">
+    <div className="relative flex-1 max-w-xl">
+      <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-900/40" />
 
-                <input
-                  value={searchInput}
-                  onChange={(event) => setSearchInput(event.target.value)}
-                  placeholder="Rechercher par nom, marque, référence..."
-                  className="w-full rounded-xl border border-brand-100 bg-brand-50 py-3 pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
-                />
-              </div>
+      <input
+        value={searchInput}
+        onChange={(event) => setSearchInput(event.target.value)}
+        placeholder="Rechercher par nom, marque, référence..."
+        className="w-full rounded-xl border border-brand-100 bg-brand-50 py-3 pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
+      />
+    </div>
 
-              <div className="flex items-center justify-between lg:justify-end gap-4">
-                <div className="flex items-center gap-2 text-sm text-brand-900/60">
-                  <SlidersHorizontal className="w-4 h-4" />
-                  Page {currentPage} / {totalPages}
-                </div>
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+      <label className="flex items-center gap-2 text-sm text-brand-900/60">
+        <span>Trier par</span>
 
-                <div className="flex items-center gap-1 bg-brand-50 border border-brand-100 rounded-xl p-1">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("list")}
-                    className={`p-2 rounded-lg transition-colors ${
-                      viewMode === "list"
-                        ? "bg-white text-brand-700 shadow-sm"
-                        : "text-brand-900/40 hover:text-brand-900"
-                    }`}
-                    aria-label="Vue liste"
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
+        <select
+          value={sortOption}
+          onChange={(event) => {
+            setCurrentPage(1);
+            setSortOption(event.target.value as SortOption);
+          }}
+          className="rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-950 outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
+        >
+          <option value="default">Défaut</option>
+          <option value="price-asc">Prix croissant</option>
+          <option value="price-desc">Prix décroissant</option>
+          <option value="name-asc">Nom A-Z</option>
+          <option value="name-desc">Nom Z-A</option>
+        </select>
+      </label>
 
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("grid")}
-                    className={`p-2 rounded-lg transition-colors ${
-                      viewMode === "grid"
-                        ? "bg-white text-brand-700 shadow-sm"
-                        : "text-brand-900/40 hover:text-brand-900"
-                    }`}
-                    aria-label="Vue grille"
-                  >
-                    <Grid3X3 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
+      <label className="flex items-center gap-2 text-sm text-brand-900/60">
+        <span>Afficher</span>
+
+        <select
+          value={productsPerPage}
+          onChange={(event) => {
+            setCurrentPage(1);
+            setProductsPerPage(Number(event.target.value));
+          }}
+          className="rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-950 outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
+        >
+          {PRODUCTS_PER_PAGE_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option} / page
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div className="flex items-center justify-between gap-4">
+    <div className="flex items-center gap-2 text-sm text-brand-900/60">
+      <SlidersHorizontal className="w-4 h-4" />
+      Page {currentPage} / {totalPages}
+    </div>
+
+          <div className="flex items-center gap-1 bg-brand-50 border border-brand-100 rounded-xl p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={`p-2 rounded-lg transition-colors ${
+                viewMode === "list"
+                  ? "bg-white text-brand-700 shadow-sm"
+                  : "text-brand-900/40 hover:text-brand-900"
+              }`}
+              aria-label="Vue liste"
+            >
+              <List className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              className={`p-2 rounded-lg transition-colors ${
+                viewMode === "grid"
+                  ? "bg-white text-brand-700 shadow-sm"
+                  : "text-brand-900/40 hover:text-brand-900"
+              }`}
+              aria-label="Vue grille"
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
 
             {loading ? (
               <div className="bg-white rounded-2xl border border-brand-100 py-20 text-center text-brand-900/50">

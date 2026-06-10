@@ -21,6 +21,8 @@ export type ProductListParams = {
   search?: string;
   categoryIds?: number[];
   stockStatus?: "instock" | "outofstock" | null;
+  orderby?: "date" | "price" | "title";
+  order?: "asc" | "desc";
 };
 
 export type ProductListResult = {
@@ -216,6 +218,8 @@ export async function listProducts({
   search = "",
   categoryIds = [],
   stockStatus = null,
+  orderby,
+  order,
 }: ProductListParams = {}): Promise<ProductListResult> {
   try {
     const params = new URLSearchParams({
@@ -233,6 +237,13 @@ export async function listProducts({
 
     if (stockStatus) {
       params.set("stock_status", stockStatus);
+    }
+    if (orderby) {
+  params.set("orderby", orderby);
+    }
+
+    if (order) {
+      params.set("order", order);
     }
 
     const res = await fetch(`${WOO_API_URL}/products?${params.toString()}`, {
