@@ -1,0 +1,5 @@
+.env
+mode_modules/
+logs/
+FlexIT_feed.csv
+*.backup.js
