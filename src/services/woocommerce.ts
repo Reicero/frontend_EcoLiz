@@ -11,6 +11,7 @@ export type WooCategory = {
   name: string;
   slug: string;
   count?: number;
+  parent: number;
   label: string;
   value: string;
 };
@@ -37,6 +38,26 @@ function roundPrice(value: number) {
 
 function cleanHtml(value: string) {
   return value?.replace(/<[^>]*>/g, "").trim() ?? "";
+}
+
+function decodeHtmlEntities(value: string) {
+  const entities: Record<string, string> = {
+    amp: "&",
+    quot: '"',
+    apos: "'",
+    "#039": "'",
+    rsquo: "’",
+    eacute: "é",
+    egrave: "è",
+    ecirc: "ê",
+    agrave: "à",
+    ugrave: "ù",
+    ccedil: "ç",
+  };
+
+  return value.replace(/&([^;]+);/g, (match, entity) => {
+    return entities[entity] ?? match;
+  });
 }
 
 function getWooPrice(product: any, field: "price" | "regular_price") {
@@ -293,7 +314,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 export async function listCategories(): Promise<WooCategory[]> {
   try {
     const res = await fetch(
-      `${WOO_API_URL}/products/categories?per_page=100`,
+      `${WOO_API_URL}/products/categories?per_page=100&hide_empty=true&orderby=name`,
       {
         cache: "no-store",
       }
@@ -305,14 +326,19 @@ export async function listCategories(): Promise<WooCategory[]> {
 
     const data = await res.json();
 
-    return data.map((cat: any) => ({
-      id: cat.id,
-      name: cat.name,
-      slug: cat.slug,
-      count: cat.count,
-      label: cat.name,
-      value: cat.name,
-    }));
+    return data.map((cat: any) => {
+      const name = decodeHtmlEntities(cat.name);
+
+      return {
+        id: cat.id,
+        name,
+        slug: cat.slug,
+        count: cat.count,
+        parent: Number(cat.parent ?? 0),
+        label: name,
+        value: name,
+      };
+    });
   } catch (error) {
     console.error("Error fetching categories:", error);
     throw error;

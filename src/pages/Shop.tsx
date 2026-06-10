@@ -27,6 +27,21 @@ type SortOption =
   | "name-asc"
   | "name-desc";
 
+type CategoryGroup = {
+  title: string;
+  children: WooCategory[];
+};
+
+const CATEGORY_ORDER = [
+  "Notebooks",
+  "Workstations",
+  "Réseau",
+  "Wi-Fi",
+  "Server / Stockage",
+  "Licence",
+  "Écrans",
+] as const;
+
 function getSortParams(sortOption: SortOption) {
   if (sortOption === "price-asc") {
     return { orderby: "price" as const, order: "asc" as const };
@@ -45,6 +60,136 @@ function getSortParams(sortOption: SortOption) {
   }
 
   return {};
+}
+
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function getCategoryDisplayName(name: string) {
+  const labels: Record<string, string> = {
+    "Ordinateurs portables & Mobilité": "Notebooks",
+    "PC fixes & Workstations": "Workstations",
+    "Réseau & Wi-Fi": "Réseau",
+    "Serveurs & Stockage": "Server / Stockage",
+    "Licences & Logiciels": "Licence",
+    "Écrans & accessoires": "Écrans",
+    "Docks et stations d'accueil": "Docks / stations d’accueil",
+    "Sacs et housses": "Accessoires mobilité",
+    "Routeurs & Firewalls": "Routeurs / Firewalls",
+    "Rails et accessoires rack": "Rails / accessoires rack",
+  };
+
+  return labels[name] ?? name;
+}
+
+function getParentGroupTitle(category: WooCategory) {
+  const name = normalizeText(category.name);
+
+  if (name.includes("ordinateurs portables")) return "Notebooks";
+
+  if (name.includes("pc fixes") || name.includes("workstations")) {
+    return "Workstations";
+  }
+
+  if (name.includes("reseau")) return "Réseau";
+
+  if (name.includes("serveurs") || name.includes("stockage")) {
+    return "Server / Stockage";
+  }
+
+  if (name.includes("licences") || name.includes("logiciels")) {
+    return "Licence";
+  }
+
+  if (name.includes("ecrans")) return "Écrans";
+
+  return null;
+}
+
+function isWifiCategory(category: WooCategory) {
+  const name = normalizeText(category.name);
+  return name.includes("wi-fi") || name.includes("wifi");
+}
+
+function getCategoryGroups(categories: WooCategory[]) {
+  const visibleCategories = categories.filter(
+    (category) => (category.count ?? 0) > 0
+  );
+
+  const parentCategories = visibleCategories.filter(
+    (category) => category.parent === 0
+  );
+
+  const childCategories = visibleCategories.filter(
+    (category) => category.parent !== 0
+  );
+
+  const parentsById = new Map(
+    parentCategories.map((category) => [category.id, category])
+  );
+
+  const groups = new Map<string, CategoryGroup>();
+
+  CATEGORY_ORDER.forEach((title) => {
+    groups.set(title, {
+      title,
+      children: [],
+    });
+  });
+
+  function addChild(groupTitle: string, category: WooCategory) {
+    const group = groups.get(groupTitle);
+
+    if (!group) return;
+
+    const alreadyExists = group.children.some(
+      (child) => child.id === category.id
+    );
+
+    if (!alreadyExists) {
+      group.children.push(category);
+    }
+  }
+
+  childCategories.forEach((category) => {
+    const parent = parentsById.get(category.parent);
+
+    if (!parent) return;
+
+    const parentTitle = getParentGroupTitle(parent);
+
+    if (!parentTitle) return;
+
+    if (parentTitle === "Réseau" && isWifiCategory(category)) {
+      addChild("Wi-Fi", category);
+      return;
+    }
+
+    addChild(parentTitle, category);
+  });
+
+  parentCategories.forEach((category) => {
+    const hasVisibleChildren = childCategories.some(
+      (child) => child.parent === category.id
+    );
+
+    if (hasVisibleChildren) return;
+
+    const parentTitle = getParentGroupTitle(category);
+
+    if (!parentTitle) return;
+
+    addChild(parentTitle, category);
+  });
+
+  return CATEGORY_ORDER.map((title) => groups.get(title)).filter(
+    (group): group is CategoryGroup =>
+      Boolean(group && group.children.length > 0)
+  );
 }
 
 export function Shop() {
@@ -125,13 +270,13 @@ export function Shop() {
         setLoading(false);
       });
   }, [
-  currentPage,
-  searchTerm,
-  selectedCategoryIds,
-  selectedStockStatuses,
-  sortOption,
-  productsPerPage,
-]);
+    currentPage,
+    searchTerm,
+    selectedCategoryIds,
+    selectedStockStatuses,
+    sortOption,
+    productsPerPage,
+  ]);
 
   function toggleNumberFilter(
     value: number,
@@ -159,15 +304,16 @@ export function Shop() {
     }
   }
 
-function resetFilters() {
-  setSearchInput("");
-  setSearchTerm("");
-  setSelectedCategoryIds([]);
-  setSelectedStockStatuses([]);
-  setSortOption("default");
-  setProductsPerPage(24);
-  setCurrentPage(1);
-}
+  function resetFilters() {
+    setSearchInput("");
+    setSearchTerm("");
+    setSelectedCategoryIds([]);
+    setSelectedStockStatuses([]);
+    setSortOption("default");
+    setProductsPerPage(24);
+    setCurrentPage(1);
+  }
+
   function getPaginationPages() {
     const pages: Array<number | "..."> = [];
 
@@ -216,6 +362,7 @@ function resetFilters() {
     (searchTerm ? 1 : 0);
 
   const paginationPages = getPaginationPages();
+  const categoryGroups = getCategoryGroups(categories);
 
   return (
     <section className="pt-32 pb-24 bg-brand-50 min-h-screen">
@@ -273,39 +420,54 @@ function resetFilters() {
                 <p className="text-sm text-brand-900/50">
                   Chargement des catégories…
                 </p>
-              ) : categories.length === 0 ? (
+              ) : categoryGroups.length === 0 ? (
                 <p className="text-sm text-brand-900/50">
                   Aucune catégorie disponible.
                 </p>
               ) : (
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                  {categories.map((category) => (
-                    <label
-                      key={category.id}
-                      className="flex items-center justify-between gap-2 text-sm text-brand-900/70 cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2 min-w-0">
-                        <input
-                          type="checkbox"
-                          checked={selectedCategoryIds.includes(category.id)}
-                          onChange={() =>
-                            toggleNumberFilter(
-                              category.id,
-                              selectedCategoryIds,
-                              setSelectedCategoryIds
-                            )
-                          }
-                          className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
-                        />
-                        <span className="truncate">{category.name}</span>
-                      </span>
+                <div className="space-y-5">
+                  {categoryGroups.map((group) => (
+                    <div key={group.title}>
+                      <p className="text-xs font-bold uppercase tracking-wide text-brand-900/50 mb-2">
+                        {group.title}
+                      </p>
 
-                      {typeof category.count === "number" && (
-                        <span className="text-xs text-brand-900/40">
-                          {category.count}
-                        </span>
-                      )}
-                    </label>
+                      <div className="space-y-2 border-l border-brand-100 pl-3">
+                        {group.children.map((category) => (
+                          <label
+                            key={category.id}
+                            className="flex items-center justify-between gap-2 text-sm text-brand-900/70 cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={selectedCategoryIds.includes(
+                                  category.id
+                                )}
+                                onChange={() =>
+                                  toggleNumberFilter(
+                                    category.id,
+                                    selectedCategoryIds,
+                                    setSelectedCategoryIds
+                                  )
+                                }
+                                className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
+                              />
+
+                              <span className="truncate">
+                                {getCategoryDisplayName(category.name)}
+                              </span>
+                            </span>
+
+                            {typeof category.count === "number" && (
+                              <span className="text-xs text-brand-900/40">
+                                {category.count}
+                              </span>
+                            )}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -341,13 +503,13 @@ function resetFilters() {
 
             <div className="mb-6 rounded-2xl bg-brand-50 border border-brand-100 p-4 text-sm text-brand-900/60">
               <p className="font-semibold text-brand-950 mb-2">
-                Filtres avancés
+                Autres filtres
               </p>
 
               <p>
-                Les filtres Marque, État, OS et Product Group seront ajoutés
-                quand les attributs seront synchronisés proprement dans
-                WooCommerce.
+                Les filtres Marque, État, OS, RAM, stockage et processeur
+                seront ajoutés quand les caractéristiques seront bien
+                exploitables dans WooCommerce.
               </p>
             </div>
 
@@ -364,95 +526,95 @@ function resetFilters() {
           </aside>
 
           <div>
-<div className="bg-white border border-brand-100 rounded-2xl p-4 mb-6 flex flex-col gap-4">
-  <div className="flex flex-col xl:flex-row gap-4 xl:items-center xl:justify-between">
-    <div className="relative flex-1 max-w-xl">
-      <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-900/40" />
+            <div className="bg-white border border-brand-100 rounded-2xl p-4 mb-6 flex flex-col gap-4">
+              <div className="flex flex-col xl:flex-row gap-4 xl:items-center xl:justify-between">
+                <div className="relative flex-1 max-w-xl">
+                  <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-900/40" />
 
-      <input
-        value={searchInput}
-        onChange={(event) => setSearchInput(event.target.value)}
-        placeholder="Rechercher par nom, marque, référence..."
-        className="w-full rounded-xl border border-brand-100 bg-brand-50 py-3 pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
-      />
-    </div>
+                  <input
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    placeholder="Rechercher par nom, marque, référence..."
+                    className="w-full rounded-xl border border-brand-100 bg-brand-50 py-3 pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
+                  />
+                </div>
 
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-      <label className="flex items-center gap-2 text-sm text-brand-900/60">
-        <span>Trier par</span>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <label className="flex items-center gap-2 text-sm text-brand-900/60">
+                    <span>Trier par</span>
 
-        <select
-          value={sortOption}
-          onChange={(event) => {
-            setCurrentPage(1);
-            setSortOption(event.target.value as SortOption);
-          }}
-          className="rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-950 outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
-        >
-          <option value="default">Défaut</option>
-          <option value="price-asc">Prix croissant</option>
-          <option value="price-desc">Prix décroissant</option>
-          <option value="name-asc">Nom A-Z</option>
-          <option value="name-desc">Nom Z-A</option>
-        </select>
-      </label>
+                    <select
+                      value={sortOption}
+                      onChange={(event) => {
+                        setCurrentPage(1);
+                        setSortOption(event.target.value as SortOption);
+                      }}
+                      className="rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-950 outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
+                    >
+                      <option value="default">Défaut</option>
+                      <option value="price-asc">Prix croissant</option>
+                      <option value="price-desc">Prix décroissant</option>
+                      <option value="name-asc">Nom A-Z</option>
+                      <option value="name-desc">Nom Z-A</option>
+                    </select>
+                  </label>
 
-      <label className="flex items-center gap-2 text-sm text-brand-900/60">
-        <span>Afficher</span>
+                  <label className="flex items-center gap-2 text-sm text-brand-900/60">
+                    <span>Afficher</span>
 
-        <select
-          value={productsPerPage}
-          onChange={(event) => {
-            setCurrentPage(1);
-            setProductsPerPage(Number(event.target.value));
-          }}
-          className="rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-950 outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
-        >
-          {PRODUCTS_PER_PAGE_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option} / page
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
-  </div>
+                    <select
+                      value={productsPerPage}
+                      onChange={(event) => {
+                        setCurrentPage(1);
+                        setProductsPerPage(Number(event.target.value));
+                      }}
+                      className="rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-950 outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
+                    >
+                      {PRODUCTS_PER_PAGE_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option} / page
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
 
-  <div className="flex items-center justify-between gap-4">
-    <div className="flex items-center gap-2 text-sm text-brand-900/60">
-      <SlidersHorizontal className="w-4 h-4" />
-      Page {currentPage} / {totalPages}
-    </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2 text-sm text-brand-900/60">
+                  <SlidersHorizontal className="w-4 h-4" />
+                  Page {currentPage} / {totalPages}
+                </div>
 
-          <div className="flex items-center gap-1 bg-brand-50 border border-brand-100 rounded-xl p-1">
-            <button
-              type="button"
-              onClick={() => setViewMode("list")}
-              className={`p-2 rounded-lg transition-colors ${
-                viewMode === "list"
-                  ? "bg-white text-brand-700 shadow-sm"
-                  : "text-brand-900/40 hover:text-brand-900"
-              }`}
-              aria-label="Vue liste"
-            >
-              <List className="w-4 h-4" />
-            </button>
+                <div className="flex items-center gap-1 bg-brand-50 border border-brand-100 rounded-xl p-1">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("list")}
+                    className={`p-2 rounded-lg transition-colors ${
+                      viewMode === "list"
+                        ? "bg-white text-brand-700 shadow-sm"
+                        : "text-brand-900/40 hover:text-brand-900"
+                    }`}
+                    aria-label="Vue liste"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
 
-            <button
-              type="button"
-              onClick={() => setViewMode("grid")}
-              className={`p-2 rounded-lg transition-colors ${
-                viewMode === "grid"
-                  ? "bg-white text-brand-700 shadow-sm"
-                  : "text-brand-900/40 hover:text-brand-900"
-              }`}
-              aria-label="Vue grille"
-            >
-              <Grid3X3 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("grid")}
+                    className={`p-2 rounded-lg transition-colors ${
+                      viewMode === "grid"
+                        ? "bg-white text-brand-700 shadow-sm"
+                        : "text-brand-900/40 hover:text-brand-900"
+                    }`}
+                    aria-label="Vue grille"
+                  >
+                    <Grid3X3 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
 
             {loading ? (
               <div className="bg-white rounded-2xl border border-brand-100 py-20 text-center text-brand-900/50">
