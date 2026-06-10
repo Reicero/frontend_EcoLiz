@@ -44,11 +44,24 @@ function formatWooPrice(value?: string, minorUnit = 2) {
   }).format(numberValue);
 }
 
+function buildQuantityInputs(cart: WooCart) {
+  const inputs: Record<string, string> = {};
+
+  for (const item of cart.items ?? []) {
+    inputs[item.key] = String(item.quantity);
+  }
+
+  return inputs;
+}
+
 export default function Cart() {
   const [cart, setCart] = useState<WooCart | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingKey, setUpdatingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [quantityInputs, setQuantityInputs] = useState<Record<string, string>>(
+    {}
+  );
 
   async function loadCart() {
     try {
@@ -57,6 +70,7 @@ export default function Cart() {
 
       const data = await getCart();
       setCart(data);
+      setQuantityInputs(buildQuantityInputs(data));
     } catch (error) {
       console.error("Erreur chargement panier :", error);
       setError("Impossible de charger le panier.");
@@ -78,11 +92,52 @@ export default function Cart() {
 
       const updatedCart = await updateCartItem(item.key, quantity);
       setCart(updatedCart);
+      setQuantityInputs(buildQuantityInputs(updatedCart));
     } catch (error) {
       console.error("Erreur mise à jour quantité :", error);
       setError("Impossible de modifier la quantité.");
+
+      setQuantityInputs((previous) => ({
+        ...previous,
+        [item.key]: String(item.quantity),
+      }));
     } finally {
       setUpdatingKey(null);
+    }
+  }
+
+  function handleQuantityInputChange(item: WooCartItem, value: string) {
+    if (/^\d*$/.test(value)) {
+      setQuantityInputs((previous) => ({
+        ...previous,
+        [item.key]: value,
+      }));
+    }
+  }
+
+  function handleQuantityInputValidate(item: WooCartItem) {
+    const value = quantityInputs[item.key];
+
+    if (!value) {
+      setQuantityInputs((previous) => ({
+        ...previous,
+        [item.key]: String(item.quantity),
+      }));
+      return;
+    }
+
+    const quantity = Number(value);
+
+    if (Number.isNaN(quantity) || quantity < 1) {
+      setQuantityInputs((previous) => ({
+        ...previous,
+        [item.key]: String(item.quantity),
+      }));
+      return;
+    }
+
+    if (quantity !== item.quantity) {
+      handleUpdateQuantity(item, quantity);
     }
   }
 
@@ -93,6 +148,7 @@ export default function Cart() {
 
       const updatedCart = await removeCartItem(item.key);
       setCart(updatedCart);
+      setQuantityInputs(buildQuantityInputs(updatedCart));
     } catch (error) {
       console.error("Erreur suppression produit :", error);
       setError("Impossible de supprimer ce produit.");
@@ -213,7 +269,7 @@ export default function Cart() {
                           </h2>
 
                           <p className="text-brand-900/60">
-                            Prix unitaire HT:{" "}
+                            Prix unitaire HT :{" "}
                             <span className="font-semibold text-brand-950">
                               {formatWooPrice(unitPrice, itemMinorUnit)}
                             </span>
@@ -245,14 +301,22 @@ export default function Cart() {
                           </button>
 
                           <input
-                            type="number"
-                            min="1"
-                            value={item.quantity}
-                            onChange={(event) => {
-                              const quantity = Number(event.target.value);
-
-                              if (!Number.isNaN(quantity) && quantity >= 1) {
-                                handleUpdateQuantity(item, quantity);
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={
+                              quantityInputs[item.key] ?? String(item.quantity)
+                            }
+                            onChange={(event) =>
+                              handleQuantityInputChange(
+                                item,
+                                event.target.value
+                              )
+                            }
+                            onBlur={() => handleQuantityInputValidate(item)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.currentTarget.blur();
                               }
                             }}
                             disabled={isUpdating}
