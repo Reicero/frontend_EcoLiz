@@ -382,7 +382,7 @@ const totalHT =
 
                 <div className="flex items-center justify-between text-brand-950 font-bold text-xl">
                   <span>Total HT</span>
-                  <span>{formatWooPrice(total, minorUnit)}</span>
+                  <span>{formatWooPrice(totalHT, minorUnit)}</span>
                 </div>
               </div>
 
