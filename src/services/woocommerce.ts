@@ -1,12 +1,17 @@
-import type { Product, ProductGrade } from "../types/product";
-import { config } from "../config/env";
+/**
+ * WooCommerce product and category service
+ */
 
-const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, "");
+import type { Product, ProductGrade } from '../types/product';
+import { config } from '../config/env';
+import { buildQueryString } from '../utils/http';
+import { roundPrice, calculatePriceTTC, calculateVATAmount } from '../utils/number';
+import { stripHtmlTags, decodeHtmlEntities } from '../utils/string';
 
-// TVA 20%
+const WOO_API_URL = config.wooApiUrl;
 const VAT_RATE = 0.2;
 
-export type WooCategory = {
+export interface WooCategory {
   id: number;
   name: string;
   slug: string;
@@ -14,273 +19,223 @@ export type WooCategory = {
   parent: number;
   label: string;
   value: string;
-};
+}
 
-export type ProductListParams = {
+export interface ProductListParams {
   page?: number;
   perPage?: number;
   search?: string;
   categoryIds?: number[];
-  stockStatus?: "instock" | "outofstock" | null;
-  orderby?: "date" | "price" | "title";
-  order?: "asc" | "desc";
-};
+  stockStatus?: 'instock' | 'outofstock' | null;
+  orderby?: 'date' | 'price' | 'title';
+  order?: 'asc' | 'desc';
+}
 
-export type ProductListResult = {
+export interface ProductListResult {
   products: Product[];
   total: number;
   totalPages: number;
-};
-
-function roundPrice(value: number) {
-  return Math.round(value * 100) / 100;
 }
 
-function cleanHtml(value: string) {
-  return value?.replace(/<[^>]*>/g, "").trim() ?? "";
-}
-
-function decodeHtmlEntities(value: string) {
-  const entities: Record<string, string> = {
-    amp: "&",
-    quot: '"',
-    apos: "'",
-    "#039": "'",
-    rsquo: "’",
-    eacute: "é",
-    egrave: "è",
-    ecirc: "ê",
-    agrave: "à",
-    ugrave: "ù",
-    ccedil: "ç",
-  };
-
-  return value.replace(/&([^;]+);/g, (match, entity) => {
-    return entities[entity] ?? match;
-  });
-}
-
-function getWooPrice(product: any, field: "price" | "regular_price") {
-  if (product.prices?.[field] !== undefined) {
-    return Number(product.prices[field]) / 100;
-  }
-
-  if (field === "price" && product.price !== undefined) {
-    return Number(product.price);
-  }
-
-  if (field === "regular_price" && product.regular_price !== undefined) {
-    return Number(product.regular_price);
-  }
-
-  return 0;
-}
-
-function getAttributeValue(product: any, names: string[]) {
+/**
+ * Extract attribute value by names (case-insensitive)
+ */
+function getAttributeValue(product: any, names: string[]): string {
   const attribute = product.attributes?.find((a: any) =>
     names.some((name) =>
       a.name?.toLowerCase().includes(name.toLowerCase())
     )
   );
 
-  return attribute?.terms?.[0]?.name ?? attribute?.options?.[0] ?? "";
+  return attribute?.terms?.[0]?.name ?? attribute?.options?.[0] ?? '';
 }
 
-function getMetaValue(product: any, key: string) {
+/**
+ * Extract meta value by key
+ */
+function getMetaValue(product: any, key: string): string {
   const meta = product.meta_data?.find((m: any) => m.key === key);
-  return meta?.value ?? "";
+  return meta?.value ?? '';
 }
 
-function mapGrade(product: any): ProductGrade {
-  const rawGrade = getAttributeValue(product, [
-    "grade",
-    "état",
-    "etat",
-    "condition",
-  ]);
-
-  if (rawGrade === "N1") return "Neuf";
-  if (rawGrade === "R4") return "Reconditionné";
-  if (rawGrade === "G5") return "Grade B";
-
-  if (
-    rawGrade === "Grade A+" ||
-    rawGrade === "Grade A" ||
-    rawGrade === "Grade B" ||
-    rawGrade === "Grade C"
-  ) {
-    return rawGrade;
+/**
+ * Extract price from product (handles multiple price formats)
+ */
+function getWooPrice(product: any, field: 'price' | 'regular_price'): number {
+  if (product.prices?.[field] !== undefined) {
+    return roundPrice(Number(product.prices[field]) / 100);
   }
 
-  return "Non renseigné";
+  if (field === 'price' && product.price !== undefined) {
+    return roundPrice(Number(product.price));
+  }
+
+  if (field === 'regular_price' && product.regular_price !== undefined) {
+    return roundPrice(Number(product.regular_price));
+  }
+
+  return 0;
 }
 
-function mapConditionLabel(status?: string) {
-  if (!status) return "Non renseigné";
+/**
+ * Map product grade code to display value
+ */
+function mapGrade(product: any): ProductGrade {
+  const rawGrade = getAttributeValue(product, ['grade', 'état', 'etat', 'condition']);
+
+  const gradeMap: Record<string, ProductGrade> = {
+    N1: 'Neuf',
+    R4: 'Reconditionné',
+    G5: 'Grade B',
+  };
+
+  if (gradeMap[rawGrade]) return gradeMap[rawGrade];
+
+  const standardGrades: ProductGrade[] = ['Grade A+', 'Grade A', 'Grade B', 'Grade C'];
+  if (standardGrades.includes(rawGrade as ProductGrade)) return rawGrade as ProductGrade;
+
+  return 'Non renseigné';
+}
+
+/**
+ * Map condition status code to display label
+ */
+function mapConditionLabel(status?: string): string {
+  if (!status) return 'Non renseigné';
 
   const labels: Record<string, string> = {
-    N1: "Neuf",
-    N2: "Neuf",
-    N3: "Neuf",
-    R4: "Reconditionné",
-    G5: "Grade B",
-    AS: "As-is",
-    W1: "Reconditionné",
-    W2: "Reconditionné",
-    D1: "Déstockage",
-    D2: "Déstockage",
+    N1: 'Neuf',
+    N2: 'Neuf',
+    N3: 'Neuf',
+    R4: 'Reconditionné',
+    G5: 'Grade B',
+    AS: 'As-is',
+    W1: 'Reconditionné',
+    W2: 'Reconditionné',
+    D1: 'Déstockage',
+    D2: 'Déstockage',
   };
 
   return labels[status] ?? status;
 }
 
-function mapWooProduct(product: any): Product {
-  const priceHT = getWooPrice(product, "price");
-  const originalPriceHT = getWooPrice(product, "regular_price") || priceHT;
-
-  const priceTTC = roundPrice(priceHT * (1 + VAT_RATE));
-  const vatAmount = roundPrice(priceTTC - priceHT);
-
-  const stockCount = product.stock_quantity ?? undefined;
-
-  const isInStock =
-    product.is_in_stock === true ||
-    product.stock_status === "instock" ||
-    (typeof stockCount === "number" && stockCount > 0);
-
-  const image = product.images?.[0]?.src || "/placeholder-product.png";
-
-  const description = cleanHtml(
-    product.description ?? product.short_description ?? ""
-  );
-
-  const manufacturer =
-    getAttributeValue(product, ["marque", "manufacturer"]) ||
-    getMetaValue(product, "manufacturer");
-
-  const status =
-    getAttributeValue(product, ["état", "etat", "status", "condition"]) ||
-    getMetaValue(product, "condition_status");
-
-  const os =
-    getAttributeValue(product, ["os", "operating system"]) ||
-    getMetaValue(product, "os");
-
-  const productGroup =
-    getAttributeValue(product, ["product group", "groupe produit"]) ||
-    getMetaValue(product, "product_group");
-
-  const manufacturerPartNumber =
-    getAttributeValue(product, [
-      "référence constructeur",
-      "reference constructeur",
-      "manufacturer part number",
-    ]) || getMetaValue(product, "manufacturer_part_number");
-
-  const ean = getMetaValue(product, "ean");
-
-  const specs =
+/**
+ * Extract product specifications as concatenated string
+ */
+function extractSpecifications(product: any): string {
+  return (
     product.attributes
       ?.map((a: any) => {
         const values =
-          a.terms?.map((t: any) => t.name).join(", ") ||
-          a.options?.join(", ") ||
-          "";
-
-        return values ? `${a.name}: ${values}` : "";
+          a.terms?.map((t: any) => t.name).join(', ') ||
+          a.options?.join(', ') ||
+          '';
+        return values ? `${a.name}: ${values}` : '';
       })
       .filter(Boolean)
-      .join(" · ") ?? "";
+      .join(' · ') ?? ''
+  );
+}
+
+/**
+ * Check if product is in stock
+ */
+function isProductInStock(product: any): boolean {
+  const stockCount = product.stock_quantity;
+  return (
+    product.is_in_stock === true ||
+    product.stock_status === 'instock' ||
+    (typeof stockCount === 'number' && stockCount > 0)
+  );
+}
+
+/**
+ * Transform WooCommerce product to internal Product type
+ */
+function mapWooProduct(product: any): Product {
+  const priceHT = getWooPrice(product, 'price');
+  const originalPriceHT = getWooPrice(product, 'regular_price') || priceHT;
+  const priceTTC = calculatePriceTTC(priceHT, VAT_RATE);
+  const vatAmount = calculateVATAmount(priceTTC, priceHT);
+  const inStock = isProductInStock(product);
+  const status = getAttributeValue(product, ['état', 'etat', 'status', 'condition']) ||
+    getMetaValue(product, 'condition_status');
 
   return {
     id: product.id,
     name: product.name,
     slug: product.slug,
-
     sku: product.sku,
-    ean,
-    manufacturerPartNumber,
-
+    ean: getMetaValue(product, 'ean'),
+    manufacturerPartNumber: getAttributeValue(product, [
+      'référence constructeur',
+      'reference constructeur',
+      'manufacturer part number',
+    ]) || getMetaValue(product, 'manufacturer_part_number'),
     price: priceHT,
     originalPrice: originalPriceHT,
     priceTTC,
     vatAmount,
-
-    image,
+    image: product.images?.[0]?.src || '/placeholder-product.png',
     images: product.images?.map((img: any) => img.src) ?? [],
-
-    category: product.categories?.[0]?.name ?? "Non classé",
-    manufacturer,
+    category: product.categories?.[0]?.name ?? 'Non classé',
+    manufacturer:
+      getAttributeValue(product, ['marque', 'manufacturer']) ||
+      getMetaValue(product, 'manufacturer'),
     status,
     conditionLabel: mapConditionLabel(status),
-    os,
-    productGroup,
-
-    specs,
-
+    os:
+      getAttributeValue(product, ['os', 'operating system']) ||
+      getMetaValue(product, 'os'),
+    productGroup:
+      getAttributeValue(product, ['product group', 'groupe produit']) ||
+      getMetaValue(product, 'product_group'),
+    specs: extractSpecifications(product),
     grade: mapGrade(product),
-    warranty: "sur devis",
-    description,
-
-    stock: isInStock,
-    stockCount,
-
-    availability: isInStock ? "En stock" : "Rupture de stock",
-
-    incomingQuantity:
-      Number(getMetaValue(product, "incoming_quantity")) || undefined,
-    incomingDate: getMetaValue(product, "incoming_date") || undefined,
+    warranty: 'sur devis',
+    description: stripHtmlTags(product.description ?? product.short_description ?? ''),
+    stock: inStock,
+    stockCount: product.stock_quantity,
+    availability: inStock ? 'En stock' : 'Rupture de stock',
+    incomingQuantity: Number(getMetaValue(product, 'incoming_quantity')) || undefined,
+    incomingDate: getMetaValue(product, 'incoming_date') || undefined,
   };
 }
 
+/**
+ * List products with filters and pagination
+ */
 export async function listProducts({
   page = 1,
   perPage = 20,
-  search = "",
+  search = '',
   categoryIds = [],
   stockStatus = null,
   orderby,
   order,
 }: ProductListParams = {}): Promise<ProductListResult> {
   try {
-    const params = new URLSearchParams({
-      per_page: String(perPage),
-      page: String(page),
+    const params = buildQueryString({
+      per_page: perPage,
+      page,
+      ...(search && { search }),
+      ...(categoryIds.length > 0 && { category: categoryIds }),
+      ...(stockStatus && { stock_status: stockStatus }),
+      ...(orderby && { orderby }),
+      ...(order && { order }),
     });
 
-    if (search.trim()) {
-      params.set("search", search.trim());
-    }
-
-    if (categoryIds.length > 0) {
-      params.set("category", categoryIds.join(","));
-    }
-
-    if (stockStatus) {
-      params.set("stock_status", stockStatus);
-    }
-    if (orderby) {
-  params.set("orderby", orderby);
-    }
-
-    if (order) {
-      params.set("order", order);
-    }
-
-    const res = await fetch(`${WOO_API_URL}/products?${params.toString()}`, {
-      cache: "no-store",
+    const response = await fetch(`${WOO_API_URL}/products?${params}`, {
+      cache: 'no-store',
     });
 
-    if (!res.ok) {
-      throw new Error(
-        `HTTP ${res.status}: Failed to fetch products page ${page}`
-      );
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: Failed to fetch products page ${page}`);
     }
 
-    const data = await res.json();
-
-    const total = Number(res.headers.get("X-WP-Total") ?? data.length ?? 0);
-    const totalPages = Number(res.headers.get("X-WP-TotalPages") ?? 1);
+    const data = await response.json();
+    const total = Number(response.headers.get('X-WP-Total') ?? data.length ?? 0);
+    const totalPages = Number(response.headers.get('X-WP-TotalPages') ?? 1);
 
     return {
       products: Array.isArray(data) ? data.map(mapWooProduct) : [],
@@ -288,47 +243,55 @@ export async function listProducts({
       totalPages: Math.max(1, totalPages),
     };
   } catch (error) {
-    console.error("Error fetching products:", error);
+    console.error('Error fetching products:', error);
     throw error;
   }
 }
 
+/**
+ * Get product by slug
+ */
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   try {
-    const res = await fetch(`${WOO_API_URL}/products?slug=${slug}`, {
-      cache: "no-store",
+    const response = await fetch(`${WOO_API_URL}/products?slug=${slug}`, {
+      cache: 'no-store',
     });
 
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: Failed to fetch product`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: Failed to fetch product`);
     }
 
-    const data = await res.json();
+    const data = await response.json();
     return data.length > 0 ? mapWooProduct(data[0]) : null;
   } catch (error) {
-    console.error("Error fetching product:", error);
+    console.error('Error fetching product:', error);
     throw error;
   }
 }
 
+/**
+ * List product categories
+ */
 export async function listCategories(): Promise<WooCategory[]> {
   try {
-    const res = await fetch(
-      `${WOO_API_URL}/products/categories?per_page=100&hide_empty=true&orderby=name`,
-      {
-        cache: "no-store",
-      }
-    );
+    const params = buildQueryString({
+      per_page: 100,
+      hide_empty: true,
+      orderby: 'name',
+    });
 
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: Failed to fetch categories`);
+    const response = await fetch(`${WOO_API_URL}/products/categories?${params}`, {
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: Failed to fetch categories`);
     }
 
-    const data = await res.json();
+    const data = await response.json();
 
     return data.map((cat: any) => {
       const name = decodeHtmlEntities(cat.name);
-
       return {
         id: cat.id,
         name,
@@ -340,7 +303,7 @@ export async function listCategories(): Promise<WooCategory[]> {
       };
     });
   } catch (error) {
-    console.error("Error fetching categories:", error);
+    console.error('Error fetching categories:', error);
     throw error;
   }
 }

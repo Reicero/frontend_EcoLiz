@@ -3,58 +3,69 @@
  * All external URLs are defined here to avoid hardcoding.
  */
 
-function getEnvValue(value: string | undefined, fallback: string) {
-  return value && value.trim() ? value.trim().replace(/\/+$/, "") : fallback;
+import { normalizeUrl } from '../utils/string';
+
+function getEnvValue(value: string | undefined, fallback: string): string {
+  return normalizeUrl(value || fallback);
 }
 
+const WORDPRESS_URL = getEnvValue(
+  import.meta.env.VITE_WORDPRESS_URL,
+  '/index.php'
+);
+
+const WOO_API_URL = getEnvValue(
+  import.meta.env.VITE_WOO_API_URL,
+  '/wp-api/wc/store'
+);
+
+const ECOLIZ_API_URL = getEnvValue(
+  import.meta.env.VITE_ECOLIZ_API_URL,
+  '/wp-api/ecoliz/v1'
+);
+
 export const config = {
-  // WordPress main URL
-  wordpressUrl: getEnvValue(
-    import.meta.env.VITE_WORDPRESS_URL,
-    "/index.php"
-  ),
-
-  // WooCommerce Store API endpoint
-  wooApiUrl: getEnvValue(
-    import.meta.env.VITE_WOO_API_URL,
-    "/wp-api/wc/store"
-  ),
-
-  // EcoLiz Custom API endpoint
-  ecolizApiUrl: getEnvValue(
-    import.meta.env.VITE_ECOLIZ_API_URL,
-    "/wp-api/ecoliz/v1"
-  ),
-
-  get myAccountUrl() {
-    return `${this.wordpressUrl}/mon-compte`;
+  get wordpressUrl(): string {
+    return WORDPRESS_URL;
   },
 
-  get myOrdersUrl() {
-    return `${this.wordpressUrl}/mon-compte/orders`;
+  get wooApiUrl(): string {
+    return WOO_API_URL;
   },
 
-  get cartUrl() {
-    return `${this.wordpressUrl}/panier`;
+  get ecolizApiUrl(): string {
+    return ECOLIZ_API_URL;
   },
 
-  get checkoutUrl() {
-    return `${this.wordpressUrl}/validation-de-la-commande`;
+  get myAccountUrl(): string {
+    return `${WORDPRESS_URL}/mon-compte`;
   },
 
-  get lostPasswordUrl() {
-    return `${this.wordpressUrl}/mon-compte/lost-password`;
+  get myOrdersUrl(): string {
+    return `${WORDPRESS_URL}/mon-compte/orders`;
   },
 
-  get logoutUrl() {
-    return `${this.wordpressUrl}/mon-compte/customer-logout`;
+  get cartUrl(): string {
+    return `${WORDPRESS_URL}/panier`;
+  },
+
+  get checkoutUrl(): string {
+    return `${WORDPRESS_URL}/validation-de-la-commande`;
+  },
+
+  get lostPasswordUrl(): string {
+    return `${WORDPRESS_URL}/mon-compte/lost-password`;
+  },
+
+  get logoutUrl(): string {
+    return `${WORDPRESS_URL}/mon-compte/customer-logout`;
   },
 
   /**
    * Build add-to-cart redirect URL.
    * After adding product, user is redirected to WooCommerce cart.
    */
-  getAddToCartUrl(productId: number, quantity: number = 1) {
-    return `${this.wordpressUrl}/?add-to-cart=${productId}&quantity=${quantity}`;
+  getAddToCartUrl(productId: number, quantity: number = 1): string {
+    return `${WORDPRESS_URL}/?add-to-cart=${productId}&quantity=${quantity}`;
   },
-};
+} as const;

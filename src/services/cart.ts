@@ -1,88 +1,66 @@
-import { config } from "../config/env";
+/**
+ * Shopping cart service for WooCommerce Store API
+ */
 
-const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, "");
-const CART_TOKEN_KEY = "ecoliz_cart_token";
+import { ApiClient } from './api/http';
+import { config } from '../config/env';
 
-export const CART_UPDATED_EVENT = "ecoliz_cart_updated";
+const CART_TOKEN_KEY = 'Cart-Token';
+const STORAGE_KEY = 'ecoliz_cart_token';
+export const CART_UPDATED_EVENT = 'ecoliz_cart_updated';
 
-function getStoredCartToken() {
-  return localStorage.getItem(CART_TOKEN_KEY);
-}
+const cartClient = new ApiClient({
+  baseUrl: config.wooApiUrl,
+  tokenKey: CART_TOKEN_KEY,
+});
 
-function saveCartToken(token: string | null) {
-  if (token) {
-    localStorage.setItem(CART_TOKEN_KEY, token);
-  }
-}
-
-function notifyCartUpdated(cart: any) {
+/**
+ * Dispatch cart updated event
+ */
+function notifyCartUpdated(itemsCount: number): void {
   window.dispatchEvent(
     new CustomEvent(CART_UPDATED_EVENT, {
-      detail: {
-        items_count: cart?.items_count ?? 0,
-      },
+      detail: { items_count: itemsCount },
     })
   );
 }
 
-async function requestCart(endpoint = "/cart", options: RequestInit = {}) {
-  const cartToken = getStoredCartToken();
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...(cartToken ? { "Cart-Token": cartToken } : {}),
-    ...(options.headers || {}),
-  };
-
-  const response = await fetch(`${WOO_API_URL}${endpoint}`, {
-    ...options,
-    headers,
-    cache: "no-store",
-  });
-
-  const newCartToken = response.headers.get("Cart-Token");
-  saveCartToken(newCartToken);
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Erreur panier WooCommerce ${response.status}: ${errorText}`);
-  }
-
-  return response.json();
-}
-
+/**
+ * Get current cart
+ */
 export async function getCart() {
-  return requestCart("/cart");
+  return cartClient.get('/cart');
 }
 
-export async function addToCart(productId: number, quantity = 1) {
-  await getCart();
-
-  const cart = await requestCart(`/cart/add-item?id=${productId}&quantity=${quantity}`, {
-    method: "POST",
-  });
-
-  notifyCartUpdated(cart);
-
+/**
+ * Add item to cart
+ */
+export async function addToCart(productId: number, quantity: number = 1) {
+  const cart = await cartClient.post(
+    cartClient.buildUrl('/cart/add-item', { id: productId, quantity })
+  );
+  notifyCartUpdated(cart?.items_count ?? 0);
   return cart;
 }
 
+/**
+ * Update cart item quantity
+ */
 export async function updateCartItem(key: string, quantity: number) {
-  const cart = await requestCart(`/cart/update-item?key=${key}&quantity=${quantity}`, {
-    method: "POST",
-  });
-
-  notifyCartUpdated(cart);
-
+  const cart = await cartClient.post(
+    cartClient.buildUrl('/cart/update-item', { key, quantity })
+  );
+  notifyCartUpdated(cart?.items_count ?? 0);
   return cart;
 }
 
+/**
+ * Remove item from cart
+ */
 export async function removeCartItem(key: string) {
-  const cart = await requestCart(`/cart/remove-item?key=${key}`, {
-    method: "POST",
-  });
-
-  notifyCartUpdated(cart);
-
+  const cart = await cartClient.post(
+    cartClient.buildUrl('/cart/remove-item', { key })
+  );
+  notifyCartUpdated(cart?.items_count ?? 0);
   return cart;
 }

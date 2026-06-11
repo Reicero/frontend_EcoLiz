@@ -1,9 +1,19 @@
-import { config } from "../config/env";
+/**
+ * Checkout service for order placement
+ */
 
-const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, "");
-const CART_TOKEN_KEY = "ecoliz_cart_token";
+import { ApiClient } from './api/http';
+import { config } from '../config/env';
+import { parseResponse } from '../utils/http';
 
-export type CheckoutAddress = {
+const CART_TOKEN_KEY = 'Cart-Token';
+
+const checkoutClient = new ApiClient({
+  baseUrl: config.wooApiUrl,
+  tokenKey: CART_TOKEN_KEY,
+});
+
+export interface CheckoutAddress {
   first_name: string;
   last_name: string;
   company: string;
@@ -15,42 +25,35 @@ export type CheckoutAddress = {
   country: string;
   email?: string;
   phone?: string;
-};
+}
 
-export type PlaceOrderPayload = {
+export interface PlaceOrderPayload {
   billing_address: CheckoutAddress;
   shipping_address: CheckoutAddress;
   customer_note?: string;
   create_account: boolean;
   payment_method: string;
   payment_data: unknown[];
-};
+}
 
+/**
+ * Place order and process payment
+ */
 export async function placeOrder(payload: PlaceOrderPayload) {
-  const cartToken = localStorage.getItem(CART_TOKEN_KEY);
-
-  const response = await fetch(`${WOO_API_URL}/checkout`, {
-    method: "POST",
-    credentials: "include",
-    cache: "no-store",
+  const response = await fetch(`${config.wooApiUrl}/checkout`, {
+    method: 'POST',
+    credentials: 'include',
+    cache: 'no-store',
     headers: {
-      "Content-Type": "application/json",
-      ...(cartToken ? { "Cart-Token": cartToken } : {}),
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
   });
 
-  const newCartToken = response.headers.get("Cart-Token");
-
-  if (newCartToken) {
-    localStorage.setItem(CART_TOKEN_KEY, newCartToken);
-  }
-
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : {};
+  const data = await parseResponse(response);
 
   if (!response.ok) {
-    throw new Error(data.message || "Impossible de valider la commande.");
+    throw new Error(data.message || 'Impossible de valider la commande.');
   }
 
   return data;
