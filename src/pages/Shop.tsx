@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { Link } from "react-router-dom";
 import {
+  ChevronDown,
   Filter,
   Grid3X3,
   List,
@@ -530,6 +531,9 @@ export function Shop() {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
 
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [expandedCategoryGroup, setExpandedCategoryGroup] = useState<
+  string | null
+>(null);
 
   const [sortOption, setSortOption] = useState<SortOption>("default");
   const [productsPerPage, setProductsPerPage] = useState(24);
@@ -651,6 +655,12 @@ export function Shop() {
       };
     });
   }
+
+  function toggleCategoryGroup(title: string) {
+  setExpandedCategoryGroup((currentGroup) =>
+    currentGroup === title ? null : title
+  );
+}
 
   function resetFilters() {
     setSearchInput("");
@@ -786,51 +796,94 @@ export function Shop() {
                   Aucune catégorie disponible.
                 </p>
               ) : (
-                <div className="space-y-5">
-                  {categoryGroups.map((group) => (
-                    <div key={group.title}>
-                      <p className="text-xs font-bold uppercase tracking-wide text-brand-900/50 mb-2">
-                        {group.title}
-                      </p>
+<div className="space-y-2">
+  {categoryGroups.map((group) => {
+    const isOpen = expandedCategoryGroup === group.title;
 
-                      <div className="space-y-2 border-l border-brand-100 pl-3">
-                        {group.children.map((category) => (
-                          <label
-                            key={category.id}
-                            className="flex items-center justify-between gap-2 text-sm text-brand-900/70 cursor-pointer"
-                          >
-                            <span className="flex items-center gap-2 min-w-0">
-                              <input
-                                type="checkbox"
-                                checked={selectedCategoryIds.includes(
-                                  category.id
-                                )}
-                                onChange={() =>
-                                  toggleNumberFilter(
-                                    category.id,
-                                    selectedCategoryIds,
-                                    setSelectedCategoryIds
-                                  )
-                                }
-                                className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
-                              />
+    const selectedCount = group.children.filter((category) =>
+      selectedCategoryIds.includes(category.id)
+    ).length;
 
-                              <span className="truncate">
-                                {getCategoryDisplayName(category.name)}
-                              </span>
-                            </span>
+    const productCount = group.children.reduce(
+      (total, category) => total + (category.count ?? 0),
+      0
+    );
 
-                            {typeof category.count === "number" && (
-                              <span className="text-xs text-brand-900/40">
-                                {category.count}
-                              </span>
-                            )}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+    return (
+      <div
+        key={group.title}
+        className="overflow-hidden rounded-xl border border-brand-100 bg-white"
+      >
+        <button
+          type="button"
+          onClick={() => toggleCategoryGroup(group.title)}
+          aria-expanded={isOpen}
+          className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors hover:bg-brand-50"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-sm font-semibold text-brand-950">
+              {group.title}
+            </span>
+
+            {selectedCount > 0 && (
+              <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
+                {selectedCount}
+              </span>
+            )}
+          </span>
+
+          <span className="flex flex-shrink-0 items-center gap-2">
+            <span className="text-xs text-brand-900/40">
+              {productCount}
+            </span>
+
+            <ChevronDown
+              className={`h-4 w-4 text-brand-900/50 transition-transform duration-200 ${
+                isOpen ? "rotate-180" : ""
+              }`}
+            />
+          </span>
+        </button>
+
+        {isOpen && (
+          <div className="space-y-2 border-t border-brand-100 bg-brand-50/40 px-3 py-3">
+            {group.children.map((category) => (
+              <label
+                key={category.id}
+                className="flex cursor-pointer items-center justify-between gap-2 text-sm text-brand-900/70"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedCategoryIds.includes(category.id)}
+                    onChange={() =>
+                      toggleNumberFilter(
+                        category.id,
+                        selectedCategoryIds,
+                        setSelectedCategoryIds
+                      )
+                    }
+                    className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
+                  />
+
+                  <span className="truncate">
+                    {getCategoryDisplayName(category.name)}
+                  </span>
+                </span>
+
+                {typeof category.count === "number" && (
+                  <span className="flex-shrink-0 text-xs text-brand-900/40">
+                    {category.count}
+                  </span>
+                )}
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  })}
+</div>
               )}
             </div>
 
