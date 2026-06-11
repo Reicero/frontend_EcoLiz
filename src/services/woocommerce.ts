@@ -6,10 +6,61 @@ import type { Product, ProductGrade } from '../types/product';
 import { config } from '../config/env';
 import { buildQueryString } from '../utils/http';
 import { roundPrice, calculatePriceTTC, calculateVATAmount } from '../utils/number';
-import { stripHtmlTags, decodeHtmlEntities } from '../utils/string';
+import { stripHtmlTags } from '../utils/string';
 
 const WOO_API_URL = config.wooApiUrl;
 const VAT_RATE = 0.2;
+
+function decodeHtmlEntities(value: unknown) {
+  let result = String(value ?? '');
+
+  const namedEntities: Record<string, string> = {
+    amp: '&',
+    quot: '"',
+    apos: "'",
+    '#039': "'",
+    nbsp: ' ',
+    rsquo: '’',
+    lsquo: '‘',
+    rdquo: '”',
+    ldquo: '“',
+    ndash: '–',
+    mdash: '—',
+    hellip: '…',
+    laquo: '«',
+    raquo: '»',
+    times: '×',
+    prime: '′',
+    Prime: '″',
+    eacute: 'é',
+    egrave: 'è',
+    ecirc: 'ê',
+    agrave: 'à',
+    ugrave: 'ù',
+    ccedil: 'ç',
+  };
+
+  for (let pass = 0; pass < 4; pass += 1) {
+    const previousResult = result;
+
+    result = result
+      .replace(/&#x([0-9a-f]+);/gi, (_, hexadecimal: string) =>
+        String.fromCodePoint(Number.parseInt(hexadecimal, 16))
+      )
+      .replace(/&#(\d+);/g, (_, decimal: string) =>
+        String.fromCodePoint(Number.parseInt(decimal, 10))
+      )
+      .replace(/&([a-zA-Z0-9#]+);/g, (match, entity: string) => {
+        return namedEntities[entity] ?? match;
+      });
+
+    if (result === previousResult) {
+      break;
+    }
+  }
+
+  return result;
+}
 
 export interface WooCategory {
   id: number;

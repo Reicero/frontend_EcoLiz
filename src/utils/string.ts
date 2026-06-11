@@ -19,20 +19,55 @@ export function stripHtmlTags(value: string): string {
 /**
  * Decode common HTML entities
  */
-export function decodeHtmlEntities(value: string): string {
-  const entities: Record<string, string> = {
-    amp: '&',
+function decodeHtmlEntities(value: unknown) {
+  let result = String(value ?? "");
+
+  const namedEntities: Record<string, string> = {
+    amp: "&",
     quot: '"',
     apos: "'",
-    '#039': "'",
-    rsquo: "'",
-    eacute: 'é',
-    egrave: 'è',
-    ecirc: 'ê',
-    agrave: 'à',
-    ugrave: 'ù',
-    ccedil: 'ç',
+    "#039": "'",
+    nbsp: " ",
+    rsquo: "’",
+    lsquo: "‘",
+    rdquo: "”",
+    ldquo: "“",
+    ndash: "–",
+    mdash: "—",
+    hellip: "…",
+    laquo: "«",
+    raquo: "»",
+    times: "×",
+    prime: "′",
+    Prime: "″",
+    eacute: "é",
+    egrave: "è",
+    ecirc: "ê",
+    agrave: "à",
+    ugrave: "ù",
+    ccedil: "ç",
   };
 
-  return value.replace(/&([^;]+);/g, (match, entity) => entities[entity] ?? match);
+  // Plusieurs passages pour gérer les entités doublement encodées :
+  // &amp;Prime; devient d'abord &Prime;, puis ″
+  for (let pass = 0; pass < 4; pass += 1) {
+    const previousResult = result;
+
+    result = result
+      .replace(/&#x([0-9a-f]+);/gi, (_, hexadecimal: string) =>
+        String.fromCodePoint(Number.parseInt(hexadecimal, 16))
+      )
+      .replace(/&#(\d+);/g, (_, decimal: string) =>
+        String.fromCodePoint(Number.parseInt(decimal, 10))
+      )
+      .replace(/&([a-zA-Z0-9#]+);/g, (match, entity: string) => {
+        return namedEntities[entity] ?? match;
+      });
+
+    if (result === previousResult) {
+      break;
+    }
+  }
+
+  return result;
 }
