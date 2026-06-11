@@ -167,23 +167,18 @@ const FILTER_GROUPS: Array<{
 ];
 
 function getSortParams(sortOption: SortOption) {
-  if (sortOption === "price-asc") {
-    return { orderby: "price" as const, order: "asc" as const };
+  switch (sortOption) {
+    case "price-asc":
+      return { orderby: "price" as const, order: "asc" as const };
+    case "price-desc":
+      return { orderby: "price" as const, order: "desc" as const };
+    case "name-asc":
+      return { orderby: "title" as const, order: "asc" as const };
+    case "name-desc":
+      return { orderby: "title" as const, order: "desc" as const };
+    default:
+      return {};
   }
-
-  if (sortOption === "price-desc") {
-    return { orderby: "price" as const, order: "desc" as const };
-  }
-
-  if (sortOption === "name-asc") {
-    return { orderby: "title" as const, order: "asc" as const };
-  }
-
-  if (sortOption === "name-desc") {
-    return { orderby: "title" as const, order: "desc" as const };
-  }
-
-  return {};
 }
 
 function normalizeText(value: string) {
@@ -193,7 +188,38 @@ function normalizeText(value: string) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function decodeHtmlEntities(value: string) {
+  const namedEntities: Record<string, string> = {
+    amp: "&",
+    quot: '"',
+    apos: "'",
+    "#039": "'",
+    rsquo: "’",
+    Prime: "″",
+    prime: "′",
+    eacute: "é",
+    egrave: "è",
+    ecirc: "ê",
+    agrave: "à",
+    ugrave: "ù",
+    ccedil: "ç",
+  };
+
+  return value
+    .replace(/&#x([0-9a-f]+);/gi, (_, hexadecimal: string) =>
+      String.fromCodePoint(Number.parseInt(hexadecimal, 16))
+    )
+    .replace(/&#(\d+);/g, (_, decimal: string) =>
+      String.fromCodePoint(Number.parseInt(decimal, 10))
+    )
+    .replace(/&([a-zA-Z0-9#]+);/g, (match, entity: string) => {
+      return namedEntities[entity] ?? match;
+    });
+}
+
 function getCategoryDisplayName(name: string) {
+  const decodedName = decodeHtmlEntities(name);
+
   const labels: Record<string, string> = {
     "Ordinateurs portables & Mobilité": "Notebooks",
     "PC fixes & Workstations": "Workstations",
@@ -207,11 +233,11 @@ function getCategoryDisplayName(name: string) {
     "Rails et accessoires rack": "Rails / accessoires rack",
   };
 
-  return labels[name] ?? name;
+  return labels[decodedName] ?? decodedName;
 }
 
 function getParentGroupTitle(category: WooCategory) {
-  const name = normalizeText(category.name);
+  const name = normalizeText(decodeHtmlEntities(category.name));
 
   if (name.includes("ordinateurs portables")) return "Notebooks";
 
@@ -235,7 +261,7 @@ function getParentGroupTitle(category: WooCategory) {
 }
 
 function isWifiCategory(category: WooCategory) {
-  const name = normalizeText(category.name);
+  const name = normalizeText(decodeHtmlEntities(category.name));
   return name.includes("wi-fi") || name.includes("wifi");
 }
 
@@ -318,26 +344,32 @@ function getCategoryGroups(categories: WooCategory[]) {
 
 function getProductSearchText(product: Product) {
   return normalizeText(
-    [
-      product.name,
-      product.sku,
-      product.ean,
-      product.manufacturerPartNumber,
-      product.category,
-      product.manufacturer,
-      product.status,
-      product.conditionLabel,
-      product.os,
-      product.productGroup,
-      product.specs,
-      product.description,
-    ]
-      .filter(Boolean)
-      .join(" ")
+    decodeHtmlEntities(
+      [
+        product.name,
+        product.sku,
+        product.ean,
+        product.manufacturerPartNumber,
+        product.category,
+        product.manufacturer,
+        product.status,
+        product.conditionLabel,
+        product.os,
+        product.productGroup,
+        product.specs,
+        product.description,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    )
   );
 }
 
-function optionMatchesProduct(product: Product, filterKey: FilterKey, option: string) {
+function optionMatchesProduct(
+  product: Product,
+  filterKey: FilterKey,
+  option: string
+) {
   const text = getProductSearchText(product);
   const optionText = normalizeText(option);
 
@@ -345,14 +377,19 @@ function optionMatchesProduct(product: Product, filterKey: FilterKey, option: st
     const brand = normalizeText(product.manufacturer || "");
 
     if (option === "HP / HPE") {
-      return brand.includes("hp") || brand.includes("hpe") || text.includes("hewlett");
+      return (
+        brand === "hp" ||
+        brand.includes("hpe") ||
+        brand.includes("hewlett") ||
+        text.includes("hewlett packard")
+      );
     }
 
     if (option === "Autres marques") {
       return (
         brand.length > 0 &&
-        !["dell", "lenovo", "apple", "cisco", "hp", "hpe"].some((knownBrand) =>
-          brand.includes(knownBrand)
+        !["dell", "lenovo", "apple", "cisco", "hp", "hpe"].some(
+          (knownBrand) => brand.includes(knownBrand)
         )
       );
     }
@@ -361,7 +398,9 @@ function optionMatchesProduct(product: Product, filterKey: FilterKey, option: st
   }
 
   if (filterKey === "condition") {
-    const condition = normalizeText(product.conditionLabel || product.status || "");
+    const condition = normalizeText(
+      product.conditionLabel || product.status || ""
+    );
 
     if (option === "Autre") {
       return (
@@ -403,70 +442,78 @@ function optionMatchesProduct(product: Product, filterKey: FilterKey, option: st
 
   if (filterKey === "screen") {
     const screenValue = option.replace(" pouces", "");
-    return (
-      text.includes(`${screenValue}"`) ||
-      text.includes(`${screenValue} inch`) ||
-      text.includes(`${screenValue} pouces`) ||
-      text.includes(`${screenValue}.`) ||
-      text.includes(`${screenValue},`)
+    const screenRegex = new RegExp(
+      `\\b${screenValue}(?:[.,]\\d+)?\\s*(?:\\"|″|inch(?:es)?|pouces?)\\b`,
+      "i"
     );
+
+    return screenRegex.test(text);
   }
 
   if (filterKey === "cpu") {
-    if (option === "Intel Core i3") return text.includes("i3");
-    if (option === "Intel Core i5") return text.includes("i5");
-    if (option === "Intel Core i7") return text.includes("i7");
-    if (option === "Intel Xeon") return text.includes("xeon");
-    if (option === "AMD Ryzen") return text.includes("ryzen");
+    if (option === "Intel Core i3") return /\b(?:core\s*)?i3\b/.test(text);
+    if (option === "Intel Core i5") return /\b(?:core\s*)?i5\b/.test(text);
+    if (option === "Intel Core i7") return /\b(?:core\s*)?i7\b/.test(text);
+    if (option === "Intel Xeon") return /\bxeon\b/.test(text);
+    if (option === "AMD Ryzen") return /\bryzen\b/.test(text);
 
     return (
-      text.includes("cpu") &&
-      !["i3", "i5", "i7", "xeon", "ryzen"].some((cpu) => text.includes(cpu))
+      (text.includes("cpu") || text.includes("processeur")) &&
+      !["i3", "i5", "i7", "xeon", "ryzen"].some((cpu) =>
+        text.includes(cpu)
+      )
     );
   }
 
   if (filterKey === "ram") {
     if (option === "128 Go et plus") {
-      return text.includes("128gb") || text.includes("128 go") || text.includes("256gb");
+      return /\b(?:128|192|256|512)\s*(?:gb|go)\b/.test(text);
     }
 
     const ramValue = option.replace(" Go", "");
-    return (
-      text.includes(`${ramValue}gb`) ||
-      text.includes(`${ramValue} go`) ||
-      text.includes(`${ramValue}g `)
-    );
+    const ramRegex = new RegExp(`\\b${ramValue}\\s*(?:gb|go)\\b`, "i");
+
+    return ramRegex.test(text);
   }
 
   if (filterKey === "storage") {
     if (option === "1 To") {
-      return text.includes("1tb") || text.includes("1 to") || text.includes("1000gb");
+      return /\b(?:1\s*(?:tb|to)|1000\s*(?:gb|go))\b/.test(text);
     }
 
     if (option === "2 To et plus") {
-      return (
-        text.includes("2tb") ||
-        text.includes("2 to") ||
-        text.includes("4tb") ||
-        text.includes("4 to")
-      );
+      return /\b(?:2|3|4|6|8|10|12|16)\s*(?:tb|to)\b/.test(text);
     }
 
     const storageValue = option.replace(" Go", "");
-    return text.includes(`${storageValue}gb`) || text.includes(`${storageValue} go`);
+    const storageRegex = new RegExp(
+      `\\b${storageValue}\\s*(?:gb|go)\\b`,
+      "i"
+    );
+
+    return storageRegex.test(text);
   }
 
   if (filterKey === "storageType") {
-    return text.includes(optionText);
+    return new RegExp(`\\b${optionText}\\b`, "i").test(text);
   }
 
   if (filterKey === "gpu") {
     if (option === "Intel Graphics") {
-      return text.includes("intel graphics") || text.includes("uhd graphics");
+      return (
+        text.includes("intel graphics") ||
+        text.includes("uhd graphics") ||
+        text.includes("iris xe")
+      );
     }
 
     if (option === "NVIDIA") {
-      return text.includes("nvidia") || text.includes("quadro") || text.includes("rtx");
+      return (
+        text.includes("nvidia") ||
+        text.includes("quadro") ||
+        text.includes("geforce") ||
+        text.includes("rtx")
+      );
     }
 
     if (option === "AMD Radeon") {
@@ -474,37 +521,46 @@ function optionMatchesProduct(product: Product, filterKey: FilterKey, option: st
     }
 
     return (
-      text.includes("graphics") &&
-      !["intel graphics", "uhd graphics", "nvidia", "quadro", "rtx", "radeon"].some(
-        (gpu) => text.includes(gpu)
-      )
+      (text.includes("graphics") || text.includes("gpu")) &&
+      ![
+        "intel graphics",
+        "uhd graphics",
+        "iris xe",
+        "nvidia",
+        "quadro",
+        "geforce",
+        "rtx",
+        "radeon",
+      ].some((gpu) => text.includes(gpu))
     );
   }
 
   if (filterKey === "ports") {
     const portValue = option.replace(" ports", "");
-    return (
-      text.includes(`${portValue} ports`) ||
-      text.includes(`${portValue}-port`) ||
-      text.includes(`${portValue}x`)
+    const portRegex = new RegExp(
+      `\\b${portValue}\\s*(?:ports?|port)|\\b${portValue}x\\b`,
+      "i"
     );
+
+    return portRegex.test(text);
   }
 
   if (filterKey === "speed") {
-    if (option === "1G") return text.includes("1g") || text.includes("gigabit");
-    if (option === "10G") return text.includes("10g");
-    if (option === "25G") return text.includes("25g");
-    if (option === "40G") return text.includes("40g");
+    if (option === "1G") {
+      return /\b1\s*(?:g|gbe|gbps)\b/.test(text) || text.includes("gigabit");
+    }
+
+    if (option === "10G") return /\b10\s*(?:g|gbe|gbps)\b/.test(text);
+    if (option === "25G") return /\b25\s*(?:g|gbe|gbps)\b/.test(text);
+    if (option === "40G") return /\b40\s*(?:g|gbe|gbps)\b/.test(text);
   }
 
   if (filterKey === "poe") {
     if (option === "PoE") {
-      return text.includes("poe");
+      return /\bpoe(?:\+|\+\+)?\b/.test(text);
     }
 
-    if (option === "Non PoE") {
-      return !text.includes("poe");
-    }
+    return !/\bpoe(?:\+|\+\+)?\b/.test(text);
   }
 
   return text.includes(optionText);
@@ -532,11 +588,11 @@ export function Shop() {
 
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [expandedCategoryGroup, setExpandedCategoryGroup] = useState<
-  string | null
->(null);
+    string | null
+  >(null);
   const [expandedFilterGroup, setExpandedFilterGroup] = useState<string | null>(
-  null
-);
+    null
+  );
 
   const [sortOption, setSortOption] = useState<SortOption>("default");
   const [productsPerPage, setProductsPerPage] = useState(24);
@@ -560,9 +616,7 @@ export function Shop() {
     setCategoriesLoading(true);
 
     listCategories()
-      .then((data) => {
-        setCategories(data);
-      })
+      .then(setCategories)
       .catch((error) => {
         console.error("Erreur lors de la récupération des catégories :", error);
         setCategories([]);
@@ -573,12 +627,12 @@ export function Shop() {
   }, []);
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
+    const timeout = window.setTimeout(() => {
       setCurrentPage(1);
       setSearchTerm(searchInput.trim());
     }, 400);
 
-    return () => clearTimeout(timeout);
+    return () => window.clearTimeout(timeout);
   }, [searchInput]);
 
   useEffect(() => {
@@ -598,7 +652,7 @@ export function Shop() {
       .then((result) => {
         setProducts(result.products);
         setTotalProducts(result.total);
-        setTotalPages(result.totalPages);
+        setTotalPages(Math.max(result.totalPages, 1));
       })
       .catch((error) => {
         console.error("Erreur lors de la récupération des produits :", error);
@@ -625,23 +679,21 @@ export function Shop() {
   ) {
     setCurrentPage(1);
 
-    if (selectedValues.includes(value)) {
-      setSelectedValues(selectedValues.filter((item) => item !== value));
-    } else {
-      setSelectedValues([...selectedValues, value]);
-    }
+    setSelectedValues(
+      selectedValues.includes(value)
+        ? selectedValues.filter((item) => item !== value)
+        : [...selectedValues, value]
+    );
   }
 
   function toggleStockFilter(value: "instock" | "outofstock") {
     setCurrentPage(1);
 
-    if (selectedStockStatuses.includes(value)) {
-      setSelectedStockStatuses(
-        selectedStockStatuses.filter((item) => item !== value)
-      );
-    } else {
-      setSelectedStockStatuses([...selectedStockStatuses, value]);
-    }
+    setSelectedStockStatuses((currentStatuses) =>
+      currentStatuses.includes(value)
+        ? currentStatuses.filter((item) => item !== value)
+        : [...currentStatuses, value]
+    );
   }
 
   function toggleTextFilter(filterKey: FilterKey, option: string) {
@@ -660,16 +712,16 @@ export function Shop() {
   }
 
   function toggleCategoryGroup(title: string) {
-  setExpandedCategoryGroup((currentGroup) =>
-    currentGroup === title ? null : title
-  );
-}
+    setExpandedCategoryGroup((currentGroup) =>
+      currentGroup === title ? null : title
+    );
+  }
 
   function toggleFilterGroup(groupKey: string) {
-  setExpandedFilterGroup((currentGroup) =>
-    currentGroup === groupKey ? null : groupKey
-  );
-}
+    setExpandedFilterGroup((currentGroup) =>
+      currentGroup === groupKey ? null : groupKey
+    );
+  }
 
   function resetFilters() {
     setSearchInput("");
@@ -677,6 +729,8 @@ export function Shop() {
     setSelectedCategoryIds([]);
     setSelectedStockStatuses([]);
     setSelectedFilters(EMPTY_FILTERS);
+    setExpandedCategoryGroup(null);
+    setExpandedFilterGroup(null);
     setSortOption("default");
     setProductsPerPage(24);
     setCurrentPage(1);
@@ -686,7 +740,7 @@ export function Shop() {
     const pages: Array<number | "..."> = [];
 
     if (totalPages <= 7) {
-      for (let page = 1; page <= totalPages; page++) {
+      for (let page = 1; page <= totalPages; page += 1) {
         pages.push(page);
       }
 
@@ -694,34 +748,30 @@ export function Shop() {
     }
 
     if (currentPage <= 4) {
-      pages.push(1, 2, 3, 4, 5, "...", totalPages);
-      return pages;
+      return [1, 2, 3, 4, 5, "...", totalPages];
     }
 
     if (currentPage >= totalPages - 3) {
-      pages.push(
+      return [
         1,
         "...",
         totalPages - 4,
         totalPages - 3,
         totalPages - 2,
         totalPages - 1,
-        totalPages
-      );
-      return pages;
+        totalPages,
+      ];
     }
 
-    pages.push(
+    return [
       1,
       "...",
       currentPage - 1,
       currentPage,
       currentPage + 1,
       "...",
-      totalPages
-    );
-
-    return pages;
+      totalPages,
+    ];
   }
 
   const textFilterCount = Object.values(selectedFilters).reduce(
@@ -735,39 +785,41 @@ export function Shop() {
     textFilterCount +
     (searchTerm ? 1 : 0);
 
-  const paginationPages = getPaginationPages();
   const categoryGroups = getCategoryGroups(categories);
+  const paginationPages = getPaginationPages();
 
-  const filteredProducts = useMemo(() => {
-    return products.filter((product) =>
-      productMatchesSelectedFilters(product, selectedFilters)
-    );
-  }, [products, selectedFilters]);
+  const filteredProducts = useMemo(
+    () =>
+      products.filter((product) =>
+        productMatchesSelectedFilters(product, selectedFilters)
+      ),
+    [products, selectedFilters]
+  );
 
   return (
-    <section className="pt-32 pb-24 bg-brand-50 min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="min-h-screen bg-brand-50 pb-24 pt-32">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <header className="mb-10">
-          <p className="text-brand-700 font-semibold uppercase tracking-wide text-sm mb-3">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-brand-700">
             Catalogue professionnel
           </p>
 
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-            <div>
-              <h1 className="text-4xl lg:text-5xl font-bold text-brand-950 tracking-tight mb-4">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0">
+              <h1 className="mb-4 text-4xl font-bold tracking-tight text-brand-950 lg:text-5xl">
                 Boutique{" "}
                 <span className="font-display italic text-accent-500">
                   EcoLiz
                 </span>
               </h1>
 
-              <p className="text-lg text-brand-900/70 max-w-3xl">
+              <p className="max-w-3xl text-lg text-brand-900/70">
                 Matériel informatique professionnel, neuf et reconditionné, avec
                 prix HT/TTC, disponibilité et informations techniques.
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-brand-100 px-5 py-4 shadow-sm">
+            <div className="shrink-0 rounded-2xl border border-brand-100 bg-white px-5 py-4 shadow-sm">
               <p className="text-sm text-brand-900/60">Produits trouvés</p>
               <p className="text-2xl font-bold text-brand-950">
                 {totalProducts}
@@ -776,23 +828,29 @@ export function Shop() {
           </div>
         </header>
 
-        <div className="grid lg:grid-cols-[290px_1fr] gap-8">
-          <aside className="bg-white rounded-2xl border border-brand-100 p-5 h-fit sticky top-28">
-            <div className="flex items-center justify-between mb-5">
+        <div className="grid items-start gap-8 lg:grid-cols-[300px_minmax(0,1fr)]">
+          <aside
+            className="
+              self-start rounded-2xl border border-brand-100 bg-white p-5
+              lg:sticky lg:top-28 lg:max-h-[calc(100vh-8rem)]
+              lg:overflow-y-auto lg:overscroll-contain
+            "
+          >
+            <div className="mb-5 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-brand-900/60" />
+                <Filter className="h-4 w-4 text-brand-900/60" />
                 <h2 className="font-semibold text-brand-950">Filtres</h2>
               </div>
 
               {activeFilterCount > 0 && (
-                <span className="text-xs bg-brand-100 text-brand-700 rounded-full px-2 py-1">
+                <span className="rounded-full bg-brand-100 px-2 py-1 text-xs text-brand-700">
                   {activeFilterCount}
                 </span>
               )}
             </div>
 
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold text-brand-950 mb-3">
+            <div className="mb-5">
+              <h3 className="mb-3 text-sm font-semibold text-brand-950">
                 Catégorie
               </h3>
 
@@ -805,150 +863,83 @@ export function Shop() {
                   Aucune catégorie disponible.
                 </p>
               ) : (
-<div className="space-y-2">
-  {categoryGroups.map((group) => {
-    const isOpen = expandedCategoryGroup === group.title;
-
-    const selectedCount = group.children.filter((category) =>
-      selectedCategoryIds.includes(category.id)
-    ).length;
-
-    const productCount = group.children.reduce(
-      (total, category) => total + (category.count ?? 0),
-      0
-    );
-
-    return (
-      <div
-        key={group.title}
-        className="overflow-hidden rounded-xl border border-brand-100 bg-white"
-      >
-        <button
-          type="button"
-          onClick={() => toggleCategoryGroup(group.title)}
-          aria-expanded={isOpen}
-          className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors hover:bg-brand-50"
-        >
-          <span className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-sm font-semibold text-brand-950">
-              {group.title}
-            </span>
-
-            {selectedCount > 0 && (
-              <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
-                {selectedCount}
-              </span>
-            )}
-          </span>
-
-          <span className="flex flex-shrink-0 items-center gap-2">
-            <span className="text-xs text-brand-900/40">
-              {productCount}
-            </span>
-
-            <ChevronDown
-              className={`h-4 w-4 text-brand-900/50 transition-transform duration-200 ${
-                isOpen ? "rotate-180" : ""
-              }`}
-            />
-          </span>
-        </button>
-
-        {isOpen && (
-          <div className="space-y-2 border-t border-brand-100 bg-brand-50/40 px-3 py-3">
-            {group.children.map((category) => (
-              <label
-                key={category.id}
-                className="flex cursor-pointer items-center justify-between gap-2 text-sm text-brand-900/70"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedCategoryIds.includes(category.id)}
-                    onChange={() =>
-                      toggleNumberFilter(
-                        category.id,
-                        selectedCategoryIds,
-                        setSelectedCategoryIds
-                      )
-                    }
-                    className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
-                  />
-
-                  <span className="truncate">
-                    {getCategoryDisplayName(category.name)}
-                  </span>
-                </span>
-
-                {typeof category.count === "number" && (
-                  <span className="flex-shrink-0 text-xs text-brand-900/40">
-                    {category.count}
-                  </span>
-                )}
-              </label>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  })}
-</div>
+                <div className="space-y-2">
+                  {categoryGroups.map((group) => (
+                    <CategoryFilterGroup
+                      key={group.title}
+                      group={group}
+                      isOpen={expandedCategoryGroup === group.title}
+                      selectedCategoryIds={selectedCategoryIds}
+                      onToggleGroup={() => toggleCategoryGroup(group.title)}
+                      onToggleCategory={(categoryId) =>
+                        toggleNumberFilter(
+                          categoryId,
+                          selectedCategoryIds,
+                          setSelectedCategoryIds
+                        )
+                      }
+                    />
+                  ))}
+                </div>
               )}
             </div>
-<FilterGroup
-  title="Disponibilité"
-  options={["En stock", "Rupture de stock"]}
-  selectedOptions={selectedStockStatuses.map((status) =>
-    status === "instock" ? "En stock" : "Rupture de stock"
-  )}
-  isOpen={expandedFilterGroup === "availability"}
-  onToggleGroup={() => toggleFilterGroup("availability")}
-  onToggle={(option) =>
-    toggleStockFilter(option === "En stock" ? "instock" : "outofstock")
-  }
-/>
 
-        {FILTER_GROUPS.map((group) => (
-          <FilterGroup
-            key={group.key}
-            title={group.title}
-            options={group.options}
-            selectedOptions={selectedFilters[group.key]}
-            isOpen={expandedFilterGroup === group.key}
-            onToggleGroup={() => toggleFilterGroup(group.key)}
-            onToggle={(option) => toggleTextFilter(group.key, option)}
-          />
-        ))}
+            <FilterGroup
+              title="Disponibilité"
+              options={["En stock", "Rupture de stock"]}
+              selectedOptions={selectedStockStatuses.map((status) =>
+                status === "instock" ? "En stock" : "Rupture de stock"
+              )}
+              isOpen={expandedFilterGroup === "availability"}
+              onToggleGroup={() => toggleFilterGroup("availability")}
+              onToggle={(option) =>
+                toggleStockFilter(
+                  option === "En stock" ? "instock" : "outofstock"
+                )
+              }
+            />
+
+            {FILTER_GROUPS.map((group) => (
+              <FilterGroup
+                key={group.key}
+                title={group.title}
+                options={group.options}
+                selectedOptions={selectedFilters[group.key]}
+                isOpen={expandedFilterGroup === group.key}
+                onToggleGroup={() => toggleFilterGroup(group.key)}
+                onToggle={(option) => toggleTextFilter(group.key, option)}
+              />
+            ))}
 
             {activeFilterCount > 0 && (
               <button
                 type="button"
                 onClick={resetFilters}
-                className="inline-flex items-center gap-2 text-sm text-brand-700 hover:text-brand-800 underline"
+                className="mt-2 inline-flex items-center gap-2 text-sm text-brand-700 underline hover:text-brand-800"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="h-3.5 w-3.5" />
                 Réinitialiser les filtres
               </button>
             )}
           </aside>
 
-          <div>
-            <div className="bg-white border border-brand-100 rounded-2xl p-4 mb-6 flex flex-col gap-4">
-              <div className="flex flex-col xl:flex-row gap-4 xl:items-center xl:justify-between">
-                <div className="relative flex-1 max-w-xl">
-                  <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-900/40" />
+          <main className="min-w-0">
+            <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-brand-100 bg-white p-4">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="relative min-w-0 flex-1 xl:max-w-xl">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-900/40" />
 
                   <input
                     value={searchInput}
                     onChange={(event) => setSearchInput(event.target.value)}
-                    placeholder="Rechercher par nom, marque, référence..."
-                    className="w-full rounded-xl border border-brand-100 bg-brand-50 py-3 pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
+                    placeholder="Rechercher par nom, marque, référence…"
+                    className="w-full rounded-xl border border-brand-100 bg-brand-50 py-3 pl-11 pr-4 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
                   />
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  <label className="flex items-center gap-2 text-sm text-brand-900/60">
-                    <span>Trier par</span>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <label className="flex items-center justify-between gap-2 text-sm text-brand-900/60 sm:justify-start">
+                    <span className="whitespace-nowrap">Trier par</span>
 
                     <select
                       value={sortOption}
@@ -956,7 +947,7 @@ export function Shop() {
                         setCurrentPage(1);
                         setSortOption(event.target.value as SortOption);
                       }}
-                      className="rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-950 outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
+                      className="min-w-0 rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-950 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
                     >
                       <option value="default">Défaut</option>
                       <option value="price-asc">Prix croissant</option>
@@ -966,8 +957,8 @@ export function Shop() {
                     </select>
                   </label>
 
-                  <label className="flex items-center gap-2 text-sm text-brand-900/60">
-                    <span>Afficher</span>
+                  <label className="flex items-center justify-between gap-2 text-sm text-brand-900/60 sm:justify-start">
+                    <span className="whitespace-nowrap">Afficher</span>
 
                     <select
                       value={productsPerPage}
@@ -975,7 +966,7 @@ export function Shop() {
                         setCurrentPage(1);
                         setProductsPerPage(Number(event.target.value));
                       }}
-                      className="rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-950 outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
+                      className="min-w-0 rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-950 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
                     >
                       {PRODUCTS_PER_PAGE_OPTIONS.map((option) => (
                         <option key={option} value={option}>
@@ -988,47 +979,49 @@ export function Shop() {
               </div>
 
               <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2 text-sm text-brand-900/60">
-                  <SlidersHorizontal className="w-4 h-4" />
-                  Page {currentPage} / {totalPages}
+                <div className="flex min-w-0 items-center gap-2 text-sm text-brand-900/60">
+                  <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    Page {currentPage} / {totalPages}
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-1 bg-brand-50 border border-brand-100 rounded-xl p-1">
+                <div className="flex shrink-0 items-center gap-1 rounded-xl border border-brand-100 bg-brand-50 p-1">
                   <button
                     type="button"
                     onClick={() => setViewMode("list")}
-                    className={`p-2 rounded-lg transition-colors ${
+                    className={`rounded-lg p-2 transition-colors ${
                       viewMode === "list"
                         ? "bg-white text-brand-700 shadow-sm"
                         : "text-brand-900/40 hover:text-brand-900"
                     }`}
                     aria-label="Vue liste"
                   >
-                    <List className="w-4 h-4" />
+                    <List className="h-4 w-4" />
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setViewMode("grid")}
-                    className={`p-2 rounded-lg transition-colors ${
+                    className={`rounded-lg p-2 transition-colors ${
                       viewMode === "grid"
                         ? "bg-white text-brand-700 shadow-sm"
                         : "text-brand-900/40 hover:text-brand-900"
                     }`}
                     aria-label="Vue grille"
                   >
-                    <Grid3X3 className="w-4 h-4" />
+                    <Grid3X3 className="h-4 w-4" />
                   </button>
                 </div>
               </div>
             </div>
 
             {loading ? (
-              <div className="bg-white rounded-2xl border border-brand-100 py-20 text-center text-brand-900/50">
+              <div className="rounded-2xl border border-brand-100 bg-white py-20 text-center text-brand-900/50">
                 Chargement du catalogue…
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-brand-100 py-20 text-center text-brand-900/50">
+              <div className="rounded-2xl border border-brand-100 bg-white py-20 text-center text-brand-900/50">
                 Aucun produit ne correspond aux filtres sélectionnés.
               </div>
             ) : viewMode === "list" ? (
@@ -1038,7 +1031,7 @@ export function Shop() {
                 ))}
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid min-w-0 gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {filteredProducts.map((product) => (
                   <ProductGridItem key={product.id} product={product} />
                 ))}
@@ -1046,14 +1039,17 @@ export function Shop() {
             )}
 
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-12 flex-wrap">
+              <nav
+                className="mt-12 flex flex-wrap items-center justify-center gap-2"
+                aria-label="Pagination du catalogue"
+              >
                 <button
                   type="button"
                   onClick={() =>
                     setCurrentPage((page) => Math.max(page - 1, 1))
                   }
                   disabled={currentPage === 1 || loading}
-                  className="px-4 py-2 rounded-full border border-emerald-200 bg-white/70 text-brand-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-50 transition-colors"
+                  className="rounded-full border border-emerald-200 bg-white/70 px-4 py-2 text-brand-900 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Précédent
                 </button>
@@ -1064,19 +1060,20 @@ export function Shop() {
                       key={`ellipsis-${index}`}
                       className="px-3 py-2 text-brand-900/50"
                     >
-                      ...
+                      …
                     </span>
                   ) : (
                     <button
                       key={page}
                       type="button"
-                      onClick={() => setCurrentPage(page)}
+                      onClick={() => setCurrentPage(Number(page))}
                       disabled={loading}
-                      className={`w-11 h-11 rounded-full border transition-colors ${
+                      aria-current={currentPage === Number(page) ? "page" : undefined}
+                      className={`h-11 w-11 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                         currentPage === page
-                          ? "bg-brand-700 text-white border-brand-700"
-                          : "bg-white/70 text-brand-900 border-emerald-200 hover:bg-emerald-50"
-                      } disabled:opacity-40 disabled:cursor-not-allowed`}
+                          ? "border-brand-700 bg-brand-700 text-white"
+                          : "border-emerald-200 bg-white/70 text-brand-900 hover:bg-emerald-50"
+                      }`}
                     >
                       {page}
                     </button>
@@ -1089,16 +1086,102 @@ export function Shop() {
                     setCurrentPage((page) => Math.min(page + 1, totalPages))
                   }
                   disabled={currentPage === totalPages || loading}
-                  className="px-4 py-2 rounded-full border border-emerald-200 bg-white/70 text-brand-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-50 transition-colors"
+                  className="rounded-full border border-emerald-200 bg-white/70 px-4 py-2 text-brand-900 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Suivant
                 </button>
-              </div>
+              </nav>
             )}
-          </div>
+          </main>
         </div>
       </div>
     </section>
+  );
+}
+
+function CategoryFilterGroup({
+  group,
+  isOpen,
+  selectedCategoryIds,
+  onToggleGroup,
+  onToggleCategory,
+}: {
+  group: CategoryGroup;
+  isOpen: boolean;
+  selectedCategoryIds: number[];
+  onToggleGroup: () => void;
+  onToggleCategory: (categoryId: number) => void;
+}) {
+  const selectedCount = group.children.filter((category) =>
+    selectedCategoryIds.includes(category.id)
+  ).length;
+
+  const productCount = group.children.reduce(
+    (total, category) => total + (category.count ?? 0),
+    0
+  );
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-brand-100 bg-white">
+      <button
+        type="button"
+        onClick={onToggleGroup}
+        aria-expanded={isOpen}
+        className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors hover:bg-brand-50"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-semibold text-brand-950">
+            {group.title}
+          </span>
+
+          {selectedCount > 0 && (
+            <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
+              {selectedCount}
+            </span>
+          )}
+        </span>
+
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="text-xs text-brand-900/40">{productCount}</span>
+
+          <ChevronDown
+            className={`h-4 w-4 text-brand-900/50 transition-transform duration-200 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        </span>
+      </button>
+
+      {isOpen && (
+        <div className="space-y-2 border-t border-brand-100 bg-brand-50/40 px-3 py-3">
+          {group.children.map((category) => (
+            <label
+              key={category.id}
+              className="flex cursor-pointer items-center justify-between gap-2 text-sm text-brand-900/70"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selectedCategoryIds.includes(category.id)}
+                  onChange={() => onToggleCategory(category.id)}
+                  className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
+                />
+
+                <span className="break-words">
+                  {getCategoryDisplayName(category.name)}
+                </span>
+              </span>
+
+              {typeof category.count === "number" && (
+                <span className="shrink-0 text-xs text-brand-900/40">
+                  {category.count}
+                </span>
+              )}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1138,7 +1221,7 @@ function FilterGroup({
         </span>
 
         <ChevronDown
-          className={`h-4 w-4 flex-shrink-0 text-brand-900/50 transition-transform duration-200 ${
+          className={`h-4 w-4 shrink-0 text-brand-900/50 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
           }`}
         />
@@ -1158,7 +1241,7 @@ function FilterGroup({
                 className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
               />
 
-              <span>{option}</span>
+              <span className="break-words">{option}</span>
             </label>
           ))}
         </div>
@@ -1168,22 +1251,24 @@ function FilterGroup({
 }
 
 function ProductListItem({ product }: { product: Product }) {
+  const productName = decodeHtmlEntities(product.name);
+
   return (
     <Link
       to={`/produit/${product.slug}`}
-      className="group bg-white border border-brand-100 rounded-2xl p-4 flex gap-5 hover:shadow-lg hover:shadow-brand-900/10 transition-all"
+      className="group flex min-w-0 flex-col gap-5 overflow-hidden rounded-2xl border border-brand-100 bg-white p-4 transition-all hover:shadow-lg hover:shadow-brand-900/10 sm:flex-row"
     >
-      <div className="w-32 h-28 sm:w-40 sm:h-32 bg-brand-50 rounded-xl border border-brand-100 overflow-hidden flex-shrink-0">
+      <div className="h-48 w-full shrink-0 overflow-hidden rounded-xl border border-brand-100 bg-brand-50 sm:h-32 sm:w-40">
         <img
           src={product.image || "/placeholder-product.png"}
-          alt={product.name}
+          alt={productName}
           loading="lazy"
-          className="w-full h-full object-contain mix-blend-multiply group-hover:scale-[1.03] transition-transform duration-300"
+          className="h-full w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-[1.03]"
         />
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2 mb-2">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
           <StatusPill
             label={product.stock ? "En stock" : "Rupture"}
             variant={product.stock ? "success" : "warning"}
@@ -1195,17 +1280,17 @@ function ProductListItem({ product }: { product: Product }) {
             )}
 
           {product.manufacturer && (
-            <span className="text-xs text-brand-900/50">
-              {product.manufacturer}
+            <span className="break-words text-xs text-brand-900/50">
+              {decodeHtmlEntities(product.manufacturer)}
             </span>
           )}
         </div>
 
-        <h3 className="text-lg font-bold text-brand-950 mb-2 line-clamp-2 group-hover:text-brand-700 transition-colors">
-          {product.name}
+        <h3 className="mb-2 line-clamp-3 break-words text-lg font-bold text-brand-950 [overflow-wrap:anywhere] transition-colors group-hover:text-brand-700">
+          {productName}
         </h3>
 
-        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-x-4 gap-y-1 text-xs text-brand-900/60 mb-3">
+        <div className="mb-3 grid min-w-0 gap-x-4 gap-y-1 text-xs text-brand-900/60 sm:grid-cols-2 xl:grid-cols-4">
           {product.sku && <InfoLine label="SKU" value={product.sku} />}
 
           {product.manufacturerPartNumber && (
@@ -1222,15 +1307,15 @@ function ProductListItem({ product }: { product: Product }) {
         </div>
 
         {product.specs && (
-          <p className="text-sm text-brand-900/60 line-clamp-2">
-            {product.specs}
+          <p className="line-clamp-2 break-words text-sm text-brand-900/60 [overflow-wrap:anywhere]">
+            {decodeHtmlEntities(product.specs)}
           </p>
         )}
       </div>
 
-      <div className="hidden md:flex flex-col items-end justify-between min-w-[150px]">
+      <div className="flex shrink-0 items-end justify-between gap-4 border-t border-brand-100 pt-4 sm:w-full md:w-auto md:min-w-[150px] md:flex-col md:items-end md:border-l md:border-t-0 md:pl-4 md:pt-0">
         <div className="text-right">
-          <p className="text-2xl font-bold text-brand-950">
+          <p className="text-xl font-bold text-brand-950 sm:text-2xl">
             {formatPrice(product.price)} HT
           </p>
 
@@ -1250,20 +1335,22 @@ function ProductListItem({ product }: { product: Product }) {
 }
 
 function ProductGridItem({ product }: { product: Product }) {
+  const productName = decodeHtmlEntities(product.name);
+
   return (
     <Link
       to={`/produit/${product.slug}`}
-      className="group bg-white border border-brand-100 rounded-2xl overflow-hidden hover:shadow-lg hover:shadow-brand-900/10 transition-all flex flex-col"
+      className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white transition-all hover:shadow-lg hover:shadow-brand-900/10"
     >
-      <div className="relative aspect-[4/3] bg-brand-50">
+      <div className="relative aspect-[4/3] overflow-hidden bg-brand-50">
         <img
           src={product.image || "/placeholder-product.png"}
-          alt={product.name}
+          alt={productName}
           loading="lazy"
-          className="w-full h-full object-contain mix-blend-multiply group-hover:scale-[1.03] transition-transform duration-300"
+          className="h-full w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-[1.03]"
         />
 
-        <div className="absolute top-3 right-3">
+        <div className="absolute right-3 top-3">
           <StatusPill
             label={product.stock ? "En stock" : "Rupture"}
             variant={product.stock ? "success" : "warning"}
@@ -1271,12 +1358,12 @@ function ProductGridItem({ product }: { product: Product }) {
         </div>
       </div>
 
-      <div className="p-5 flex flex-col flex-1">
-        <h3 className="text-lg font-bold text-brand-950 mb-2 line-clamp-2">
-          {product.name}
+      <div className="flex min-w-0 flex-1 flex-col p-5">
+        <h3 className="mb-2 line-clamp-3 break-words text-lg font-bold text-brand-950 [overflow-wrap:anywhere]">
+          {productName}
         </h3>
 
-        <div className="space-y-1 text-xs text-brand-900/60 mb-4">
+        <div className="mb-4 min-w-0 space-y-1 text-xs text-brand-900/60">
           {product.manufacturer && (
             <InfoLine label="Marque" value={product.manufacturer} />
           )}
@@ -1306,9 +1393,9 @@ function ProductGridItem({ product }: { product: Product }) {
 
 function InfoLine({ label, value }: { label: string; value: string }) {
   return (
-    <p className="truncate">
+    <p className="min-w-0 break-words [overflow-wrap:anywhere]">
       <span className="font-medium text-brand-900/70">{label} :</span>{" "}
-      <span>{value}</span>
+      <span>{decodeHtmlEntities(value)}</span>
     </p>
   );
 }
@@ -1321,16 +1408,16 @@ function StatusPill({
   variant: "success" | "warning" | "brand";
 }) {
   const styles = {
-    success: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    warning: "bg-amber-50 text-amber-700 border-amber-200",
-    brand: "bg-brand-50 text-brand-700 border-brand-100",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    warning: "border-amber-200 bg-amber-50 text-amber-700",
+    brand: "border-brand-100 bg-brand-50 text-brand-700",
   };
 
   return (
     <span
       className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${styles[variant]}`}
     >
-      {label}
+      {decodeHtmlEntities(label)}
     </span>
   );
 }

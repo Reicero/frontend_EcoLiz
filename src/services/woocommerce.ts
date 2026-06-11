@@ -103,6 +103,9 @@ function mapGrade(product: any): ProductGrade {
 function mapConditionLabel(status?: string): string {
   if (!status) return 'Non renseigné';
 
+  const normalizedStatus = status.trim().toUpperCase();
+  const decodedStatus = decodeHtmlEntities(status).trim();
+
   const labels: Record<string, string> = {
     N1: 'Neuf',
     N2: 'Neuf',
@@ -116,7 +119,48 @@ function mapConditionLabel(status?: string): string {
     D2: 'Déstockage',
   };
 
-  return labels[status] ?? status;
+  return (labels[normalizedStatus] ?? decodedStatus) || 'Non renseigné';
+}
+
+function buildSpecs(product: any) {
+  if (!Array.isArray(product.attributes)) {
+    return "";
+  }
+
+  return product.attributes
+    .map((attribute: any) => {
+      const attributeName = decodeHtmlEntities(attribute?.name).trim();
+
+      const termValues = Array.isArray(attribute?.terms)
+        ? attribute.terms
+            .map((term: any) =>
+              decodeHtmlEntities(
+                typeof term === "string" ? term : term?.name
+              ).trim()
+            )
+            .filter(Boolean)
+        : [];
+
+      const optionValues = Array.isArray(attribute?.options)
+        ? attribute.options
+            .map((option: unknown) =>
+              decodeHtmlEntities(
+                typeof option === "string" ? option : String(option)
+              ).trim()
+            )
+            .filter(Boolean)
+        : [];
+
+      const values = termValues.length > 0 ? termValues : optionValues;
+
+      if (!attributeName || values.length === 0) {
+        return "";
+      }
+
+      return `${attributeName}: ${values.join(", ")}`;
+    })
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /**
@@ -234,13 +278,15 @@ export async function listProducts({
     }
 
     const data = await response.json();
+    const products: Product[] = Array.isArray(data) ? data.map(mapWooProduct) : [];
     const total = Number(response.headers.get('X-WP-Total') ?? data.length ?? 0);
     const totalPages = Number(response.headers.get('X-WP-TotalPages') ?? 1);
 
     return {
-      products: Array.isArray(data) ? data.map(mapWooProduct) : [],
-      total,
-      totalPages: Math.max(1, totalPages),
+      products: products,
+      total: Number.isFinite(total) ? total : products.length,
+      totalPages:
+        Number.isFinite(totalPages) && totalPages > 0 ? totalPages : 1,
     };
   } catch (error) {
     console.error('Error fetching products:', error);
