@@ -12,12 +12,14 @@ import { About } from './pages/About'
 import { Legal } from './pages/Legal'
 import { Services } from './pages/Services'
 import { Impact } from './pages/Impact'
-import Cart from './pages/Cart'
+import { Cart } from './pages/Cart'
 import Checkout from './pages/Checkout'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { CookieBanner } from './components/layout/Cookies'
+
 const AUTH_ROUTES = ['/connexion', '/inscription']
+
 function AppLayout() {
   const { pathname } = useLocation()
   const isAuthRoute = AUTH_ROUTES.includes(pathname)
@@ -50,6 +52,7 @@ function AppLayout() {
     </div>
   )
 }
+
 export function App() {
   return (
     <BrowserRouter>
