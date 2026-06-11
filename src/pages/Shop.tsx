@@ -534,6 +534,9 @@ export function Shop() {
   const [expandedCategoryGroup, setExpandedCategoryGroup] = useState<
   string | null
 >(null);
+  const [expandedFilterGroup, setExpandedFilterGroup] = useState<string | null>(
+  null
+);
 
   const [sortOption, setSortOption] = useState<SortOption>("default");
   const [productsPerPage, setProductsPerPage] = useState(24);
@@ -659,6 +662,12 @@ export function Shop() {
   function toggleCategoryGroup(title: string) {
   setExpandedCategoryGroup((currentGroup) =>
     currentGroup === title ? null : title
+  );
+}
+
+  function toggleFilterGroup(groupKey: string) {
+  setExpandedFilterGroup((currentGroup) =>
+    currentGroup === groupKey ? null : groupKey
   );
 }
 
@@ -886,44 +895,30 @@ export function Shop() {
 </div>
               )}
             </div>
+<FilterGroup
+  title="Disponibilité"
+  options={["En stock", "Rupture de stock"]}
+  selectedOptions={selectedStockStatuses.map((status) =>
+    status === "instock" ? "En stock" : "Rupture de stock"
+  )}
+  isOpen={expandedFilterGroup === "availability"}
+  onToggleGroup={() => toggleFilterGroup("availability")}
+  onToggle={(option) =>
+    toggleStockFilter(option === "En stock" ? "instock" : "outofstock")
+  }
+/>
 
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold text-brand-950 mb-3">
-                Disponibilité
-              </h3>
-
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm text-brand-900/70 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedStockStatuses.includes("instock")}
-                    onChange={() => toggleStockFilter("instock")}
-                    className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
-                  />
-                  <span>En stock</span>
-                </label>
-
-                <label className="flex items-center gap-2 text-sm text-brand-900/70 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedStockStatuses.includes("outofstock")}
-                    onChange={() => toggleStockFilter("outofstock")}
-                    className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
-                  />
-                  <span>Rupture de stock</span>
-                </label>
-              </div>
-            </div>
-
-            {FILTER_GROUPS.map((group) => (
-              <FilterGroup
-                key={group.key}
-                title={group.title}
-                options={group.options}
-                selectedOptions={selectedFilters[group.key]}
-                onToggle={(option) => toggleTextFilter(group.key, option)}
-              />
-            ))}
+        {FILTER_GROUPS.map((group) => (
+          <FilterGroup
+            key={group.key}
+            title={group.title}
+            options={group.options}
+            selectedOptions={selectedFilters[group.key]}
+            isOpen={expandedFilterGroup === group.key}
+            onToggleGroup={() => toggleFilterGroup(group.key)}
+            onToggle={(option) => toggleTextFilter(group.key, option)}
+          />
+        ))}
 
             {activeFilterCount > 0 && (
               <button
@@ -1111,34 +1106,63 @@ function FilterGroup({
   title,
   options,
   selectedOptions,
+  isOpen,
+  onToggleGroup,
   onToggle,
 }: {
   title: string;
   options: string[];
   selectedOptions: string[];
+  isOpen: boolean;
+  onToggleGroup: () => void;
   onToggle: (option: string) => void;
 }) {
   return (
-    <div className="mb-6">
-      <h3 className="text-sm font-semibold text-brand-950 mb-3">{title}</h3>
+    <div className="mb-3 overflow-hidden rounded-xl border border-brand-100 bg-white">
+      <button
+        type="button"
+        onClick={onToggleGroup}
+        aria-expanded={isOpen}
+        className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors hover:bg-brand-50"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-semibold text-brand-950">
+            {title}
+          </span>
 
-      <div className="space-y-2">
-        {options.map((option) => (
-          <label
-            key={option}
-            className="flex items-center gap-2 text-sm text-brand-900/70 cursor-pointer"
-          >
-            <input
-              type="checkbox"
-              checked={selectedOptions.includes(option)}
-              onChange={() => onToggle(option)}
-              className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
-            />
+          {selectedOptions.length > 0 && (
+            <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
+              {selectedOptions.length}
+            </span>
+          )}
+        </span>
 
-            <span>{option}</span>
-          </label>
-        ))}
-      </div>
+        <ChevronDown
+          className={`h-4 w-4 flex-shrink-0 text-brand-900/50 transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="space-y-2 border-t border-brand-100 bg-brand-50/40 px-3 py-3">
+          {options.map((option) => (
+            <label
+              key={option}
+              className="flex cursor-pointer items-center gap-2 text-sm text-brand-900/70"
+            >
+              <input
+                type="checkbox"
+                checked={selectedOptions.includes(option)}
+                onChange={() => onToggle(option)}
+                className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
+              />
+
+              <span>{option}</span>
+            </label>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
