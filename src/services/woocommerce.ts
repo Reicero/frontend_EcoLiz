@@ -1,4 +1,8 @@
-import type { Product, ProductGrade } from "../types/product";
+/**
+ * Service de lecture du catalogue WooCommerce via la Store API.
+ */
+
+import type { Product, ProductAttribute, ProductGrade } from "../types/product";
 import { config } from "../config/env";
 import {
   calculatePriceTTC,
@@ -425,16 +429,16 @@ function mapConditionLabel(status?: string): string {
   return labels[decodedStatus.toUpperCase()] ?? decodedStatus;
 }
 
-function extractSpecifications(product: any): string {
+function extractProductAttributes(product: any): ProductAttribute[] {
   if (!Array.isArray(product.attributes)) {
-    return "";
+    return [];
   }
 
   return product.attributes
     .map((attribute: any) => {
-      const attributeName = decodeHtmlEntities(attribute?.name).trim();
+      const name = decodeHtmlEntities(attribute?.name).trim();
 
-      const terms = Array.isArray(attribute?.terms)
+      const termValues = Array.isArray(attribute?.terms)
         ? attribute.terms
             .map((term: any) =>
               decodeHtmlEntities(
@@ -444,20 +448,52 @@ function extractSpecifications(product: any): string {
             .filter(Boolean)
         : [];
 
-      const options = Array.isArray(attribute?.options)
+      const optionValues = Array.isArray(attribute?.options)
         ? attribute.options
             .map((option: unknown) => decodeHtmlEntities(option).trim())
             .filter(Boolean)
         : [];
 
-      const values = terms.length > 0 ? terms : options;
+      const values = termValues.length > 0 ? termValues : optionValues;
 
-      return attributeName && values.length > 0
-        ? `${attributeName}: ${values.join(", ")}`
-        : "";
+      return {
+        name,
+        values: Array.from(new Set(values)),
+      };
     })
-    .filter(Boolean)
+    .filter(
+      (attribute: { name: string; values: string[] }) =>
+        Boolean(attribute.name) && attribute.values.length > 0
+    );
+}
+
+function extractSpecifications(product: any): string {
+  return extractProductAttributes(product)
+    .map((attribute: ProductAttribute) =>
+      `${attribute.name}: ${attribute.values.join(", ")}`
+    )
     .join(" · ");
+}
+
+function cleanProductDisplayName(value: unknown) {
+  return decodeHtmlEntities(value)
+    .replace(/\s+/g, " ")
+    .replace(/^HP Inc\b/i, "HP")
+    .replace(/^Hewlett[- ]Packard\b/i, "HP")
+    .replace(/^Meraki Cisco Meraki\b/i, "Cisco Meraki")
+    .replace(/^Cisco Cisco\b/i, "Cisco")
+    .replace(/^HP HP\b/i, "HP")
+    .trim();
+}
+
+function getMostSpecificCategoryName(product: any) {
+  if (!Array.isArray(product.categories) || product.categories.length === 0) {
+    return "Non classé";
+  }
+
+  const lastCategory = product.categories[product.categories.length - 1];
+
+  return decodeHtmlEntities(lastCategory?.name ?? "Non classé");
 }
 
 function isProductInStock(product: any): boolean {
@@ -483,7 +519,7 @@ function mapWooProduct(product: any): Product {
 
   return {
     id: Number(product.id),
-    name: decodeHtmlEntities(product.name),
+    name: cleanProductDisplayName(product.name),
     slug: decodeHtmlEntities(product.slug),
     sku: decodeHtmlEntities(product.sku),
 
@@ -509,9 +545,7 @@ function mapWooProduct(product: any): Product {
           .filter(Boolean)
       : [],
 
-    category: decodeHtmlEntities(
-      product.categories?.[0]?.name ?? "Non classé"
-    ),
+    category: getMostSpecificCategoryName(product),
     manufacturer:
       getAttributeValue(product, ["marque", "manufacturer"]) ||
       getMetaValue(product, "manufacturer"),
@@ -525,6 +559,7 @@ function mapWooProduct(product: any): Product {
       getMetaValue(product, "product_group"),
 
     specs: extractSpecifications(product),
+    attributes: extractProductAttributes(product),
     grade: mapGrade(product),
     warranty: getMetaValue(product, "warranty") || "sur devis",
     description: decodeHtmlEntities(
@@ -655,12 +690,10 @@ async function appendAttributeFilters(
       group.taxonomy
     );
 
-    selectedOptions.forEach((option, termIndex) => {
-      params.set(
-        `attributes[${attributeIndex}][term_id][${termIndex}]`,
-        String(option.id)
-      );
-    });
+    params.set(
+      `attributes[${attributeIndex}][slug]`,
+      selectedOptions.map((option) => option.slug).join(",")
+    );
 
     params.set(`attributes[${attributeIndex}][operator]`, "in");
 

@@ -3,21 +3,66 @@ import type { ElementType } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
-  Barcode,
   CheckCircle2,
-  Cpu,
+  ChevronDown,
   Leaf,
   Package,
   ShieldCheck,
   ShoppingCart,
-  Tags,
   Truck,
 } from "lucide-react";
 
-import type { Product } from "../types/product";
+import type { Product, ProductAttribute } from "../types/product";
 import { getProductBySlug } from "../services/woocommerce";
 import { addToCart } from "../services/cart";
 import { formatPrice } from "../utils/formatPrice";
+
+type SpecificationGroup =
+  | "Général"
+  | "Performances"
+  | "Affichage"
+  | "Réseau et connectivité"
+  | "Caractéristiques physiques"
+  | "Autres spécifications";
+
+type SpecificationRow = ProductAttribute & {
+  group: SpecificationGroup;
+};
+
+const GROUP_ORDER: SpecificationGroup[] = [
+  "Général",
+  "Performances",
+  "Affichage",
+  "Réseau et connectivité",
+  "Caractéristiques physiques",
+  "Autres spécifications",
+];
+
+const SUMMARY_ATTRIBUTE_NAMES = [
+  "Type d’équipement",
+  "Type de serveur",
+  "Processeur",
+  "RAM",
+  "Stockage",
+  "Carte graphique",
+  "Taille écran",
+  "Résolution",
+  "Nombre de ports",
+  "Débit réseau",
+  "PoE",
+  "Norme Wi-Fi",
+];
+
+const HIDDEN_SPECIFICATION_NAMES = [
+  "marque",
+  "état",
+  "etat",
+  "grade",
+  "référence constructeur",
+  "reference constructeur",
+  "product group",
+  "intelarkid",
+];
 
 function decodeHtmlEntities(value: unknown) {
   let result = String(value ?? "");
@@ -61,11 +106,178 @@ function decodeHtmlEntities(value: unknown) {
     }
   }
 
-  return result;
+  return result.replace(/\s+/g, " ").trim();
 }
 
-function displayText(value: unknown) {
-  return decodeHtmlEntities(value).trim();
+function normalizeText(value: unknown) {
+  return decodeHtmlEntities(value)
+    .toLocaleLowerCase("fr")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’']/g, "'")
+    .trim();
+}
+
+function getSpecificationGroup(name: string): SpecificationGroup {
+  const normalizedName = normalizeText(name);
+
+  if (
+    [
+      "processor",
+      "processeur",
+      "cpu",
+      "core",
+      "thread",
+      "cache",
+      "frequency",
+      "frequence",
+      "memory",
+      "memoire",
+      "ram",
+      "storage",
+      "stockage",
+      "hdd",
+      "ssd",
+      "nvme",
+      "videocard",
+      "graphics",
+      "graphique",
+      "raid",
+    ].some((keyword) => normalizedName.includes(keyword))
+  ) {
+    return "Performances";
+  }
+
+  if (
+    [
+      "screen",
+      "ecran",
+      "display",
+      "resolution",
+      "panel",
+      "dalle",
+      "touch",
+      "pivot",
+      "tilt",
+      "swivel",
+      "vesa",
+      "webcam",
+      "camera",
+    ].some((keyword) => normalizedName.includes(keyword))
+  ) {
+    return "Affichage";
+  }
+
+  if (
+    [
+      "network",
+      "reseau",
+      "ethernet",
+      "port",
+      "poe",
+      "wifi",
+      "wi-fi",
+      "wlan",
+      "wwan",
+      "bluetooth",
+      "sfp",
+      "snmp",
+      "vlan",
+      "hdmi",
+      "displayport",
+      "usb",
+      "connectique",
+    ].some((keyword) => normalizedName.includes(keyword))
+  ) {
+    return "Réseau et connectivité";
+  }
+
+  if (
+    [
+      "width",
+      "height",
+      "depth",
+      "weight",
+      "dimension",
+      "largeur",
+      "hauteur",
+      "profondeur",
+      "poids",
+      "power",
+      "alimentation",
+      "form factor",
+      "format",
+      "enclosure",
+    ].some((keyword) => normalizedName.includes(keyword))
+  ) {
+    return "Caractéristiques physiques";
+  }
+
+  if (
+    [
+      "model",
+      "modele",
+      "product type",
+      "type de produit",
+      "type d'equipement",
+      "type de serveur",
+      "os",
+      "systeme",
+      "condition",
+      "warranty",
+      "garantie",
+    ].some((keyword) => normalizedName.includes(keyword))
+  ) {
+    return "Général";
+  }
+
+  return "Autres spécifications";
+}
+
+function deduplicateAttributes(attributes: ProductAttribute[]) {
+  const attributesByName = new Map<string, ProductAttribute>();
+
+  for (const attribute of attributes) {
+    const name = decodeHtmlEntities(attribute.name);
+    const normalizedName = normalizeText(name);
+
+    if (!name || !normalizedName || attribute.values.length === 0) {
+      continue;
+    }
+
+    const values = attribute.values.map(decodeHtmlEntities).filter(Boolean);
+    const existing = attributesByName.get(normalizedName);
+
+    if (existing) {
+      existing.values = Array.from(new Set([...existing.values, ...values]));
+    } else {
+      attributesByName.set(normalizedName, {
+        name,
+        values: Array.from(new Set(values)),
+      });
+    }
+  }
+
+  return Array.from(attributesByName.values());
+}
+
+function getAttributeValues(
+  attributes: ProductAttribute[],
+  expectedNames: string[]
+) {
+  const normalizedExpectedNames = expectedNames.map(normalizeText);
+
+  const attribute = attributes.find((item) => {
+    const normalizedName = normalizeText(item.name);
+
+    return normalizedExpectedNames.some(
+      (expectedName) =>
+        normalizedName === expectedName ||
+        normalizedName.includes(expectedName)
+    );
+  });
+
+  return attribute?.values ?? [];
 }
 
 export function ProductPage() {
@@ -101,14 +313,72 @@ export function ProductPage() {
         setProduct(data);
         setSelectedImage(data.image || "/placeholder-product.png");
       })
-      .catch((err) => {
-        console.error("Erreur lors du chargement du produit :", err);
+      .catch((requestError) => {
+        console.error("Erreur lors du chargement du produit :", requestError);
         setError("Impossible de charger la fiche produit.");
       })
       .finally(() => {
         setLoading(false);
       });
   }, [slug]);
+
+  const attributes = useMemo(
+    () => deduplicateAttributes(product?.attributes ?? []),
+    [product]
+  );
+
+  const summarySpecifications = useMemo(() => {
+    return SUMMARY_ATTRIBUTE_NAMES.flatMap((attributeName) => {
+      const values = getAttributeValues(attributes, [attributeName]);
+
+      return values.length > 0
+        ? [{ name: attributeName, value: values.join(", ") }]
+        : [];
+    }).slice(0, 5);
+  }, [attributes]);
+
+  const specificationGroups = useMemo(() => {
+    const rows: SpecificationRow[] = attributes
+      .filter(
+        (attribute) =>
+          !HIDDEN_SPECIFICATION_NAMES.includes(normalizeText(attribute.name))
+      )
+      .map((attribute) => ({
+        ...attribute,
+        group: getSpecificationGroup(attribute.name),
+      }));
+
+    return GROUP_ORDER.map((group) => ({
+      group,
+      rows: rows
+        .filter((row) => row.group === group)
+        .sort((left, right) =>
+          left.name.localeCompare(right.name, "fr", {
+            sensitivity: "base",
+          })
+        ),
+    })).filter((section) => section.rows.length > 0);
+  }, [attributes]);
+
+  const identityRows = useMemo(() => {
+    if (!product) {
+      return [];
+    }
+
+    return [
+      { label: "Fabricant", value: product.manufacturer },
+      { label: "Référence constructeur", value: product.manufacturerPartNumber },
+      { label: "Référence EcoLiz", value: product.sku },
+      { label: "EAN", value: product.ean },
+      { label: "Catégorie", value: product.category },
+      { label: "Famille produit", value: product.productGroup },
+    ]
+      .map((item) => ({
+        label: item.label,
+        value: decodeHtmlEntities(item.value),
+      }))
+      .filter((item) => Boolean(item.value));
+  }, [product]);
 
   async function handleAddToCart() {
     if (!product || !product.stock) {
@@ -121,70 +391,22 @@ export function ProductPage() {
       setCartError("");
 
       await addToCart(product.id, 1);
-
       setCartSuccess(true);
-    } catch (err) {
-      console.error("Erreur ajout panier :", err);
+    } catch (requestError) {
+      console.error("Erreur ajout panier :", requestError);
       setCartError("Impossible d'ajouter ce produit au panier.");
     } finally {
       setAddingToCart(false);
     }
   }
 
-  const technicalInfos = useMemo(() => {
-    if (!product) {
-      return [];
-    }
-
-    return [
-      {
-        label: "Marque",
-        value: displayText(product.manufacturer),
-        icon: Tags,
-      },
-      {
-        label: "État",
-        value: displayText(product.conditionLabel || product.status),
-        icon: CheckCircle2,
-      },
-      {
-        label: "Catégorie",
-        value: displayText(product.category),
-        icon: Package,
-      },
-      {
-        label: "Famille produit",
-        value: displayText(product.productGroup),
-        icon: Cpu,
-      },
-      {
-        label: "Référence EcoLiz",
-        value: displayText(product.sku),
-        icon: Barcode,
-      },
-      {
-        label: "Référence constructeur",
-        value: displayText(product.manufacturerPartNumber),
-        icon: Barcode,
-      },
-      {
-        label: "EAN",
-        value: displayText(product.ean),
-        icon: Barcode,
-      },
-      {
-        label: "Système",
-        value: displayText(product.os),
-        icon: Cpu,
-      },
-    ].filter((item) => Boolean(item.value));
-  }, [product]);
-
   if (loading) {
     return (
       <main className="min-h-screen bg-brand-50 pt-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <p className="text-brand-900/60">Chargement du produit…</p>
+          <div className="rounded-2xl border border-brand-100 bg-white px-6 py-16 text-center text-brand-900/60">
+            Chargement du produit…
+          </div>
         </div>
       </main>
     );
@@ -206,7 +428,6 @@ export function ProductPage() {
             <h1 className="mb-2 text-2xl font-bold text-brand-950">
               Produit introuvable
             </h1>
-
             <p className="text-brand-900/60">
               {error || "Impossible d’afficher cette fiche produit."}
             </p>
@@ -216,10 +437,8 @@ export function ProductPage() {
     );
   }
 
-  const productName = displayText(product.name);
-  const productSpecs = displayText(product.specs);
-  const productDescription = displayText(product.description);
-
+  const productName = decodeHtmlEntities(product.name);
+  const productDescription = decodeHtmlEntities(product.description);
   const images =
     product.images && product.images.length > 0
       ? product.images
@@ -230,32 +449,32 @@ export function ProductPage() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <Link
           to="/boutique"
-          className="mb-8 inline-flex items-center gap-2 font-medium text-brand-700 hover:text-brand-800"
+          className="mb-7 inline-flex items-center gap-2 font-medium text-brand-700 transition-colors hover:text-brand-800"
         >
           <ArrowLeft className="h-4 w-4" />
           Retour à la boutique
         </Link>
 
-        <section className="min-w-0 overflow-hidden rounded-3xl border border-brand-100 bg-white shadow-sm">
-          <div className="grid min-w-0 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)]">
-            <div className="min-w-0 border-b border-brand-100 bg-brand-50/60 p-4 sm:p-6 xl:border-b-0 xl:border-r xl:p-8">
-              <div className="aspect-[4/3] min-w-0 overflow-hidden rounded-2xl border border-brand-100 bg-white">
+        <section className="overflow-hidden rounded-3xl border border-brand-100 bg-white shadow-sm">
+          <div className="grid min-w-0 lg:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.45fr)]">
+            <div className="min-w-0 border-b border-brand-100 bg-brand-50/50 p-5 sm:p-7 lg:border-b-0 lg:border-r">
+              <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-brand-100 bg-white">
                 <img
                   src={selectedImage || "/placeholder-product.png"}
                   alt={productName}
-                  loading="lazy"
-                  className="h-full w-full object-contain mix-blend-multiply"
+                  className="h-full w-full object-contain p-3 mix-blend-multiply"
                 />
               </div>
 
               {images.length > 1 && (
-                <div className="mt-4 grid grid-cols-4 gap-3 sm:grid-cols-5">
-                  {images.slice(0, 5).map((image) => (
+                <div className="mt-4 grid grid-cols-4 gap-3">
+                  {images.slice(0, 8).map((image) => (
                     <button
                       key={image}
                       type="button"
                       onClick={() => setSelectedImage(image)}
-                      className={`aspect-square min-w-0 overflow-hidden rounded-xl border bg-white transition-all ${
+                      aria-label="Afficher cette image du produit"
+                      className={`aspect-square overflow-hidden rounded-xl border bg-white p-1 transition-all ${
                         selectedImage === image
                           ? "border-brand-700 ring-2 ring-brand-700/20"
                           : "border-brand-100 hover:border-brand-300"
@@ -263,7 +482,7 @@ export function ProductPage() {
                     >
                       <img
                         src={image}
-                        alt={productName}
+                        alt=""
                         className="h-full w-full object-contain mix-blend-multiply"
                       />
                     </button>
@@ -272,7 +491,7 @@ export function ProductPage() {
               )}
             </div>
 
-            <div className="min-w-0 overflow-hidden p-4 sm:p-6 xl:p-8">
+            <div className="min-w-0 p-5 sm:p-7 lg:p-9">
               <div className="mb-4 flex flex-wrap gap-2">
                 <StatusPill
                   label={product.stock ? "En stock" : "Rupture de stock"}
@@ -282,7 +501,7 @@ export function ProductPage() {
                 {product.conditionLabel &&
                   product.conditionLabel !== "Non renseigné" && (
                     <StatusPill
-                      label={displayText(product.conditionLabel)}
+                      label={decodeHtmlEntities(product.conditionLabel)}
                       variant="brand"
                     />
                   )}
@@ -290,64 +509,70 @@ export function ProductPage() {
                 <StatusPill label="Garantie sur devis" variant="info" />
               </div>
 
-              <h1 className="mb-4 max-w-full whitespace-normal break-words text-2xl font-bold leading-tight tracking-tight text-brand-950 [overflow-wrap:anywhere] sm:text-3xl xl:text-4xl">
+              <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-brand-700">
+                {decodeHtmlEntities(product.category)}
+              </p>
+
+              <h1 className="max-w-full break-words text-3xl font-bold leading-[1.08] tracking-tight text-brand-950 [overflow-wrap:anywhere] sm:text-4xl">
                 {productName}
               </h1>
 
-              {productSpecs && (
-                <p className="mb-6 max-w-full break-words text-sm leading-relaxed text-brand-900/60 [overflow-wrap:anywhere] sm:text-base">
-                  {productSpecs}
-                </p>
+              {summarySpecifications.length > 0 && (
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {summarySpecifications.map((item) => (
+                    <span
+                      key={`${item.name}-${item.value}`}
+                      className="max-w-full rounded-full border border-brand-100 bg-brand-50 px-3 py-1.5 text-sm text-brand-900/75"
+                    >
+                      <strong className="font-semibold text-brand-950">
+                        {item.name} :
+                      </strong>{" "}
+                      <span className="break-words">{item.value}</span>
+                    </span>
+                  ))}
+                </div>
               )}
 
-              <div className="mb-8 grid min-w-0 gap-3 sm:grid-cols-2">
-                {technicalInfos.slice(0, 6).map((item) => {
-                  const Icon = item.icon;
-
-                  return (
+              {identityRows.length > 0 && (
+                <dl className="mt-7 grid min-w-0 gap-x-8 gap-y-3 border-y border-brand-100 py-5 sm:grid-cols-2">
+                  {identityRows.map((item) => (
                     <div
                       key={item.label}
-                      className="min-w-0 rounded-2xl border border-brand-100 bg-brand-50 p-4"
+                      className="grid min-w-0 grid-cols-[120px_minmax(0,1fr)] gap-3 text-sm"
                     >
-                      <div className="mb-1 flex min-w-0 items-center gap-2 text-xs text-brand-900/50">
-                        <Icon className="h-4 w-4 shrink-0" />
-                        <span className="truncate">{item.label}</span>
-                      </div>
-
-                      <p className="max-w-full break-words font-semibold text-brand-950 [overflow-wrap:anywhere]">
+                      <dt className="text-brand-900/50">{item.label}</dt>
+                      <dd className="min-w-0 break-words font-medium text-brand-950 [overflow-wrap:anywhere]">
                         {item.value}
-                      </p>
+                      </dd>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </dl>
+              )}
 
-              <div className="mb-8 border-b border-brand-200 pb-8">
-                <p className="text-3xl font-bold text-brand-950 sm:text-4xl">
+              <div className="mt-7">
+                <p className="text-4xl font-bold tracking-tight text-brand-950">
                   {formatPrice(product.price)} HT
                 </p>
-
                 {product.priceTTC && (
-                  <p className="mt-2 text-base text-brand-900/60 sm:text-lg">
+                  <p className="mt-1 text-lg text-brand-900/55">
                     {formatPrice(product.priceTTC)} TTC
                   </p>
                 )}
               </div>
 
               {cartSuccess && (
-                <div className="mb-6 flex min-w-0 flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
+                <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
                     <p className="font-semibold text-brand-950">
                       Produit ajouté au panier.
                     </p>
-                    <p className="break-words text-sm text-brand-900/60">
+                    <p className="text-sm text-brand-900/60">
                       Vous pouvez continuer vos achats ou consulter votre panier.
                     </p>
                   </div>
-
                   <Link
                     to="/panier"
-                    className="inline-flex shrink-0 items-center justify-center rounded-full bg-brand-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-800"
+                    className="inline-flex shrink-0 items-center justify-center rounded-xl bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
                   >
                     Voir le panier
                   </Link>
@@ -355,88 +580,119 @@ export function ProductPage() {
               )}
 
               {cartError && (
-                <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
-                  <p className="break-words font-semibold text-red-700">
-                    {cartError}
-                  </p>
+                <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 font-medium text-red-700">
+                  {cartError}
                 </div>
               )}
 
-              <div className="mb-8 grid min-w-0 gap-3 sm:grid-cols-2">
+              <div className="mt-7 grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={handleAddToCart}
                   disabled={!product.stock || addingToCart}
-                  className="inline-flex min-w-0 items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-4 text-center text-base font-medium text-white shadow-lg shadow-brand-900/20 transition-all hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex min-w-0 items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-4 font-semibold text-white shadow-lg shadow-brand-900/15 transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ShoppingCart className="h-4 w-4 shrink-0" />
-                  <span className="break-words">
-                    {addingToCart
-                      ? "Ajout en cours..."
-                      : product.stock
-                        ? "Ajouter au panier"
-                        : "Produit indisponible"}
-                  </span>
+                  {addingToCart
+                    ? "Ajout en cours…"
+                    : product.stock
+                      ? "Ajouter au panier"
+                      : "Produit indisponible"}
                 </button>
 
                 <Link
                   to="/contact"
-                  className="inline-flex min-w-0 items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-5 py-4 text-center text-base font-medium text-brand-900 transition-all hover:bg-brand-50"
+                  className="inline-flex items-center justify-center rounded-xl border border-brand-200 bg-white px-5 py-4 font-semibold text-brand-900 transition-colors hover:bg-brand-50"
                 >
                   Demander un devis
                 </Link>
               </div>
 
-              <div className="grid min-w-0 gap-3 border-t border-brand-200 pt-6 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-7 grid gap-4 border-t border-brand-100 pt-6 sm:grid-cols-3">
                 <TrustItem icon={ShieldCheck} text="Garantie sur devis" />
                 <TrustItem icon={Truck} text="Livraison professionnelle" />
-                <TrustItem icon={Leaf} text="Matériel reconditionné" />
+                <TrustItem icon={Leaf} text="Matériel professionnel" />
               </div>
             </div>
           </div>
         </section>
 
-        <div className="mt-8 grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
-          <section className="min-w-0 rounded-3xl border border-brand-100 bg-white p-6 xl:p-8">
-            <h2 className="mb-4 text-2xl font-bold text-brand-950">
-              Description produit
-            </h2>
-
-            <p className="max-w-full whitespace-pre-line break-words leading-relaxed text-brand-900/70 [overflow-wrap:anywhere]">
-              {productDescription ||
-                "Aucune description détaillée n’est disponible pour ce produit."}
-            </p>
-          </section>
-
-          <section className="h-fit min-w-0 rounded-3xl border border-brand-100 bg-white p-6 xl:p-8">
-            <h2 className="mb-5 text-2xl font-bold text-brand-950">
-              Informations techniques
-            </h2>
-
-            {technicalInfos.length > 0 ? (
-              <div className="divide-y divide-brand-100">
-                {technicalInfos.map((item) => (
-                  <div
-                    key={item.label}
-                    className="grid min-w-0 grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] gap-4 py-3 text-sm"
-                  >
-                    <span className="min-w-0 break-words text-brand-900/50">
-                      {item.label}
-                    </span>
-
-                    <span className="min-w-0 break-words text-right font-medium text-brand-950 [overflow-wrap:anywhere]">
-                      {item.value}
-                    </span>
-                  </div>
-                ))}
+        <section className="mt-8 overflow-hidden rounded-3xl border border-brand-100 bg-white shadow-sm">
+          <details open className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 sm:px-8">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">
+                  Informations
+                </p>
+                <h2 className="mt-1 text-2xl font-bold text-brand-950">
+                  Description du produit
+                </h2>
               </div>
-            ) : (
-              <p className="text-brand-900/50">
-                Les caractéristiques techniques seront complétées prochainement.
+              <ChevronDown className="h-5 w-5 shrink-0 text-brand-900/50 transition-transform group-open:rotate-180" />
+            </summary>
+
+            <div className="border-t border-brand-100 px-6 py-6 sm:px-8">
+              <p className="max-w-5xl whitespace-pre-line break-words leading-7 text-brand-900/70 [overflow-wrap:anywhere]">
+                {productDescription ||
+                  "Aucune description détaillée n’est disponible pour ce produit."}
               </p>
-            )}
-          </section>
-        </div>
+            </div>
+          </details>
+        </section>
+
+        <section className="mt-6 overflow-hidden rounded-3xl border border-brand-100 bg-white shadow-sm">
+          <details open className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 sm:px-8">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">
+                  Données fournisseur
+                </p>
+                <h2 className="mt-1 text-2xl font-bold text-brand-950">
+                  Spécifications techniques
+                </h2>
+              </div>
+              <ChevronDown className="h-5 w-5 shrink-0 text-brand-900/50 transition-transform group-open:rotate-180" />
+            </summary>
+
+            <div className="border-t border-brand-100 px-4 py-5 sm:px-8 sm:py-7">
+              {specificationGroups.length > 0 ? (
+                <div className="space-y-8">
+                  {specificationGroups.map((section) => (
+                    <div key={section.group}>
+                      <h3 className="mb-3 text-lg font-bold text-brand-950">
+                        {section.group}
+                      </h3>
+
+                      <div className="overflow-hidden rounded-xl border border-brand-100">
+                        <dl>
+                          {section.rows.map((row, index) => (
+                            <div
+                              key={`${section.group}-${row.name}`}
+                              className={`grid min-w-0 gap-2 px-4 py-3 text-sm sm:grid-cols-[minmax(180px,0.8fr)_minmax(0,1.8fr)] sm:gap-6 ${
+                                index % 2 === 0 ? "bg-brand-50/70" : "bg-white"
+                              }`}
+                            >
+                              <dt className="font-semibold text-brand-950">
+                                {row.name}
+                              </dt>
+                              <dd className="min-w-0 break-words text-brand-900/75 [overflow-wrap:anywhere]">
+                                {row.values.join(", ")}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl bg-brand-50 px-5 py-8 text-center text-brand-900/55">
+                  Les caractéristiques techniques seront complétées prochainement.
+                </div>
+              )}
+            </div>
+          </details>
+        </section>
       </div>
     </main>
   );
@@ -450,7 +706,7 @@ function TrustItem({
   text: string;
 }) {
   return (
-    <div className="flex min-w-0 items-start gap-2 text-sm text-brand-900/70">
+    <div className="flex min-w-0 items-start gap-2 text-sm text-brand-900/65">
       <Icon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
       <span className="min-w-0 break-words">{text}</span>
     </div>
@@ -475,9 +731,8 @@ function StatusPill({
     <span
       className={`inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-medium ${styles[variant]}`}
     >
-      <span className="break-words [overflow-wrap:anywhere]">
-        {displayText(label)}
-      </span>
+      <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+      <span className="break-words">{decodeHtmlEntities(label)}</span>
     </span>
   );
 }

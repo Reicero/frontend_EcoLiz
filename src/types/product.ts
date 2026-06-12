@@ -14,6 +14,11 @@ export type ProductAvailability =
   | "Rupture de stock"
   | "En réapprovisionnement";
 
+export interface ProductAttribute {
+  name: string;
+  values: string[];
+}
+
 export interface Product {
   id: number;
   slug: string;
@@ -51,6 +56,9 @@ export interface Product {
   warranty: string;
   description?: string;
   features?: string[];
+
+  // Attributs structurés utilisés sur la fiche technique
+  attributes?: ProductAttribute[];
 
   // Réapprovisionnement
   incomingQuantity?: number;
