@@ -1,43 +1,283 @@
-/**
- * WooCommerce product and category service
- */
+import type { Product, ProductGrade } from "../types/product";
+import { config } from "../config/env";
+import {
+  calculatePriceTTC,
+  calculateVATAmount,
+  roundPrice,
+} from "../utils/number";
+import { stripHtmlTags } from "../utils/string";
 
-import type { Product, ProductGrade } from '../types/product';
-import { config } from '../config/env';
-import { buildQueryString } from '../utils/http';
-import { roundPrice, calculatePriceTTC, calculateVATAmount } from '../utils/number';
-import { stripHtmlTags } from '../utils/string';
-
-const WOO_API_URL = config.wooApiUrl;
+const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, "");
 const VAT_RATE = 0.2;
 
+export type ProductFilterKey =
+  | "brand"
+  | "condition"
+  | "os"
+  | "cpu"
+  | "cpuModel"
+  | "cpuGeneration"
+  | "cpuCores"
+  | "ram"
+  | "ramType"
+  | "storage"
+  | "storageType"
+  | "diskFormat"
+  | "gpu"
+  | "gpuModel"
+  | "screen"
+  | "resolution"
+  | "panelTechnology"
+  | "touchscreen"
+  | "connectivity"
+  | "vesa"
+  | "webcam"
+  | "equipmentType"
+  | "ports"
+  | "networkPortType"
+  | "speed"
+  | "poe"
+  | "switchManagement"
+  | "serverType"
+  | "raidController"
+  | "wifiStandard"
+  | "wifiEquipmentType"
+  | "licenseEditor"
+  | "licenseType";
+
+export type SelectedProductFilters = Partial<
+  Record<ProductFilterKey, string[]>
+>;
+
+export interface WooCategory {
+  id: number;
+  name: string;
+  slug: string;
+  count?: number;
+  parent: number;
+  label: string;
+  value: string;
+}
+
+export interface WooFilterOption {
+  id: number;
+  name: string;
+  slug: string;
+  count: number;
+}
+
+export interface WooFilterGroup {
+  key: ProductFilterKey;
+  title: string;
+  taxonomy: string;
+  options: WooFilterOption[];
+}
+
+export interface ProductListParams {
+  page?: number;
+  perPage?: number;
+  search?: string;
+  categoryIds?: number[];
+  stockStatus?: "instock" | "outofstock" | null;
+  orderby?: "date" | "price" | "title";
+  order?: "asc" | "desc";
+  attributeFilters?: SelectedProductFilters;
+}
+
+export interface ProductListResult {
+  products: Product[];
+  total: number;
+  totalPages: number;
+}
+
+type WooAttribute = {
+  id: number;
+  name: string;
+  taxonomy: string;
+};
+
+type WooAttributeTerm = {
+  id: number;
+  name: string;
+  slug: string;
+  count?: number;
+};
+
+const FILTER_ATTRIBUTE_CONFIG: Array<{
+  key: ProductFilterKey;
+  title: string;
+  attributeName: string;
+}> = [
+  { key: "brand", title: "Marque", attributeName: "Marque" },
+  { key: "condition", title: "État", attributeName: "État" },
+  { key: "os", title: "OS", attributeName: "OS" },
+
+  { key: "cpu", title: "Processeur", attributeName: "Processeur" },
+  {
+    key: "cpuModel",
+    title: "Modèle processeur",
+    attributeName: "Modèle processeur",
+  },
+  {
+    key: "cpuGeneration",
+    title: "Génération processeur",
+    attributeName: "Génération processeur",
+  },
+  {
+    key: "cpuCores",
+    title: "Nombre de cœurs",
+    attributeName: "Nombre de cœurs",
+  },
+
+  { key: "ram", title: "RAM", attributeName: "RAM" },
+  { key: "ramType", title: "Type de RAM", attributeName: "Type de RAM" },
+
+  { key: "storage", title: "Stockage", attributeName: "Stockage" },
+  {
+    key: "storageType",
+    title: "Type de stockage",
+    attributeName: "Type de stockage",
+  },
+  {
+    key: "diskFormat",
+    title: "Format de disque",
+    attributeName: "Format de disque",
+  },
+
+  {
+    key: "gpu",
+    title: "Carte graphique",
+    attributeName: "Carte graphique",
+  },
+  {
+    key: "gpuModel",
+    title: "Modèle carte graphique",
+    attributeName: "Modèle carte graphique",
+  },
+
+  { key: "screen", title: "Taille écran", attributeName: "Taille écran" },
+  { key: "resolution", title: "Résolution", attributeName: "Résolution" },
+  {
+    key: "panelTechnology",
+    title: "Technologie de dalle",
+    attributeName: "Technologie de dalle",
+  },
+  {
+    key: "touchscreen",
+    title: "Écran tactile",
+    attributeName: "Écran tactile",
+  },
+  {
+    key: "connectivity",
+    title: "Connectique",
+    attributeName: "Connectique",
+  },
+  { key: "vesa", title: "Compatible VESA", attributeName: "Compatible VESA" },
+  {
+    key: "webcam",
+    title: "Webcam intégrée",
+    attributeName: "Webcam intégrée",
+  },
+
+  {
+    key: "equipmentType",
+    title: "Type d’équipement",
+    attributeName: "Type d’équipement",
+  },
+  {
+    key: "ports",
+    title: "Nombre de ports",
+    attributeName: "Nombre de ports",
+  },
+  {
+    key: "networkPortType",
+    title: "Type de port réseau",
+    attributeName: "Type de port réseau",
+  },
+  {
+    key: "speed",
+    title: "Débit réseau",
+    attributeName: "Débit réseau",
+  },
+  { key: "poe", title: "PoE", attributeName: "PoE" },
+  {
+    key: "switchManagement",
+    title: "Administration réseau",
+    attributeName: "Administration réseau",
+  },
+
+  {
+    key: "serverType",
+    title: "Type de serveur",
+    attributeName: "Type de serveur",
+  },
+  {
+    key: "raidController",
+    title: "Contrôleur RAID",
+    attributeName: "Contrôleur RAID",
+  },
+
+  {
+    key: "wifiStandard",
+    title: "Norme Wi-Fi",
+    attributeName: "Norme Wi-Fi",
+  },
+  {
+    key: "wifiEquipmentType",
+    title: "Type d’équipement Wi-Fi",
+    attributeName: "Type d’équipement Wi-Fi",
+  },
+
+  {
+    key: "licenseEditor",
+    title: "Éditeur de licence",
+    attributeName: "Éditeur de licence",
+  },
+  {
+    key: "licenseType",
+    title: "Type de licence",
+    attributeName: "Type de licence",
+  },
+];
+
+let filterGroupsPromise: Promise<WooFilterGroup[]> | null = null;
+
+function normalizeLookupValue(value: unknown) {
+  return decodeHtmlEntities(value)
+    .toLocaleLowerCase("fr")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’']/g, "'")
+    .trim();
+}
+
 function decodeHtmlEntities(value: unknown) {
-  let result = String(value ?? '');
+  let result = String(value ?? "");
 
   const namedEntities: Record<string, string> = {
-    amp: '&',
+    amp: "&",
     quot: '"',
     apos: "'",
-    '#039': "'",
-    nbsp: ' ',
-    rsquo: '’',
-    lsquo: '‘',
-    rdquo: '”',
-    ldquo: '“',
-    ndash: '–',
-    mdash: '—',
-    hellip: '…',
-    laquo: '«',
-    raquo: '»',
-    times: '×',
-    prime: '′',
-    Prime: '″',
-    eacute: 'é',
-    egrave: 'è',
-    ecirc: 'ê',
-    agrave: 'à',
-    ugrave: 'ù',
-    ccedil: 'ç',
+    "#039": "'",
+    nbsp: " ",
+    rsquo: "’",
+    lsquo: "‘",
+    rdquo: "”",
+    ldquo: "“",
+    ndash: "–",
+    mdash: "—",
+    hellip: "…",
+    laquo: "«",
+    raquo: "»",
+    times: "×",
+    prime: "′",
+    Prime: "″",
+    eacute: "é",
+    egrave: "è",
+    ecirc: "ê",
+    agrave: "à",
+    ugrave: "ù",
+    ccedil: "ç",
   };
 
   for (let pass = 0; pass < 4; pass += 1) {
@@ -62,118 +302,130 @@ function decodeHtmlEntities(value: unknown) {
   return result;
 }
 
-export interface WooCategory {
-  id: number;
-  name: string;
-  slug: string;
-  count?: number;
-  parent: number;
-  label: string;
-  value: string;
-}
+async function fetchJson<T>(url: string): Promise<{
+  data: T;
+  response: Response;
+}> {
+  const response = await fetch(url, {
+    cache: "no-store",
+  });
 
-export interface ProductListParams {
-  page?: number;
-  perPage?: number;
-  search?: string;
-  categoryIds?: number[];
-  stockStatus?: 'instock' | 'outofstock' | null;
-  orderby?: 'date' | 'price' | 'title';
-  order?: 'asc' | 'desc';
-}
+  if (!response.ok) {
+    const details = await response.text();
 
-export interface ProductListResult {
-  products: Product[];
-  total: number;
-  totalPages: number;
-}
-
-/**
- * Extract attribute value by names (case-insensitive)
- */
-function getAttributeValue(product: any, names: string[]): string {
-  const attribute = product.attributes?.find((a: any) =>
-    names.some((name) =>
-      a.name?.toLowerCase().includes(name.toLowerCase())
-    )
-  );
-
-  return attribute?.terms?.[0]?.name ?? attribute?.options?.[0] ?? '';
-}
-
-/**
- * Extract meta value by key
- */
-function getMetaValue(product: any, key: string): string {
-  const meta = product.meta_data?.find((m: any) => m.key === key);
-  return meta?.value ?? '';
-}
-
-/**
- * Extract price from product (handles multiple price formats)
- */
-function getWooPrice(product: any, field: 'price' | 'regular_price'): number {
-  if (product.prices?.[field] !== undefined) {
-    return roundPrice(Number(product.prices[field]) / 100);
+    throw new Error(
+      `HTTP ${response.status} pendant l’appel WooCommerce : ${details}`
+    );
   }
 
-  if (field === 'price' && product.price !== undefined) {
-    return roundPrice(Number(product.price));
-  }
-
-  if (field === 'regular_price' && product.regular_price !== undefined) {
-    return roundPrice(Number(product.regular_price));
-  }
-
-  return 0;
-}
-
-/**
- * Map product grade code to display value
- */
-function mapGrade(product: any): ProductGrade {
-  const rawGrade = getAttributeValue(product, ['grade', 'état', 'etat', 'condition']);
-
-  const gradeMap: Record<string, ProductGrade> = {
-    N1: 'Neuf',
-    R4: 'Reconditionné',
-    G5: 'Grade B',
+  return {
+    data: (await response.json()) as T,
+    response,
   };
-
-  if (gradeMap[rawGrade]) return gradeMap[rawGrade];
-
-  const standardGrades: ProductGrade[] = ['Grade A+', 'Grade A', 'Grade B', 'Grade C'];
-  if (standardGrades.includes(rawGrade as ProductGrade)) return rawGrade as ProductGrade;
-
-  return 'Non renseigné';
 }
 
-/**
- * Map condition status code to display label
- */
-function mapConditionLabel(status?: string): string {
-  if (!status) return 'Non renseigné';
+function getAttributeValue(product: any, names: string[]): string {
+  if (!Array.isArray(product.attributes)) {
+    return "";
+  }
 
-  const normalizedStatus = status.trim().toUpperCase();
+  const normalizedNames = names.map(normalizeLookupValue);
+
+  const attribute = product.attributes.find((item: any) => {
+    const attributeName = normalizeLookupValue(item?.name);
+
+    return normalizedNames.some((name) => attributeName.includes(name));
+  });
+
+  if (!attribute) {
+    return "";
+  }
+
+  const term = attribute.terms?.[0];
+
+  if (typeof term === "string") {
+    return decodeHtmlEntities(term);
+  }
+
+  if (term?.name) {
+    return decodeHtmlEntities(term.name);
+  }
+
+  return decodeHtmlEntities(attribute.options?.[0]);
+}
+
+function getMetaValue(product: any, key: string): string {
+  const meta = product.meta_data?.find((item: any) => item?.key === key);
+  return decodeHtmlEntities(meta?.value);
+}
+
+function getWooPrice(product: any, field: "price" | "regular_price"): number {
+  const storeApiValue = product.prices?.[field];
+
+  if (storeApiValue !== undefined && storeApiValue !== null) {
+    const numericValue = Number(storeApiValue);
+    const minorUnit = Number(product.prices?.currency_minor_unit ?? 2);
+
+    return Number.isFinite(numericValue)
+      ? roundPrice(numericValue / 10 ** minorUnit)
+      : 0;
+  }
+
+  const restApiValue = Number(product[field]);
+
+  return Number.isFinite(restApiValue) ? roundPrice(restApiValue) : 0;
+}
+
+function mapGrade(product: any): ProductGrade {
+  const rawGrade = getAttributeValue(product, [
+    "grade",
+    "état",
+    "etat",
+    "condition",
+  ]);
+
+  const normalizedGrade = rawGrade.trim().toUpperCase();
+
+  if (["N1", "N2", "N3"].includes(normalizedGrade)) return "Neuf";
+  if (["R4", "W1", "W2"].includes(normalizedGrade)) {
+    return "Reconditionné";
+  }
+  if (normalizedGrade === "G5") return "Grade B";
+
+  const standardGrades: ProductGrade[] = [
+    "Grade A+",
+    "Grade A",
+    "Grade B",
+    "Grade C",
+  ];
+
+  return standardGrades.includes(rawGrade as ProductGrade)
+    ? (rawGrade as ProductGrade)
+    : "Non renseigné";
+}
+
+function mapConditionLabel(status?: string): string {
   const decodedStatus = decodeHtmlEntities(status).trim();
 
+  if (!decodedStatus) return "Non renseigné";
+
   const labels: Record<string, string> = {
-    N1: 'Neuf',
-    N2: 'Neuf',
-    N3: 'Neuf',
-    R4: 'Reconditionné',
-    G5: 'Grade B',
-    AS: 'As-is',
-    W1: 'Reconditionné',
-    W2: 'Reconditionné',
-    D1: 'Déstockage',
-    D2: 'Déstockage',
+    N1: "Neuf",
+    N2: "Neuf",
+    N3: "Neuf",
+    R4: "Reconditionné",
+    G5: "Grade B",
+    AS: "As-is",
+    W1: "Reconditionné",
+    W2: "Reconditionné",
+    D1: "Déstockage",
+    D2: "Déstockage",
   };
 
-  return (labels[normalizedStatus] ?? decodedStatus) || 'Non renseigné';
+  return labels[decodedStatus.toUpperCase()] ?? decodedStatus;
 }
 
-function buildSpecs(product: any) {
+function extractSpecifications(product: any): string {
   if (!Array.isArray(product.attributes)) {
     return "";
   }
@@ -182,7 +434,7 @@ function buildSpecs(product: any) {
     .map((attribute: any) => {
       const attributeName = decodeHtmlEntities(attribute?.name).trim();
 
-      const termValues = Array.isArray(attribute?.terms)
+      const terms = Array.isArray(attribute?.terms)
         ? attribute.terms
             .map((term: any) =>
               decodeHtmlEntities(
@@ -192,215 +444,367 @@ function buildSpecs(product: any) {
             .filter(Boolean)
         : [];
 
-      const optionValues = Array.isArray(attribute?.options)
+      const options = Array.isArray(attribute?.options)
         ? attribute.options
-            .map((option: unknown) =>
-              decodeHtmlEntities(
-                typeof option === "string" ? option : String(option)
-              ).trim()
-            )
+            .map((option: unknown) => decodeHtmlEntities(option).trim())
             .filter(Boolean)
         : [];
 
-      const values = termValues.length > 0 ? termValues : optionValues;
+      const values = terms.length > 0 ? terms : options;
 
-      if (!attributeName || values.length === 0) {
-        return "";
-      }
-
-      return `${attributeName}: ${values.join(", ")}`;
+      return attributeName && values.length > 0
+        ? `${attributeName}: ${values.join(", ")}`
+        : "";
     })
     .filter(Boolean)
     .join(" · ");
 }
 
-/**
- * Extract product specifications as concatenated string
- */
-function extractSpecifications(product: any): string {
-  return (
-    product.attributes
-      ?.map((a: any) => {
-        const values =
-          a.terms?.map((t: any) => t.name).join(', ') ||
-          a.options?.join(', ') ||
-          '';
-        return values ? `${a.name}: ${values}` : '';
-      })
-      .filter(Boolean)
-      .join(' · ') ?? ''
-  );
-}
-
-/**
- * Check if product is in stock
- */
 function isProductInStock(product: any): boolean {
   const stockCount = product.stock_quantity;
+
   return (
     product.is_in_stock === true ||
-    product.stock_status === 'instock' ||
-    (typeof stockCount === 'number' && stockCount > 0)
+    product.stock_status === "instock" ||
+    (typeof stockCount === "number" && stockCount > 0)
   );
 }
 
-/**
- * Transform WooCommerce product to internal Product type
- */
 function mapWooProduct(product: any): Product {
-  const priceHT = getWooPrice(product, 'price');
-  const originalPriceHT = getWooPrice(product, 'regular_price') || priceHT;
+  const priceHT = getWooPrice(product, "price");
+  const originalPriceHT = getWooPrice(product, "regular_price") || priceHT;
   const priceTTC = calculatePriceTTC(priceHT, VAT_RATE);
   const vatAmount = calculateVATAmount(priceTTC, priceHT);
   const inStock = isProductInStock(product);
-  const status = getAttributeValue(product, ['état', 'etat', 'status', 'condition']) ||
-    getMetaValue(product, 'condition_status');
+
+  const status =
+    getAttributeValue(product, ["état", "etat", "status", "condition"]) ||
+    getMetaValue(product, "condition_status");
 
   return {
-    id: product.id,
-    name: product.name,
-    slug: product.slug,
-    sku: product.sku,
-    ean: getMetaValue(product, 'ean'),
-    manufacturerPartNumber: getAttributeValue(product, [
-      'référence constructeur',
-      'reference constructeur',
-      'manufacturer part number',
-    ]) || getMetaValue(product, 'manufacturer_part_number'),
+    id: Number(product.id),
+    name: decodeHtmlEntities(product.name),
+    slug: decodeHtmlEntities(product.slug),
+    sku: decodeHtmlEntities(product.sku),
+
+    ean: getMetaValue(product, "ean"),
+    manufacturerPartNumber:
+      getAttributeValue(product, [
+        "référence constructeur",
+        "reference constructeur",
+        "manufacturer part number",
+      ]) || getMetaValue(product, "manufacturer_part_number"),
+
     price: priceHT,
     originalPrice: originalPriceHT,
     priceTTC,
     vatAmount,
-    image: product.images?.[0]?.src || '/placeholder-product.png',
-    images: product.images?.map((img: any) => img.src) ?? [],
-    category: product.categories?.[0]?.name ?? 'Non classé',
+
+    image:
+      decodeHtmlEntities(product.images?.[0]?.src) ||
+      "/placeholder-product.png",
+    images: Array.isArray(product.images)
+      ? product.images
+          .map((image: any) => decodeHtmlEntities(image?.src))
+          .filter(Boolean)
+      : [],
+
+    category: decodeHtmlEntities(
+      product.categories?.[0]?.name ?? "Non classé"
+    ),
     manufacturer:
-      getAttributeValue(product, ['marque', 'manufacturer']) ||
-      getMetaValue(product, 'manufacturer'),
+      getAttributeValue(product, ["marque", "manufacturer"]) ||
+      getMetaValue(product, "manufacturer"),
     status,
     conditionLabel: mapConditionLabel(status),
     os:
-      getAttributeValue(product, ['os', 'operating system']) ||
-      getMetaValue(product, 'os'),
+      getAttributeValue(product, ["os", "operating system"]) ||
+      getMetaValue(product, "os"),
     productGroup:
-      getAttributeValue(product, ['product group', 'groupe produit']) ||
-      getMetaValue(product, 'product_group'),
+      getAttributeValue(product, ["product group", "groupe produit"]) ||
+      getMetaValue(product, "product_group"),
+
     specs: extractSpecifications(product),
     grade: mapGrade(product),
-    warranty: 'sur devis',
-    description: stripHtmlTags(product.description ?? product.short_description ?? ''),
+    warranty: getMetaValue(product, "warranty") || "sur devis",
+    description: decodeHtmlEntities(
+      stripHtmlTags(product.description ?? product.short_description ?? "")
+    ),
+
     stock: inStock,
-    stockCount: product.stock_quantity,
-    availability: inStock ? 'En stock' : 'Rupture de stock',
-    incomingQuantity: Number(getMetaValue(product, 'incoming_quantity')) || undefined,
-    incomingDate: getMetaValue(product, 'incoming_date') || undefined,
+    stockCount:
+      typeof product.stock_quantity === "number"
+        ? product.stock_quantity
+        : undefined,
+    availability: inStock ? "En stock" : "Rupture de stock",
+
+    incomingQuantity:
+      Number(getMetaValue(product, "incoming_quantity")) || undefined,
+    incomingDate: getMetaValue(product, "incoming_date") || undefined,
   };
 }
 
-/**
- * List products with filters and pagination
- */
+async function fetchAllAttributeTerms(
+  attributeId: number
+): Promise<WooFilterOption[]> {
+  const params = new URLSearchParams({
+    orderby: "name",
+    order: "asc",
+  });
+
+  const { data } = await fetchJson<WooAttributeTerm[]>(
+    `${WOO_API_URL}/products/attributes/${attributeId}/terms?${params}`
+  );
+
+  return (Array.isArray(data) ? data : [])
+    .map((term) => ({
+      id: Number(term.id),
+      name: decodeHtmlEntities(term.name),
+      slug: term.slug,
+      count: Number(term.count ?? 0),
+    }))
+    .filter((term) => term.count > 0);
+}
+
+async function loadProductFilterGroups(): Promise<WooFilterGroup[]> {
+  const { data } = await fetchJson<WooAttribute[]>(
+    `${WOO_API_URL}/products/attributes`
+  );
+
+  const attributes = Array.isArray(data) ? data : [];
+
+  const groups = await Promise.all(
+    FILTER_ATTRIBUTE_CONFIG.map(async (configuration) => {
+      const expectedName = normalizeLookupValue(configuration.attributeName);
+
+      const attribute = attributes.find(
+        (item) => normalizeLookupValue(item.name) === expectedName
+      );
+
+      if (!attribute) {
+        return null;
+      }
+
+      const options = await fetchAllAttributeTerms(attribute.id);
+
+      if (options.length === 0) {
+        return null;
+      }
+
+      return {
+        key: configuration.key,
+        title: configuration.title,
+        taxonomy: attribute.taxonomy,
+        options,
+      } satisfies WooFilterGroup;
+    })
+  );
+
+  return groups.filter(
+    (group): group is WooFilterGroup => group !== null
+  );
+}
+
+export function listProductFilterGroups(): Promise<WooFilterGroup[]> {
+  if (!filterGroupsPromise) {
+    filterGroupsPromise = loadProductFilterGroups().catch((error) => {
+      filterGroupsPromise = null;
+      throw error;
+    });
+  }
+
+  return filterGroupsPromise;
+}
+
+async function appendAttributeFilters(
+  params: URLSearchParams,
+  selectedFilters: SelectedProductFilters
+) {
+  const activeEntries = Object.entries(selectedFilters).filter(
+    ([, slugs]) => Array.isArray(slugs) && slugs.length > 0
+  ) as Array<[ProductFilterKey, string[]]>;
+
+  if (activeEntries.length === 0) {
+    return;
+  }
+
+  const filterGroups = await listProductFilterGroups();
+  const groupsByKey = new Map(
+    filterGroups.map((group) => [group.key, group])
+  );
+
+  let attributeIndex = 0;
+
+  for (const [filterKey, selectedSlugs] of activeEntries) {
+    const group = groupsByKey.get(filterKey);
+
+    if (!group) {
+      continue;
+    }
+
+    const selectedOptions = group.options.filter((option) =>
+      selectedSlugs.includes(option.slug)
+    );
+
+    if (selectedOptions.length === 0) {
+      continue;
+    }
+
+    params.set(
+      `attributes[${attributeIndex}][attribute]`,
+      group.taxonomy
+    );
+
+    selectedOptions.forEach((option, termIndex) => {
+      params.set(
+        `attributes[${attributeIndex}][term_id][${termIndex}]`,
+        String(option.id)
+      );
+    });
+
+    params.set(`attributes[${attributeIndex}][operator]`, "in");
+
+    attributeIndex += 1;
+  }
+
+  if (attributeIndex > 1) {
+    params.set("attribute_relation", "and");
+  }
+}
+
 export async function listProducts({
   page = 1,
   perPage = 20,
-  search = '',
+  search = "",
   categoryIds = [],
   stockStatus = null,
   orderby,
   order,
+  attributeFilters = {},
 }: ProductListParams = {}): Promise<ProductListResult> {
   try {
-    const params = buildQueryString({
-      per_page: perPage,
-      page,
-      ...(search && { search }),
-      ...(categoryIds.length > 0 && { category: categoryIds }),
-      ...(stockStatus && { stock_status: stockStatus }),
-      ...(orderby && { orderby }),
-      ...(order && { order }),
+    const safePage = Math.max(1, Math.floor(page));
+    const safePerPage = Math.min(100, Math.max(1, Math.floor(perPage)));
+
+    const params = new URLSearchParams({
+      page: String(safePage),
+      per_page: String(safePerPage),
     });
 
-    const response = await fetch(`${WOO_API_URL}/products?${params}`, {
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: Failed to fetch products page ${page}`);
+    if (search.trim()) {
+      params.set("search", search.trim());
     }
 
-    const data = await response.json();
-    const products: Product[] = Array.isArray(data) ? data.map(mapWooProduct) : [];
-    const total = Number(response.headers.get('X-WP-Total') ?? data.length ?? 0);
-    const totalPages = Number(response.headers.get('X-WP-TotalPages') ?? 1);
+    if (categoryIds.length > 0) {
+      params.set("category", categoryIds.join(","));
+    }
+
+    if (stockStatus) {
+      params.set("stock_status[0]", stockStatus);
+    }
+
+    if (orderby) {
+      params.set("orderby", orderby);
+    }
+
+    if (order) {
+      params.set("order", order);
+    }
+
+    await appendAttributeFilters(params, attributeFilters);
+
+    const { data, response } = await fetchJson<any[]>(
+      `${WOO_API_URL}/products?${params}`
+    );
+
+    const products = Array.isArray(data) ? data.map(mapWooProduct) : [];
+    const total = Number(
+      response.headers.get("X-WP-Total") ?? products.length
+    );
+    const totalPages = Number(
+      response.headers.get("X-WP-TotalPages") ?? 1
+    );
 
     return {
-      products: products,
+      products,
       total: Number.isFinite(total) ? total : products.length,
       totalPages:
         Number.isFinite(totalPages) && totalPages > 0 ? totalPages : 1,
     };
   } catch (error) {
-    console.error('Error fetching products:', error);
+    console.error("Erreur lors de la récupération des produits :", error);
     throw error;
   }
 }
 
-/**
- * Get product by slug
- */
-export async function getProductBySlug(slug: string): Promise<Product | null> {
+export async function getProductBySlug(
+  slug: string
+): Promise<Product | null> {
   try {
-    const response = await fetch(`${WOO_API_URL}/products?slug=${slug}`, {
-      cache: 'no-store',
+    const params = new URLSearchParams({
+      slug: slug.trim(),
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: Failed to fetch product`);
-    }
+    const { data } = await fetchJson<any[]>(
+      `${WOO_API_URL}/products?${params}`
+    );
 
-    const data = await response.json();
-    return data.length > 0 ? mapWooProduct(data[0]) : null;
+    return Array.isArray(data) && data.length > 0
+      ? mapWooProduct(data[0])
+      : null;
   } catch (error) {
-    console.error('Error fetching product:', error);
+    console.error("Erreur lors de la récupération du produit :", error);
     throw error;
   }
 }
 
-/**
- * List product categories
- */
 export async function listCategories(): Promise<WooCategory[]> {
   try {
-    const params = buildQueryString({
-      per_page: 100,
-      hide_empty: true,
-      orderby: 'name',
-    });
+    const categories: WooCategory[] = [];
+    let page = 1;
+    let totalPages = 1;
 
-    const response = await fetch(`${WOO_API_URL}/products/categories?${params}`, {
-      cache: 'no-store',
-    });
+    do {
+      const params = new URLSearchParams({
+        page: String(page),
+        per_page: "100",
+        hide_empty: "true",
+        orderby: "name",
+        order: "asc",
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: Failed to fetch categories`);
-    }
+      const { data, response } = await fetchJson<any[]>(
+        `${WOO_API_URL}/products/categories?${params}`
+      );
 
-    const data = await response.json();
+      categories.push(
+        ...(Array.isArray(data)
+          ? data.map((category): WooCategory => {
+              const name = decodeHtmlEntities(category.name);
 
-    return data.map((cat: any) => {
-      const name = decodeHtmlEntities(cat.name);
-      return {
-        id: cat.id,
-        name,
-        slug: cat.slug,
-        count: cat.count,
-        parent: Number(cat.parent ?? 0),
-        label: name,
-        value: name,
-      };
-    });
+              return {
+                id: Number(category.id),
+                name,
+                slug: category.slug,
+                count: Number(category.count ?? 0),
+                parent: Number(category.parent ?? 0),
+                label: name,
+                value: name,
+              };
+            })
+          : [])
+      );
+
+      totalPages = Math.max(
+        1,
+        Number(response.headers.get("X-WP-TotalPages") ?? 1)
+      );
+      page += 1;
+    } while (page <= totalPages);
+
+    return categories;
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    console.error("Erreur lors de la récupération des catégories :", error);
     throw error;
   }
 }

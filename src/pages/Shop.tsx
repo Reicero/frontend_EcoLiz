@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -14,8 +14,13 @@ import {
 import type { Product } from "../types/product";
 import {
   listCategories,
+  listProductFilterGroups,
   listProducts,
+  type ProductFilterKey,
+  type SelectedProductFilters,
   type WooCategory,
+  type WooFilterGroup,
+  type WooFilterOption,
 } from "../services/woocommerce";
 import { formatPrice } from "../utils/formatPrice";
 
@@ -28,21 +33,7 @@ type SortOption =
   | "name-asc"
   | "name-desc";
 
-type FilterKey =
-  | "brand"
-  | "condition"
-  | "os"
-  | "screen"
-  | "cpu"
-  | "ram"
-  | "storage"
-  | "storageType"
-  | "gpu"
-  | "ports"
-  | "speed"
-  | "poe";
-
-type SelectedFilters = Record<FilterKey, string[]>;
+type SelectedFilters = SelectedProductFilters;
 
 type CategoryGroup = {
   title: string;
@@ -59,112 +50,6 @@ const CATEGORY_ORDER = [
   "Écrans",
 ] as const;
 
-const EMPTY_FILTERS: SelectedFilters = {
-  brand: [],
-  condition: [],
-  os: [],
-  screen: [],
-  cpu: [],
-  ram: [],
-  storage: [],
-  storageType: [],
-  gpu: [],
-  ports: [],
-  speed: [],
-  poe: [],
-};
-
-const FILTER_GROUPS: Array<{
-  key: FilterKey;
-  title: string;
-  options: string[];
-}> = [
-  {
-    key: "brand",
-    title: "Marque",
-    options: ["HP / HPE", "Dell", "Lenovo", "Apple", "Cisco", "Autres marques"],
-  },
-  {
-    key: "condition",
-    title: "État",
-    options: ["Neuf", "Reconditionné", "Grade B", "Autre"],
-  },
-  {
-    key: "os",
-    title: "OS",
-    options: [
-      "Windows 11 Pro",
-      "Windows 10 Pro",
-      "Windows 11 Home",
-      "Windows 11 SE",
-      "Chrome OS",
-      "macOS",
-      "Linux",
-      "FreeDOS",
-      "Non renseigné",
-    ],
-  },
-  {
-    key: "screen",
-    title: "Taille écran",
-    options: [
-      "13 pouces",
-      "14 pouces",
-      "15 pouces",
-      "16 pouces",
-      "24 pouces",
-      "27 pouces",
-      "32 pouces",
-    ],
-  },
-  {
-    key: "cpu",
-    title: "Processeur",
-    options: [
-      "Intel Core i3",
-      "Intel Core i5",
-      "Intel Core i7",
-      "Intel Xeon",
-      "AMD Ryzen",
-      "Autre",
-    ],
-  },
-  {
-    key: "ram",
-    title: "RAM",
-    options: ["8 Go", "16 Go", "32 Go", "64 Go", "128 Go et plus"],
-  },
-  {
-    key: "storage",
-    title: "Stockage",
-    options: ["128 Go", "256 Go", "512 Go", "1 To", "2 To et plus"],
-  },
-  {
-    key: "storageType",
-    title: "Type de stockage",
-    options: ["HDD", "SSD", "SAS", "SATA", "NVMe"],
-  },
-  {
-    key: "gpu",
-    title: "Carte graphique",
-    options: ["Intel Graphics", "NVIDIA", "AMD Radeon", "Autre"],
-  },
-  {
-    key: "ports",
-    title: "Nombre de ports",
-    options: ["8 ports", "24 ports", "48 ports"],
-  },
-  {
-    key: "speed",
-    title: "Débit",
-    options: ["1G", "10G", "25G", "40G"],
-  },
-  {
-    key: "poe",
-    title: "PoE",
-    options: ["PoE", "Non PoE"],
-  },
-];
 
 function getSortParams(sortOption: SortOption) {
   switch (sortOption) {
@@ -342,249 +227,14 @@ function getCategoryGroups(categories: WooCategory[]) {
   );
 }
 
-function getProductSearchText(product: Product) {
-  return normalizeText(
-    decodeHtmlEntities(
-      [
-        product.name,
-        product.sku,
-        product.ean,
-        product.manufacturerPartNumber,
-        product.category,
-        product.manufacturer,
-        product.status,
-        product.conditionLabel,
-        product.os,
-        product.productGroup,
-        product.specs,
-        product.description,
-      ]
-        .filter(Boolean)
-        .join(" ")
-    )
-  );
-}
-
-function optionMatchesProduct(
-  product: Product,
-  filterKey: FilterKey,
-  option: string
-) {
-  const text = getProductSearchText(product);
-  const optionText = normalizeText(option);
-
-  if (filterKey === "brand") {
-    const brand = normalizeText(product.manufacturer || "");
-
-    if (option === "HP / HPE") {
-      return (
-        brand === "hp" ||
-        brand.includes("hpe") ||
-        brand.includes("hewlett") ||
-        text.includes("hewlett packard")
-      );
-    }
-
-    if (option === "Autres marques") {
-      return (
-        brand.length > 0 &&
-        !["dell", "lenovo", "apple", "cisco", "hp", "hpe"].some(
-          (knownBrand) => brand.includes(knownBrand)
-        )
-      );
-    }
-
-    return brand.includes(optionText) || text.includes(optionText);
-  }
-
-  if (filterKey === "condition") {
-    const condition = normalizeText(
-      product.conditionLabel || product.status || ""
-    );
-
-    if (option === "Autre") {
-      return (
-        condition.length > 0 &&
-        !["neuf", "reconditionne", "grade b"].some((knownCondition) =>
-          condition.includes(knownCondition)
-        )
-      );
-    }
-
-    return condition.includes(optionText) || text.includes(optionText);
-  }
-
-  if (filterKey === "os") {
-    const os = normalizeText(product.os || "");
-
-    if (option === "Windows 11 Pro") {
-      return os.includes("w11p") || os.includes("windows 11 pro");
-    }
-
-    if (option === "Windows 10 Pro") {
-      return os.includes("w10p") || os.includes("windows 10 pro");
-    }
-
-    if (option === "Windows 11 Home") {
-      return os.includes("w11h") || os.includes("windows 11 home");
-    }
-
-    if (option === "Windows 11 SE") {
-      return os.includes("w11 se") || os.includes("windows 11 se");
-    }
-
-    if (option === "Non renseigné") {
-      return !product.os;
-    }
-
-    return os.includes(optionText) || text.includes(optionText);
-  }
-
-  if (filterKey === "screen") {
-    const screenValue = option.replace(" pouces", "");
-    const screenRegex = new RegExp(
-      `\\b${screenValue}(?:[.,]\\d+)?\\s*(?:\\"|″|inch(?:es)?|pouces?)\\b`,
-      "i"
-    );
-
-    return screenRegex.test(text);
-  }
-
-  if (filterKey === "cpu") {
-    if (option === "Intel Core i3") return /\b(?:core\s*)?i3\b/.test(text);
-    if (option === "Intel Core i5") return /\b(?:core\s*)?i5\b/.test(text);
-    if (option === "Intel Core i7") return /\b(?:core\s*)?i7\b/.test(text);
-    if (option === "Intel Xeon") return /\bxeon\b/.test(text);
-    if (option === "AMD Ryzen") return /\bryzen\b/.test(text);
-
-    return (
-      (text.includes("cpu") || text.includes("processeur")) &&
-      !["i3", "i5", "i7", "xeon", "ryzen"].some((cpu) =>
-        text.includes(cpu)
-      )
-    );
-  }
-
-  if (filterKey === "ram") {
-    if (option === "128 Go et plus") {
-      return /\b(?:128|192|256|512)\s*(?:gb|go)\b/.test(text);
-    }
-
-    const ramValue = option.replace(" Go", "");
-    const ramRegex = new RegExp(`\\b${ramValue}\\s*(?:gb|go)\\b`, "i");
-
-    return ramRegex.test(text);
-  }
-
-  if (filterKey === "storage") {
-    if (option === "1 To") {
-      return /\b(?:1\s*(?:tb|to)|1000\s*(?:gb|go))\b/.test(text);
-    }
-
-    if (option === "2 To et plus") {
-      return /\b(?:2|3|4|6|8|10|12|16)\s*(?:tb|to)\b/.test(text);
-    }
-
-    const storageValue = option.replace(" Go", "");
-    const storageRegex = new RegExp(
-      `\\b${storageValue}\\s*(?:gb|go)\\b`,
-      "i"
-    );
-
-    return storageRegex.test(text);
-  }
-
-  if (filterKey === "storageType") {
-    return new RegExp(`\\b${optionText}\\b`, "i").test(text);
-  }
-
-  if (filterKey === "gpu") {
-    if (option === "Intel Graphics") {
-      return (
-        text.includes("intel graphics") ||
-        text.includes("uhd graphics") ||
-        text.includes("iris xe")
-      );
-    }
-
-    if (option === "NVIDIA") {
-      return (
-        text.includes("nvidia") ||
-        text.includes("quadro") ||
-        text.includes("geforce") ||
-        text.includes("rtx")
-      );
-    }
-
-    if (option === "AMD Radeon") {
-      return text.includes("radeon");
-    }
-
-    return (
-      (text.includes("graphics") || text.includes("gpu")) &&
-      ![
-        "intel graphics",
-        "uhd graphics",
-        "iris xe",
-        "nvidia",
-        "quadro",
-        "geforce",
-        "rtx",
-        "radeon",
-      ].some((gpu) => text.includes(gpu))
-    );
-  }
-
-  if (filterKey === "ports") {
-    const portValue = option.replace(" ports", "");
-    const portRegex = new RegExp(
-      `\\b${portValue}\\s*(?:ports?|port)|\\b${portValue}x\\b`,
-      "i"
-    );
-
-    return portRegex.test(text);
-  }
-
-  if (filterKey === "speed") {
-    if (option === "1G") {
-      return /\b1\s*(?:g|gbe|gbps)\b/.test(text) || text.includes("gigabit");
-    }
-
-    if (option === "10G") return /\b10\s*(?:g|gbe|gbps)\b/.test(text);
-    if (option === "25G") return /\b25\s*(?:g|gbe|gbps)\b/.test(text);
-    if (option === "40G") return /\b40\s*(?:g|gbe|gbps)\b/.test(text);
-  }
-
-  if (filterKey === "poe") {
-    if (option === "PoE") {
-      return /\bpoe(?:\+|\+\+)?\b/.test(text);
-    }
-
-    return !/\bpoe(?:\+|\+\+)?\b/.test(text);
-  }
-
-  return text.includes(optionText);
-}
-
-function productMatchesSelectedFilters(
-  product: Product,
-  selectedFilters: SelectedFilters
-) {
-  return Object.entries(selectedFilters).every(([key, selectedOptions]) => {
-    if (selectedOptions.length === 0) return true;
-
-    return selectedOptions.some((option) =>
-      optionMatchesProduct(product, key as FilterKey, option)
-    );
-  });
-}
-
 export function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<WooCategory[]>([]);
+  const [filterGroups, setFilterGroups] = useState<WooFilterGroup[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [filterGroupsLoading, setFilterGroupsLoading] = useState(false);
 
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [expandedCategoryGroup, setExpandedCategoryGroup] = useState<
@@ -606,7 +256,7 @@ export function Shop() {
   >([]);
 
   const [selectedFilters, setSelectedFilters] =
-    useState<SelectedFilters>(EMPTY_FILTERS);
+    useState<SelectedFilters>({});
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -623,6 +273,23 @@ export function Shop() {
       })
       .finally(() => {
         setCategoriesLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    setFilterGroupsLoading(true);
+
+    listProductFilterGroups()
+      .then(setFilterGroups)
+      .catch((error) => {
+        console.error(
+          "Erreur lors de la récupération des filtres WooCommerce :",
+          error
+        );
+        setFilterGroups([]);
+      })
+      .finally(() => {
+        setFilterGroupsLoading(false);
       });
   }, []);
 
@@ -647,6 +314,7 @@ export function Shop() {
       search: searchTerm,
       categoryIds: selectedCategoryIds,
       stockStatus,
+      attributeFilters: selectedFilters,
       ...getSortParams(sortOption),
     })
       .then((result) => {
@@ -668,6 +336,7 @@ export function Shop() {
     searchTerm,
     selectedCategoryIds,
     selectedStockStatuses,
+    selectedFilters,
     sortOption,
     productsPerPage,
   ]);
@@ -696,17 +365,17 @@ export function Shop() {
     );
   }
 
-  function toggleTextFilter(filterKey: FilterKey, option: string) {
+  function toggleTextFilter(filterKey: ProductFilterKey, optionSlug: string) {
     setCurrentPage(1);
 
     setSelectedFilters((currentFilters) => {
-      const currentOptions = currentFilters[filterKey];
+      const currentOptions = currentFilters[filterKey] ?? [];
 
       return {
         ...currentFilters,
-        [filterKey]: currentOptions.includes(option)
-          ? currentOptions.filter((item) => item !== option)
-          : [...currentOptions, option],
+        [filterKey]: currentOptions.includes(optionSlug)
+          ? currentOptions.filter((item) => item !== optionSlug)
+          : [...currentOptions, optionSlug],
       };
     });
   }
@@ -728,7 +397,7 @@ export function Shop() {
     setSearchTerm("");
     setSelectedCategoryIds([]);
     setSelectedStockStatuses([]);
-    setSelectedFilters(EMPTY_FILTERS);
+    setSelectedFilters({});
     setExpandedCategoryGroup(null);
     setExpandedFilterGroup(null);
     setSortOption("default");
@@ -775,7 +444,7 @@ export function Shop() {
   }
 
   const textFilterCount = Object.values(selectedFilters).reduce(
-    (total, values) => total + values.length,
+    (total, values) => total + (values?.length ?? 0),
     0
   );
 
@@ -788,13 +457,6 @@ export function Shop() {
   const categoryGroups = getCategoryGroups(categories);
   const paginationPages = getPaginationPages();
 
-  const filteredProducts = useMemo(
-    () =>
-      products.filter((product) =>
-        productMatchesSelectedFilters(product, selectedFilters)
-      ),
-    [products, selectedFilters]
-  );
 
   return (
     <section className="min-h-screen bg-brand-50 pb-24 pt-32">
@@ -899,17 +561,25 @@ export function Shop() {
               }
             />
 
-            {FILTER_GROUPS.map((group) => (
-              <FilterGroup
-                key={group.key}
-                title={group.title}
-                options={group.options}
-                selectedOptions={selectedFilters[group.key]}
-                isOpen={expandedFilterGroup === group.key}
-                onToggleGroup={() => toggleFilterGroup(group.key)}
-                onToggle={(option) => toggleTextFilter(group.key, option)}
-              />
-            ))}
+            {filterGroupsLoading ? (
+              <p className="mb-3 text-sm text-brand-900/50">
+                Chargement des filtres…
+              </p>
+            ) : (
+              filterGroups.map((group) => (
+                <FilterGroup
+                  key={group.key}
+                  title={group.title}
+                  options={group.options}
+                  selectedOptions={selectedFilters[group.key] ?? []}
+                  isOpen={expandedFilterGroup === group.key}
+                  onToggleGroup={() => toggleFilterGroup(group.key)}
+                  onToggle={(optionSlug) =>
+                    toggleTextFilter(group.key, optionSlug)
+                  }
+                />
+              ))
+            )}
 
             {activeFilterCount > 0 && (
               <button
@@ -1020,19 +690,19 @@ export function Shop() {
               <div className="rounded-2xl border border-brand-100 bg-white py-20 text-center text-brand-900/50">
                 Chargement du catalogue…
               </div>
-            ) : filteredProducts.length === 0 ? (
+            ) : products.length === 0 ? (
               <div className="rounded-2xl border border-brand-100 bg-white py-20 text-center text-brand-900/50">
                 Aucun produit ne correspond aux filtres sélectionnés.
               </div>
             ) : viewMode === "list" ? (
               <div className="space-y-3">
-                {filteredProducts.map((product) => (
+                {products.map((product) => (
                   <ProductListItem key={product.id} product={product} />
                 ))}
               </div>
             ) : (
               <div className="grid min-w-0 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                {filteredProducts.map((product) => (
+                {products.map((product) => (
                   <ProductGridItem key={product.id} product={product} />
                 ))}
               </div>
@@ -1194,11 +864,11 @@ function FilterGroup({
   onToggle,
 }: {
   title: string;
-  options: string[];
+  options: Array<WooFilterOption | string>;
   selectedOptions: string[];
   isOpen: boolean;
   onToggleGroup: () => void;
-  onToggle: (option: string) => void;
+  onToggle: (optionSlug: string) => void;
 }) {
   return (
     <div className="mb-3 overflow-hidden rounded-xl border border-brand-100 bg-white">
@@ -1229,21 +899,38 @@ function FilterGroup({
 
       {isOpen && (
         <div className="space-y-2 border-t border-brand-100 bg-brand-50/40 px-3 py-3">
-          {options.map((option) => (
-            <label
-              key={option}
-              className="flex cursor-pointer items-center gap-2 text-sm text-brand-900/70"
-            >
-              <input
-                type="checkbox"
-                checked={selectedOptions.includes(option)}
-                onChange={() => onToggle(option)}
-                className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
-              />
+          {options.map((option) => {
+            const optionValue =
+              typeof option === "string" ? option : option.slug;
+            const optionLabel =
+              typeof option === "string" ? option : option.name;
+            const optionCount =
+              typeof option === "string" ? null : option.count;
 
-              <span className="break-words">{option}</span>
-            </label>
-          ))}
+            return (
+              <label
+                key={optionValue}
+                className="flex cursor-pointer items-center justify-between gap-2 text-sm text-brand-900/70"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedOptions.includes(optionValue)}
+                    onChange={() => onToggle(optionValue)}
+                    className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
+                  />
+
+                  <span className="break-words">{optionLabel}</span>
+                </span>
+
+                {optionCount !== null && (
+                  <span className="shrink-0 text-xs text-brand-900/40">
+                    {optionCount}
+                  </span>
+                )}
+              </label>
+            );
+          })}
         </div>
       )}
     </div>
