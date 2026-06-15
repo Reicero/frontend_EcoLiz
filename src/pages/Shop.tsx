@@ -122,16 +122,19 @@ const PROMOTION_CARDS = [
     badge: "-15%",
     title: "Promotion notebooks",
     description: "Une sélection de PC portables professionnels reconditionnés.",
+    accent: "from-brand-950 to-sky-700",
   },
   {
     badge: "-10%",
     title: "Stations de travail",
     description: "Workstations performantes pour les usages professionnels.",
+    accent: "from-sky-700 to-cyan-500",
   },
   {
     badge: "-20%",
     title: "Écrans reconditionnés",
     description: "Écrans, accessoires et périphériques à prix réduits.",
+    accent: "from-brand-800 to-brand-600",
   },
 ] as const;
 
@@ -144,6 +147,51 @@ const CATEGORY_ICONS = {
   Licence: KeyRound,
   Écrans: Monitor,
 } as const;
+
+const CATEGORY_DETAILS: Record<
+  string,
+  {
+    description: string;
+    color: string;
+    icon: string;
+  }
+> = {
+  Notebooks: {
+    description: "PC portables, docks, tablettes et mobilité pro.",
+    color: "from-sky-500 to-cyan-400",
+    icon: "bg-sky-50 text-sky-700 ring-sky-100",
+  },
+  Workstations: {
+    description: "Postes fixes et stations puissantes pour le bureau.",
+    color: "from-brand-800 to-sky-600",
+    icon: "bg-brand-50 text-brand-800 ring-brand-100",
+  },
+  Réseau: {
+    description: "Switchs, routeurs, firewalls et équipements réseau.",
+    color: "from-cyan-500 to-sky-700",
+    icon: "bg-cyan-50 text-cyan-700 ring-cyan-100",
+  },
+  "Wi-Fi": {
+    description: "Bornes, contrôleurs et solutions sans fil.",
+    color: "from-sky-400 to-blue-600",
+    icon: "bg-sky-50 text-sky-700 ring-sky-100",
+  },
+  "Server / Stockage": {
+    description: "Serveurs, stockage, RAID et pièces datacenter.",
+    color: "from-brand-950 to-brand-700",
+    icon: "bg-brand-50 text-brand-800 ring-brand-100",
+  },
+  Licence: {
+    description: "Logiciels, licences et systèmes professionnels.",
+    color: "from-cyan-600 to-brand-700",
+    icon: "bg-cyan-50 text-cyan-700 ring-cyan-100",
+  },
+  Écrans: {
+    description: "Moniteurs, résolutions et formats de travail.",
+    color: "from-sky-600 to-brand-700",
+    icon: "bg-sky-50 text-sky-700 ring-sky-100",
+  },
+};
 
 function getCategorySlug(title: string) {
   const slugMap: Record<string, string> = {
@@ -797,12 +845,13 @@ export function Shop() {
     (searchTerm ? 1 : 0);
 
   return (
-    <section className="min-h-screen bg-gradient-to-b from-white via-brand-50 to-white pb-24 pt-28">
+    <section className="min-h-screen bg-[radial-gradient(circle_at_top_left,#dff6ff_0,#ffffff_34%,#f7fbfa_72%)] pb-24 pt-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <header className="mb-8 rounded-[2rem] border border-brand-100 bg-white/90 p-5 shadow-sm backdrop-blur">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <header className="mb-8 overflow-hidden rounded-[2rem] border border-sky-100 bg-white shadow-[0_18px_50px_rgba(3,64,45,0.08)]">
+          <div className="h-2 bg-gradient-to-r from-brand-800 via-sky-500 to-cyan-400" />
+          <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-brand-700">
+              <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-sky-700">
                 Boutique EcoLiz
               </p>
               <h1 className="text-3xl font-bold tracking-tight text-brand-950 lg:text-4xl">
@@ -817,7 +866,7 @@ export function Shop() {
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Rechercher un produit, une marque, une référence…"
-                className="w-full rounded-2xl border border-brand-100 bg-brand-50 py-4 pl-12 pr-4 text-sm outline-none transition focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-600/20"
+                className="w-full rounded-2xl border border-sky-100 bg-sky-50/70 py-4 pl-12 pr-4 text-sm outline-none transition focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-500/20"
               />
             </div>
           </div>
@@ -856,7 +905,7 @@ export function Shop() {
               Aucune catégorie disponible.
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
               {categoryGroups.map((group) => (
                 <CategorySelectionCard
                   key={group.title}
@@ -1198,7 +1247,9 @@ function PromotionSection() {
   return (
     <section className="mb-8">
       <div className="mb-4 flex items-center gap-2">
-        <BadgePercent className="h-5 w-5 text-brand-700" />
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
+          <BadgePercent className="h-5 w-5" />
+        </span>
         <h2 className="text-2xl font-bold text-brand-950">Promotions</h2>
       </div>
 
@@ -1206,11 +1257,12 @@ function PromotionSection() {
         {PROMOTION_CARDS.map((card) => (
           <article
             key={card.title}
-            className="group overflow-hidden rounded-[1.5rem] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-brand-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            className="group overflow-hidden rounded-[1.5rem] border border-sky-100 bg-white shadow-[0_12px_30px_rgba(3,64,45,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(3,64,45,0.14)]"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <span className="mb-4 inline-flex rounded-xl bg-brand-700 px-3 py-1 text-sm font-bold text-white">
+            <div className={`h-2 bg-gradient-to-r ${card.accent}`} />
+            <div className="flex items-start justify-between gap-4 p-5">
+              <div className="min-w-0 flex-1">
+                <span className={`mb-4 inline-flex rounded-full bg-gradient-to-r ${card.accent} px-3 py-1 text-sm font-bold text-white shadow-sm`}>
                   {card.badge}
                 </span>
 
@@ -1222,13 +1274,13 @@ function PromotionSection() {
                   {card.description}
                 </p>
 
-                <span className="inline-flex rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white transition group-hover:bg-brand-800">
+                <span className="inline-flex rounded-xl bg-brand-950 px-4 py-2 text-sm font-semibold text-white transition group-hover:bg-sky-700">
                   Découvrir
                 </span>
               </div>
 
-              <div className="flex h-24 w-28 shrink-0 items-center justify-center rounded-2xl bg-white/80 text-brand-700 shadow-inner">
-                <Laptop className="h-14 w-14" />
+              <div className={`flex h-24 w-28 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${card.accent} text-white shadow-inner`}>
+                <Laptop className="h-12 w-12" />
               </div>
             </div>
           </article>
@@ -1249,6 +1301,11 @@ function CategorySelectionCard({
 }) {
   const Icon =
     CATEGORY_ICONS[group.title as keyof typeof CATEGORY_ICONS] ?? Grid3X3;
+  const details = CATEGORY_DETAILS[group.title] ?? {
+    description: "Matériel professionnel reconditionné.",
+    color: "from-brand-800 to-sky-600",
+    icon: "bg-brand-50 text-brand-800 ring-brand-100",
+  };
   const productCount = group.children.reduce(
     (total, category) => total + (category.count ?? 0),
     0
@@ -1258,23 +1315,32 @@ function CategorySelectionCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`group flex min-h-[132px] flex-col items-center justify-center rounded-2xl border p-4 text-center transition-all hover:-translate-y-0.5 hover:shadow-md ${
+      className={`group overflow-hidden rounded-2xl border bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(3,64,45,0.12)] ${
         isSelected
-          ? "border-brand-700 bg-brand-50 text-brand-950 shadow-sm"
-          : "border-brand-100 bg-white text-brand-950 hover:border-brand-300"
+          ? "border-brand-800 ring-2 ring-sky-200"
+          : "border-sky-100 hover:border-sky-300"
       }`}
     >
-      <span
-        className={`mb-3 flex h-14 w-14 items-center justify-center rounded-2xl transition ${
-          isSelected ? "bg-brand-700 text-white" : "bg-brand-50 text-brand-700"
-        }`}
-      >
-        <Icon className="h-8 w-8" />
-      </span>
+      <span className={`block h-2 bg-gradient-to-r ${details.color}`} />
+      <span className="flex min-h-[178px] flex-col p-5">
+        <span className="mb-4 flex items-start justify-between gap-3">
+          <span
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ring-1 ${details.icon}`}
+          >
+            <Icon className="h-7 w-7" />
+          </span>
+          <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
+            {productCount} produit{productCount > 1 ? "s" : ""}
+          </span>
+        </span>
 
-      <span className="text-sm font-bold">{group.title}</span>
-      <span className="mt-1 text-xs text-brand-900/45">
-        {productCount} produit{productCount > 1 ? "s" : ""}
+        <span className="text-lg font-bold text-brand-950">{group.title}</span>
+        <span className="mt-2 min-h-[42px] text-sm leading-5 text-brand-900/65">
+          {details.description}
+        </span>
+        <span className="mt-auto pt-4 text-sm font-semibold text-sky-700 transition group-hover:text-brand-800">
+          Explorer la catégorie →
+        </span>
       </span>
     </button>
   );
