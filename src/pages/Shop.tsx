@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { Dispatch, MouseEvent, SetStateAction } from "react";
-import { Link } from "react-router-dom";
+import type { Dispatch, FormEvent, MouseEvent, SetStateAction } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   BadgePercent,
@@ -469,6 +469,7 @@ function buildContextualFilterGroups(
 }
 
 export function Shop() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<WooCategory[]>([]);
   const [filterGroups, setFilterGroups] = useState<WooFilterGroup[]>([]);
@@ -510,6 +511,22 @@ export function Shop() {
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const selectedCategoryKey = selectedCategoryIds.join(",");
+  const categoryGroups = getCategoryGroups(categories);
+  const selectedMainCategory =
+    categoryGroups.find((group) => group.title === selectedMainCategoryTitle) ??
+    null;
+
+  function updateShopUrl(nextParams: Record<string, string>) {
+    const params = new URLSearchParams();
+
+    Object.entries(nextParams).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value);
+      }
+    });
+
+    setSearchParams(params);
+  }
 
   useEffect(() => {
     setCategoriesLoading(true);
@@ -550,6 +567,60 @@ export function Shop() {
 
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
+
+  useEffect(() => {
+    const querySearch = searchParams.get("recherche")?.trim() ?? "";
+    const queryCategory = searchParams.get("categorie")?.trim() ?? "";
+
+    if (querySearch) {
+      if (searchInput !== querySearch) {
+        setSearchInput(querySearch);
+      }
+
+      if (searchTerm !== querySearch) {
+        setSearchTerm(querySearch);
+      }
+
+      setSelectedMainCategoryTitle(null);
+      setSelectedCategoryIds([]);
+      setSelectedStockStatuses([]);
+      setSelectedFilters({});
+      setCurrentPage(1);
+      return;
+    }
+
+    if (queryCategory && categoryGroups.length > 0) {
+      const group = categoryGroups.find(
+        (item) => getCategorySlug(item.title) === queryCategory
+      );
+
+      if (group && selectedMainCategoryTitle !== group.title) {
+        setSearchInput("");
+        setSearchTerm("");
+        setSelectedMainCategoryTitle(group.title);
+        setSelectedCategoryIds(group.children.map((category) => category.id));
+        setSelectedStockStatuses([]);
+        setSelectedFilters({});
+        setExpandedCategoryGroup(group.title);
+        setExpandedFilterGroup(null);
+        setCurrentPage(1);
+      }
+
+      return;
+    }
+
+    if (!queryCategory && !querySearch) {
+      setSearchInput("");
+      setSearchTerm("");
+      setSelectedMainCategoryTitle(null);
+      setSelectedCategoryIds([]);
+      setSelectedStockStatuses([]);
+      setSelectedFilters({});
+      setExpandedCategoryGroup(null);
+      setExpandedFilterGroup(null);
+      setCurrentPage(1);
+    }
+  }, [searchParams, categories]);
 
   useEffect(() => {
     let cancelled = false;
@@ -745,6 +816,7 @@ export function Shop() {
     setSortOption("default");
     setProductsPerPage(24);
     setCurrentPage(1);
+    updateShopUrl({});
   }
 
   function selectMainCategory(group: CategoryGroup) {
@@ -757,6 +829,9 @@ export function Shop() {
     setExpandedCategoryGroup(group.title);
     setExpandedFilterGroup(null);
     setCurrentPage(1);
+    updateShopUrl({
+      categorie: getCategorySlug(group.title),
+    });
   }
 
   function returnToCategories() {
@@ -767,6 +842,27 @@ export function Shop() {
     setExpandedCategoryGroup(null);
     setExpandedFilterGroup(null);
     setCurrentPage(1);
+    updateShopUrl({});
+  }
+
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const term = searchInput.trim();
+
+    setCurrentPage(1);
+    setSearchTerm(term);
+
+    if (term) {
+      setSelectedMainCategoryTitle(null);
+      setSelectedCategoryIds([]);
+      setSelectedStockStatuses([]);
+      setSelectedFilters({});
+      updateShopUrl({ recherche: term });
+      return;
+    }
+
+    updateShopUrl({});
   }
 
   function handleAddToCart(event: MouseEvent, product: Product) {
@@ -814,10 +910,6 @@ export function Shop() {
     ];
   }
 
-  const categoryGroups = getCategoryGroups(categories);
-  const selectedMainCategory =
-    categoryGroups.find((group) => group.title === selectedMainCategoryTitle) ??
-    null;
   const visibleFilterGroups = buildContextualFilterGroups(
     filterGroups,
     categoryFilterProducts,
@@ -859,7 +951,10 @@ export function Shop() {
               </h1>
             </div>
 
-            <div className="relative min-w-0 flex-1 lg:max-w-xl">
+            <form
+              onSubmit={submitSearch}
+              className="relative min-w-0 flex-1 lg:max-w-xl"
+            >
               <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-900/40" />
 
               <input
@@ -868,13 +963,15 @@ export function Shop() {
                 placeholder="Rechercher un produit, une marque, une référence…"
                 className="w-full rounded-2xl border border-sky-100 bg-sky-50/70 py-4 pl-12 pr-4 text-sm outline-none transition focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-500/20"
               />
-            </div>
+            </form>
           </div>
         </header>
 
-        <PromotionSection />
+        {!shouldShowProductArea && (
+          <>
+            <PromotionSection />
 
-        <section className="mb-8">
+            <section className="mb-8">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">
@@ -916,7 +1013,9 @@ export function Shop() {
               ))}
             </div>
           )}
-        </section>
+            </section>
+          </>
+        )}
 
         {shouldShowProductArea && (
           <div className="overflow-hidden rounded-[2rem] border border-brand-100 bg-white shadow-sm">
@@ -926,139 +1025,133 @@ export function Shop() {
               <span className="font-semibold text-brand-950">{pageTitle}</span>
             </div>
 
-            <div className="grid items-start lg:grid-cols-[300px_minmax(0,1fr)]">
-              <aside
-                className="
-                  self-start border-b border-brand-100 bg-white p-5
-                  lg:sticky lg:top-28 lg:max-h-[calc(100vh-8rem)]
-                  lg:overflow-y-auto lg:overscroll-contain lg:border-b-0 lg:border-r
-                "
-              >
+            <div>
+              <main className="min-w-0 bg-white p-5 lg:p-7">
                 {!searchTerm && (
                   <button
                     type="button"
                     onClick={returnToCategories}
-                    className="mb-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100"
+                    className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-700 transition hover:text-sky-700"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     Retour aux catégories
                   </button>
                 )}
 
-                <div className="mb-5 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-brand-900/60" />
-                    <h2 className="font-semibold text-brand-950">Filtres</h2>
+                {!searchTerm && selectedMainCategory ? (
+                  <div className="mb-6">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-700">
+                      Sous-catégories
+                    </p>
+                    <div className="flex gap-4 overflow-x-auto pb-2">
+                      {selectedMainCategory.children.map((category) => {
+                        const checked = selectedCategoryIds.includes(
+                          category.id
+                        );
+
+                        return (
+                          <button
+                            key={category.id}
+                            type="button"
+                            onClick={() =>
+                              toggleNumberFilter(
+                                category.id,
+                                selectedCategoryIds,
+                                setSelectedCategoryIds
+                              )
+                            }
+                            className={`min-w-[150px] rounded-2xl border px-4 py-3 text-left text-sm transition ${
+                              checked
+                                ? "border-brand-700 bg-brand-950 text-white"
+                                : "border-brand-100 bg-brand-50 text-brand-900 hover:border-sky-300 hover:bg-sky-50"
+                            }`}
+                          >
+                            <span className="block font-semibold">
+                              {getCategoryDisplayName(category.name)}
+                            </span>
+                            {typeof category.count === "number" && (
+                              <span
+                                className={`mt-1 block text-xs ${
+                                  checked ? "text-white/70" : "text-brand-900/45"
+                                }`}
+                              >
+                                {category.count} produits
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="mb-6 rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-brand-900/60" />
+                      <h2 className="font-semibold text-brand-950">Filtres</h2>
+                      {activeFilterCount > 0 && (
+                        <span className="rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-700">
+                          {activeFilterCount}
+                        </span>
+                      )}
+                    </div>
+
+                    {activeFilterCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={resetFilters}
+                        className="inline-flex items-center gap-2 text-sm text-brand-700 underline hover:text-sky-700"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        Réinitialiser
+                      </button>
+                    )}
                   </div>
 
-                  {activeFilterCount > 0 && (
-                    <span className="rounded-full bg-brand-100 px-2 py-1 text-xs text-brand-700">
-                      {activeFilterCount}
-                    </span>
+                  {searchTerm ? (
+                    <p className="text-sm text-brand-900/60">
+                      La recherche parcourt toute la boutique.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-3">
+                      <FilterGroup
+                        title="Disponibilité"
+                        options={["En stock", "Rupture de stock"]}
+                        selectedOptions={selectedStockStatuses.map((status) =>
+                          status === "instock" ? "En stock" : "Rupture de stock"
+                        )}
+                        isOpen={expandedFilterGroup === "availability"}
+                        onToggleGroup={() => toggleFilterGroup("availability")}
+                        onToggle={(option) =>
+                          toggleStockFilter(
+                            option === "En stock" ? "instock" : "outofstock"
+                          )
+                        }
+                      />
+
+                      {filterGroupsLoading || contextualFiltersLoading ? (
+                        <p className="text-sm text-brand-900/50">
+                          Chargement des filtres adaptés…
+                        </p>
+                      ) : (
+                        visibleFilterGroups.map((group) => (
+                          <FilterGroup
+                            key={group.key}
+                            title={group.title}
+                            options={group.options}
+                            selectedOptions={selectedFilters[group.key] ?? []}
+                            isOpen={expandedFilterGroup === group.key}
+                            onToggleGroup={() => toggleFilterGroup(group.key)}
+                            onToggle={(optionSlug) =>
+                              toggleTextFilter(group.key, optionSlug)
+                            }
+                          />
+                        ))
+                      )}
+                    </div>
                   )}
                 </div>
-
-                {searchTerm ? (
-                  <p className="mb-5 rounded-2xl border border-brand-100 bg-brand-50/60 p-4 text-sm text-brand-900/60">
-                    La recherche parcourt toute la boutique. Les filtres de
-                    catégorie sont masqués pendant la recherche.
-                  </p>
-                ) : (
-                  <>
-                    {selectedMainCategory ? (
-                      <div className="mb-5 rounded-2xl border border-brand-100 bg-brand-50/60 p-4">
-                        <h3 className="mb-3 text-sm font-semibold text-brand-950">
-                          Sous-catégories
-                        </h3>
-
-                        <div className="space-y-2">
-                          {selectedMainCategory.children.map((category) => (
-                            <label
-                              key={category.id}
-                              className="flex cursor-pointer items-center justify-between gap-2 rounded-xl px-2 py-2 text-sm text-brand-900/70 transition hover:bg-white"
-                            >
-                              <span className="flex min-w-0 items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedCategoryIds.includes(
-                                    category.id
-                                  )}
-                                  onChange={() =>
-                                    toggleNumberFilter(
-                                      category.id,
-                                      selectedCategoryIds,
-                                      setSelectedCategoryIds
-                                    )
-                                  }
-                                  className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
-                                />
-
-                                <span className="break-words">
-                                  {getCategoryDisplayName(category.name)}
-                                </span>
-                              </span>
-
-                              {typeof category.count === "number" && (
-                                <span className="shrink-0 text-xs text-brand-900/40">
-                                  {category.count}
-                                </span>
-                              )}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    <FilterGroup
-                      title="Disponibilité"
-                      options={["En stock", "Rupture de stock"]}
-                      selectedOptions={selectedStockStatuses.map((status) =>
-                        status === "instock" ? "En stock" : "Rupture de stock"
-                      )}
-                      isOpen={expandedFilterGroup === "availability"}
-                      onToggleGroup={() => toggleFilterGroup("availability")}
-                      onToggle={(option) =>
-                        toggleStockFilter(
-                          option === "En stock" ? "instock" : "outofstock"
-                        )
-                      }
-                    />
-
-                    {filterGroupsLoading || contextualFiltersLoading ? (
-                      <p className="mb-3 text-sm text-brand-900/50">
-                        Chargement des filtres adaptés…
-                      </p>
-                    ) : (
-                      visibleFilterGroups.map((group) => (
-                        <FilterGroup
-                          key={group.key}
-                          title={group.title}
-                          options={group.options}
-                          selectedOptions={selectedFilters[group.key] ?? []}
-                          isOpen={expandedFilterGroup === group.key}
-                          onToggleGroup={() => toggleFilterGroup(group.key)}
-                          onToggle={(optionSlug) =>
-                            toggleTextFilter(group.key, optionSlug)
-                          }
-                        />
-                      ))
-                    )}
-                  </>
-                )}
-
-                {activeFilterCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={resetFilters}
-                    className="mt-2 inline-flex items-center gap-2 text-sm text-brand-700 underline hover:text-brand-800"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    Réinitialiser les filtres
-                  </button>
-                )}
-              </aside>
-
-              <main className="min-w-0 bg-white p-5 lg:p-7">
                 <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div className="min-w-0">
                     <h2 className="text-3xl font-bold text-brand-950">
@@ -1140,11 +1233,13 @@ export function Shop() {
                   </div>
                 </div>
 
-                <div className="mb-6 flex min-w-0 items-center gap-2 rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-900/60">
+                <div className="mb-6 flex min-w-0 items-center justify-between gap-3 border-b border-brand-100 pb-4 text-sm text-brand-900/60">
                   <SlidersHorizontal className="h-4 w-4 shrink-0" />
-                  <span className="truncate">
-                    Page {currentPage} / {totalPages} — filtres appliqués à la
-                    catégorie complète
+                  <span className="mr-auto truncate">
+                    Page {currentPage} / {totalPages}
+                  </span>
+                  <span className="shrink-0">
+                    {totalProducts} produit{totalProducts > 1 ? "s" : ""}
                   </span>
                 </div>
 
@@ -1362,12 +1457,12 @@ function FilterGroup({
   onToggle: (optionSlug: string) => void;
 }) {
   return (
-    <div className="mb-3 overflow-hidden rounded-xl border border-brand-100 bg-white">
+    <div className="min-w-[180px] overflow-hidden rounded-xl border border-brand-100 bg-white">
       <button
         type="button"
         onClick={onToggleGroup}
         aria-expanded={isOpen}
-        className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors hover:bg-brand-50"
+        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-brand-50"
       >
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate text-sm font-semibold text-brand-950">
