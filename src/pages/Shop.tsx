@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, MouseEvent, SetStateAction } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -16,9 +16,9 @@ import {
   RotateCcw,
   Search,
   Server,
+  ShoppingCart,
   SlidersHorizontal,
   Wifi,
-  ShoppingCart,
 } from "lucide-react";
 
 import type { Product } from "../types/product";
@@ -34,10 +34,10 @@ import {
 } from "../services/woocommerce";
 import { formatPrice } from "../utils/formatPrice";
 
-// À décommenter si vous avez un CartContext
-// import { useCart } from "../context/CartContext";
-
 const PRODUCTS_PER_PAGE_OPTIONS = [12, 24, 48, 96] as const;
+const WOOCOMMERCE_CART_URL =
+  import.meta.env.VITE_WOOCOMMERCE_CART_URL ??
+  "http://90.51.128.107:12443/index.php/panier";
 
 type SortOption =
   | "default"
@@ -63,7 +63,6 @@ const CATEGORY_ORDER = [
   "Écrans",
 ] as const;
 
-// Configuration des filtres par catégorie
 const FILTERS_BY_CATEGORY: Record<string, string[]> = {
   notebooks: [
     "marque",
@@ -84,6 +83,7 @@ const FILTERS_BY_CATEGORY: Record<string, string[]> = {
     "stockage",
     "type-de-stockage",
     "os",
+    "taille-ecran",
     "carte-graphique",
   ],
   reseau: [
@@ -93,7 +93,10 @@ const FILTERS_BY_CATEGORY: Record<string, string[]> = {
     "nombre-de-ports",
     "debit-reseau",
     "poe",
+    "ports",
+    "switch",
   ],
+  wifi: ["marque", "etat", "norme-wifi", "wifi", "debit-reseau", "poe"],
   serveur: [
     "marque",
     "etat",
@@ -102,19 +105,9 @@ const FILTERS_BY_CATEGORY: Record<string, string[]> = {
     "stockage",
     "type-de-stockage",
     "raid",
+    "serveur",
   ],
-  wifi: [
-    "marque",
-    "etat",
-    "norme-wifi",
-    "debit-reseau",
-    "poe",
-  ],
-  licence: [
-    "marque",
-    "type-licence",
-    "os",
-  ],
+  licence: ["marque", "type-licence", "licence", "os"],
   ecrans: [
     "marque",
     "etat",
@@ -151,6 +144,20 @@ const CATEGORY_ICONS = {
   Licence: KeyRound,
   Écrans: Monitor,
 } as const;
+
+function getCategorySlug(title: string) {
+  const slugMap: Record<string, string> = {
+    Notebooks: "notebooks",
+    Workstations: "workstations",
+    Réseau: "reseau",
+    "Wi-Fi": "wifi",
+    "Server / Stockage": "serveur",
+    Licence: "licence",
+    Écrans: "ecrans",
+  };
+
+  return slugMap[title] ?? normalizeText(title).replace(/\s+/g, "-");
+}
 
 function getSortParams(sortOption: SortOption) {
   switch (sortOption) {
@@ -328,23 +335,30 @@ function getCategoryGroups(categories: WooCategory[]) {
   );
 }
 
-function getCategorySlug(title: string): string {
-  const slugMap: Record<string, string> = {
-    "Notebooks": "notebooks",
-    "Workstations": "workstations",
-    "Réseau": "reseau",
-    "Wi-Fi": "wifi",
-    "Server / Stockage": "serveur",
-    "Licence": "licence",
-    "Écrans": "ecrans",
-  };
-  return slugMap[title] || title.toLowerCase();
+function getVisibleFilterGroups(
+  filterGroups: WooFilterGroup[],
+  selectedMainCategoryTitle: string | null
+) {
+  if (!selectedMainCategoryTitle) return [];
+
+  const categorySlug = getCategorySlug(selectedMainCategoryTitle);
+  const allowedFilterKeys = FILTERS_BY_CATEGORY[categorySlug] ?? [];
+
+  return filterGroups.filter((group) => {
+    const normalizedKey = normalizeText(group.key).replace(/_/g, "-");
+    const normalizedTitle = normalizeText(group.title).replace(/\s+/g, "-");
+
+    return allowedFilterKeys.some((key) => {
+      const normalizedAllowedKey = normalizeText(key);
+      return (
+        normalizedKey.includes(normalizedAllowedKey) ||
+        normalizedTitle.includes(normalizedAllowedKey)
+      );
+    });
+  });
 }
 
 export function Shop() {
-  // Décommentez cette ligne si vous avez un CartContext
-  // const { addToCart } = useCart();
-  
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<WooCategory[]>([]);
   const [filterGroups, setFilterGroups] = useState<WooFilterGroup[]>([]);
@@ -375,8 +389,7 @@ export function Shop() {
     Array<"instock" | "outofstock">
   >([]);
 
-  const [selectedFilters, setSelectedFilters] =
-    useState<SelectedFilters>({});
+  const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({});
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -424,11 +437,10 @@ export function Shop() {
 
   useEffect(() => {
     let cancelled = false;
+    const isSearching = searchTerm.length > 0;
 
     setLoading(true);
 
-    const isSearching = searchTerm.length > 0;
-    
     if (!isSearching && selectedCategoryIds.length === 0) {
       setProducts([]);
       setTotalProducts(0);
@@ -438,7 +450,9 @@ export function Shop() {
     }
 
     const stockStatus =
-      selectedStockStatuses.length === 1 ? selectedStockStatuses[0] : null;
+      !isSearching && selectedStockStatuses.length === 1
+        ? selectedStockStatuses[0]
+        : null;
 
     listProducts({
       page: currentPage,
@@ -528,12 +542,6 @@ export function Shop() {
     });
   }
 
-  function toggleCategoryGroup(title: string) {
-    setExpandedCategoryGroup((currentGroup) =>
-      currentGroup === title ? null : title
-    );
-  }
-
   function toggleFilterGroup(groupKey: string) {
     setExpandedFilterGroup((currentGroup) =>
       currentGroup === groupKey ? null : groupKey
@@ -555,6 +563,8 @@ export function Shop() {
   }
 
   function selectMainCategory(group: CategoryGroup) {
+    setSearchInput("");
+    setSearchTerm("");
     setSelectedMainCategoryTitle(group.title);
     setSelectedCategoryIds(group.children.map((category) => category.id));
     setSelectedStockStatuses([]);
@@ -572,6 +582,13 @@ export function Shop() {
     setExpandedCategoryGroup(null);
     setExpandedFilterGroup(null);
     setCurrentPage(1);
+  }
+
+  function handleAddToCart(event: MouseEvent, product: Product) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    window.location.href = `${WOOCOMMERCE_CART_URL}?add-to-cart=${product.id}`;
   }
 
   function getPaginationPages() {
@@ -612,64 +629,34 @@ export function Shop() {
     ];
   }
 
-  const getVisibleFilters = (): WooFilterGroup[] => {
-    if (!selectedMainCategoryTitle || filterGroups.length === 0) {
-      return [];
-    }
-
-    const categorySlug = getCategorySlug(selectedMainCategoryTitle);
-    const allowedFilterKeys = FILTERS_BY_CATEGORY[categorySlug] || [];
-
-    return filterGroups.filter((group) => {
-      const normalizedTitle = group.title.toLowerCase();
-      const normalizedKey = group.key.toLowerCase();
-      return allowedFilterKeys.some((key) => 
-        normalizedTitle.includes(key) || 
-        normalizedKey.includes(key)
-      );
-    });
-  };
-
-  const visibleFilters = getVisibleFilters();
-  const textFilterCount = Object.values(selectedFilters).reduce(
-    (total, values) => total + (values?.length ?? 0),
-    0
-  );
-
-  const activeFilterCount =
-    selectedCategoryIds.length +
-    selectedStockStatuses.length +
-    textFilterCount +
-    (searchTerm ? 1 : 0);
-
   const categoryGroups = getCategoryGroups(categories);
   const selectedMainCategory =
     categoryGroups.find((group) => group.title === selectedMainCategoryTitle) ??
     null;
+  const visibleFilterGroups = getVisibleFilterGroups(
+    filterGroups,
+    selectedMainCategoryTitle
+  );
   const paginationPages = getPaginationPages();
-  const shouldShowProductArea = Boolean(searchTerm) || Boolean(selectedMainCategory);
-  const pageTitle = searchTerm 
+  const shouldShowProductArea = Boolean(selectedMainCategory || searchTerm);
+  const pageTitle = searchTerm
     ? `Résultats pour "${searchTerm}"`
-    : (selectedMainCategory?.title ?? "Résultats de recherche");
+    : selectedMainCategory?.title ?? "Résultats de recherche";
 
-  // Fonction pour ajouter au panier (à adapter selon votre CartContext)
-  const handleAddToCart = (e: React.MouseEvent, product: Product) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Décommentez et adaptez selon votre CartContext
-    // addToCart({
-    //   id: product.id,
-    //   name: product.name,
-    //   price: product.price,
-    //   quantity: 1,
-    //   image: product.image,
-    //   sku: product.sku,
-    // });
-    
-    console.log("Ajout au panier:", product.name);
-    alert(`Ajout de ${product.name} au panier (à configurer avec votre CartContext)`);
-  };
+  const textFilterCount = Object.values(selectedFilters).reduce(
+    (total, values) => total + (values?.length ?? 0),
+    0
+  );
+  const selectedSubcategoryCount =
+    selectedMainCategory &&
+    selectedCategoryIds.length !== selectedMainCategory.children.length
+      ? selectedCategoryIds.length
+      : 0;
+  const activeFilterCount =
+    selectedSubcategoryCount +
+    selectedStockStatuses.length +
+    textFilterCount +
+    (searchTerm ? 1 : 0);
 
   return (
     <section className="min-h-screen bg-gradient-to-b from-white via-brand-50 to-white pb-24 pt-28">
@@ -744,19 +731,7 @@ export function Shop() {
           )}
         </section>
 
-        {!shouldShowProductArea ? (
-          <div className="rounded-[2rem] border border-dashed border-brand-200 bg-white/70 p-10 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-brand-700">
-              <Search className="h-7 w-7" />
-            </div>
-            <h2 className="mb-2 text-2xl font-bold text-brand-950">
-              Rechercher un produit
-            </h2>
-            <p className="mx-auto max-w-2xl text-brand-900/60">
-              Utilisez la barre de recherche ci-dessus ou sélectionnez une catégorie.
-            </p>
-          </div>
-        ) : (
+        {shouldShowProductArea && (
           <div className="overflow-hidden rounded-[2rem] border border-brand-100 bg-white shadow-sm">
             <div className="border-b border-brand-100 bg-brand-50/70 px-5 py-4 text-sm text-brand-900/60">
               <span>Boutique</span>
@@ -772,31 +747,38 @@ export function Shop() {
                   lg:overflow-y-auto lg:overscroll-contain lg:border-b-0 lg:border-r
                 "
               >
-                <button
-                  type="button"
-                  onClick={returnToCategories}
-                  className="mb-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Retour aux catégories
-                </button>
+                {!searchTerm && (
+                  <button
+                    type="button"
+                    onClick={returnToCategories}
+                    className="mb-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Retour aux catégories
+                  </button>
+                )}
 
-                {!searchTerm && selectedMainCategory && (
+                <div className="mb-5 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-brand-900/60" />
+                    <h2 className="font-semibold text-brand-950">Filtres</h2>
+                  </div>
+
+                  {activeFilterCount > 0 && (
+                    <span className="rounded-full bg-brand-100 px-2 py-1 text-xs text-brand-700">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </div>
+
+                {searchTerm ? (
+                  <p className="mb-5 rounded-2xl border border-brand-100 bg-brand-50/60 p-4 text-sm text-brand-900/60">
+                    La recherche parcourt toute la boutique. Les filtres de
+                    catégorie sont masqués pendant la recherche.
+                  </p>
+                ) : (
                   <>
-                    <div className="mb-5 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-brand-900/60" />
-                        <h2 className="font-semibold text-brand-950">Filtres</h2>
-                      </div>
-
-                      {activeFilterCount > 0 && (
-                        <span className="rounded-full bg-brand-100 px-2 py-1 text-xs text-brand-700">
-                          {activeFilterCount}
-                        </span>
-                      )}
-                    </div>
-
-                    {selectedMainCategory && (
+                    {selectedMainCategory ? (
                       <div className="mb-5 rounded-2xl border border-brand-100 bg-brand-50/60 p-4">
                         <h3 className="mb-3 text-sm font-semibold text-brand-950">
                           Sous-catégories
@@ -811,7 +793,9 @@ export function Shop() {
                               <span className="flex min-w-0 items-center gap-2">
                                 <input
                                   type="checkbox"
-                                  checked={selectedCategoryIds.includes(category.id)}
+                                  checked={selectedCategoryIds.includes(
+                                    category.id
+                                  )}
                                   onChange={() =>
                                     toggleNumberFilter(
                                       category.id,
@@ -836,7 +820,7 @@ export function Shop() {
                           ))}
                         </div>
                       </div>
-                    )}
+                    ) : null}
 
                     <FilterGroup
                       title="Disponibilité"
@@ -858,7 +842,7 @@ export function Shop() {
                         Chargement des filtres…
                       </p>
                     ) : (
-                      visibleFilters.map((group) => (
+                      visibleFilterGroups.map((group) => (
                         <FilterGroup
                           key={group.key}
                           title={group.title}
@@ -872,18 +856,18 @@ export function Shop() {
                         />
                       ))
                     )}
-
-                    {activeFilterCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={resetFilters}
-                        className="mt-2 inline-flex items-center gap-2 text-sm text-brand-700 underline hover:text-brand-800"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        Réinitialiser les filtres
-                      </button>
-                    )}
                   </>
+                )}
+
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="mt-2 inline-flex items-center gap-2 text-sm text-brand-700 underline hover:text-brand-800"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Réinitialiser les filtres
+                  </button>
                 )}
               </aside>
 
@@ -896,7 +880,9 @@ export function Shop() {
                     <p className="mt-1 text-sm text-brand-900/60">
                       {loading
                         ? "Chargement des produits…"
-                        : `${totalProducts} produit${totalProducts > 1 ? "s" : ""} trouvé${totalProducts > 1 ? "s" : ""}`}
+                        : `${totalProducts} produit${
+                            totalProducts > 1 ? "s" : ""
+                          } trouvé${totalProducts > 1 ? "s" : ""}`}
                     </p>
                   </div>
 
@@ -972,7 +958,8 @@ export function Shop() {
                 <div className="mb-6 flex min-w-0 items-center gap-2 rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-900/60">
                   <SlidersHorizontal className="h-4 w-4 shrink-0" />
                   <span className="truncate">
-                    Page {currentPage} / {totalPages} — filtres WooCommerce conservés
+                    Page {currentPage} / {totalPages} — filtres WooCommerce
+                    conservés
                   </span>
                 </div>
 
@@ -982,14 +969,14 @@ export function Shop() {
                   </div>
                 ) : products.length === 0 ? (
                   <div className="rounded-2xl border border-brand-100 bg-white py-20 text-center text-brand-900/50">
-                    Aucun produit ne correspond à votre recherche.
+                    Aucun produit ne correspond aux filtres sélectionnés.
                   </div>
                 ) : viewMode === "list" ? (
                   <div className="space-y-3">
                     {products.map((product) => (
-                      <ProductListItem 
-                        key={product.id} 
-                        product={product} 
+                      <ProductListItem
+                        key={product.id}
+                        product={product}
                         onAddToCart={handleAddToCart}
                       />
                     ))}
@@ -997,9 +984,9 @@ export function Shop() {
                 ) : (
                   <div className="grid min-w-0 gap-6 md:grid-cols-2 xl:grid-cols-3">
                     {products.map((product) => (
-                      <ProductGridItem 
-                        key={product.id} 
-                        product={product} 
+                      <ProductGridItem
+                        key={product.id}
+                        product={product}
                         onAddToCart={handleAddToCart}
                       />
                     ))}
@@ -1239,17 +1226,17 @@ function FilterGroup({
   );
 }
 
-function ProductListItem({ 
-  product, 
-  onAddToCart 
-}: { 
-  product: Product; 
-  onAddToCart: (e: React.MouseEvent, product: Product) => void;
+function ProductListItem({
+  product,
+  onAddToCart,
+}: {
+  product: Product;
+  onAddToCart: (event: MouseEvent, product: Product) => void;
 }) {
   const productName = decodeHtmlEntities(product.name);
 
   return (
-    <div className="group flex min-w-0 flex-col gap-5 overflow-hidden rounded-2xl border border-brand-100 bg-white p-4 transition-all hover:shadow-lg hover:shadow-brand-900/10 sm:flex-row">
+    <article className="group flex min-w-0 flex-col gap-5 overflow-hidden rounded-2xl border border-brand-100 bg-white p-4 transition-all hover:shadow-lg hover:shadow-brand-900/10 sm:flex-row">
       <Link to={`/produit/${product.slug}`} className="block shrink-0">
         <div className="h-48 w-full overflow-hidden rounded-xl border border-brand-100 bg-brand-50 sm:h-32 sm:w-40">
           <img
@@ -1309,7 +1296,7 @@ function ProductListItem({
         )}
       </div>
 
-      <div className="flex shrink-0 items-end justify-between gap-4 border-t border-brand-100 pt-4 sm:w-full md:w-auto md:min-w-[200px] md:flex-col md:items-end md:border-l md:border-t-0 md:pl-4 md:pt-0">
+      <div className="flex shrink-0 items-end justify-between gap-4 border-t border-brand-100 pt-4 sm:w-full md:w-auto md:min-w-[190px] md:flex-col md:items-end md:border-l md:border-t-0 md:pl-4 md:pt-0">
         <div className="text-right">
           <p className="text-xl font-bold text-brand-950 sm:text-2xl">
             {formatPrice(product.price)} HT
@@ -1322,37 +1309,39 @@ function ProductListItem({
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <button
-            onClick={(e) => onAddToCart(e, product)}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-800"
+            type="button"
+            onClick={(event) => onAddToCart(event, product)}
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-800"
           >
             <ShoppingCart className="h-4 w-4" />
             Ajouter
           </button>
+
           <Link
             to={`/produit/${product.slug}`}
-            className="inline-flex items-center text-sm font-medium text-brand-700 hover:underline"
+            className="inline-flex items-center rounded-xl border border-brand-100 px-4 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-50"
           >
-            Détails →
+            Détails
           </Link>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
-function ProductGridItem({ 
-  product, 
-  onAddToCart 
-}: { 
-  product: Product; 
-  onAddToCart: (e: React.MouseEvent, product: Product) => void;
+function ProductGridItem({
+  product,
+  onAddToCart,
+}: {
+  product: Product;
+  onAddToCart: (event: MouseEvent, product: Product) => void;
 }) {
   const productName = decodeHtmlEntities(product.name);
 
   return (
-    <div className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white transition-all hover:shadow-lg hover:shadow-brand-900/10">
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white transition-all hover:shadow-lg hover:shadow-brand-900/10">
       <Link to={`/produit/${product.slug}`} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-brand-50">
           <img
@@ -1373,7 +1362,7 @@ function ProductGridItem({
 
       <div className="flex min-w-0 flex-1 flex-col p-5">
         <Link to={`/produit/${product.slug}`} className="block flex-1">
-          <h3 className="mb-2 line-clamp-3 break-words text-lg font-bold text-brand-950 [overflow-wrap:anywhere]">
+          <h3 className="mb-2 line-clamp-3 break-words text-lg font-bold text-brand-950 [overflow-wrap:anywhere] transition-colors group-hover:text-brand-700">
             {productName}
           </h3>
 
@@ -1391,26 +1380,27 @@ function ProductGridItem({
         </Link>
 
         <div className="mt-auto">
-          <p className="mb-2 text-2xl font-bold text-brand-950">
+          <p className="text-2xl font-bold text-brand-950">
             {formatPrice(product.price)} HT
           </p>
 
           {product.priceTTC && (
-            <p className="mb-3 text-sm text-brand-900/50">
+            <p className="text-sm text-brand-900/50">
               {formatPrice(product.priceTTC)} TTC
             </p>
           )}
 
           <button
-            onClick={(e) => onAddToCart(e, product)}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-800"
+            type="button"
+            onClick={(event) => onAddToCart(event, product)}
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-800"
           >
             <ShoppingCart className="h-4 w-4" />
             Ajouter au panier
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
