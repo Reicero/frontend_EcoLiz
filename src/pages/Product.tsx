@@ -443,8 +443,11 @@ export function ProductPage() {
       : [product.image || "/placeholder-product.png"];
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,#c8f2ff_0,#eaf8ff_42%,#dff3ff_100%)] pb-24 pt-32">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <main className="relative min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,#9fe8ff_0,#d8f5ff_38%,#eefbff_76%,#dff3ff_100%)] pb-24 pt-32">
+      <div className="absolute -right-20 top-28 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl" />
+      <div className="absolute -left-24 bottom-24 h-80 w-80 rounded-full bg-sky-400/18 blur-3xl" />
+
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <Link
           to="/boutique"
           className="mb-7 inline-flex items-center gap-2 font-medium text-sky-700 transition-colors hover:text-sky-900"
@@ -453,7 +456,7 @@ export function ProductPage() {
           Retour à la boutique
         </Link>
 
-        <section className="overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-[0_22px_60px_rgba(3,105,161,0.16)]">
+        <section className="overflow-hidden rounded-3xl border border-cyan-200 bg-white shadow-[0_24px_70px_rgba(3,105,161,0.18)]">
           <div className="h-2 bg-gradient-to-r from-sky-900 via-sky-500 to-cyan-400" />
           <div className="grid min-w-0 lg:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.45fr)]">
             <div className="min-w-0 border-b border-sky-100 bg-sky-50/70 p-5 sm:p-7 lg:border-b-0 lg:border-r">

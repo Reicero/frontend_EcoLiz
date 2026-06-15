@@ -937,31 +937,42 @@ export function Shop() {
     (searchTerm ? 1 : 0);
 
   return (
-    <section className="min-h-screen bg-[radial-gradient(circle_at_top_left,#c8f2ff_0,#eaf8ff_38%,#dff3ff_100%)] pb-24 pt-28">
+    <section className="min-h-screen bg-[radial-gradient(circle_at_top_left,#9fe8ff_0,#d8f5ff_34%,#eefbff_72%,#dff3ff_100%)] pb-24 pt-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <header className="mb-8 overflow-hidden rounded-[2rem] border border-sky-200 bg-white/95 shadow-[0_18px_50px_rgba(3,105,161,0.16)]">
-          <div className="h-2 bg-gradient-to-r from-sky-900 via-sky-500 to-cyan-400" />
-          <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0">
-              <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-sky-700">
+        <header className="relative mb-8 overflow-hidden rounded-[2rem] border border-cyan-200 bg-sky-950 text-white shadow-[0_24px_70px_rgba(12,74,110,0.28)]">
+          <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-cyan-400/25 blur-3xl" />
+          <div className="absolute -bottom-24 left-16 h-64 w-64 rounded-full bg-sky-400/20 blur-3xl" />
+          <div className="absolute right-10 top-8 h-3 w-3 rounded-full bg-cyan-300 shadow-[0_0_22px_rgba(103,232,249,0.95)] animate-pulse" />
+          <div className="absolute right-24 bottom-8 h-2 w-2 rounded-full bg-white/80 shadow-[0_0_18px_rgba(255,255,255,0.8)] animate-ping" />
+
+          <div className="relative flex flex-col gap-6 p-6 lg:flex-row lg:items-end lg:justify-between lg:p-8">
+            <div className="min-w-0 max-w-3xl">
+              <p className="mb-3 inline-flex rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100">
                 Boutique EcoLiz
               </p>
-              <h1 className="text-3xl font-bold tracking-tight text-sky-950 lg:text-4xl">
-                Catégories, promotions et catalogue professionnel
+              <h1 className="text-4xl font-black tracking-tight text-white lg:text-6xl">
+                Trouve le bon matériel pro.
+                <span className="block text-cyan-200">
+                  Reconditionné, filtré, prêt à travailler.
+                </span>
               </h1>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-sky-100/80">
+                Parcourez les catégories, repérez les offres du moment et filtrez
+                le catalogue selon vos besoins réels.
+              </p>
             </div>
 
             <form
               onSubmit={submitSearch}
-              className="relative min-w-0 flex-1 lg:max-w-xl"
+              className="relative min-w-0 flex-1 lg:max-w-md"
             >
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-sky-900/40" />
+              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-sky-900/45" />
 
               <input
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Rechercher un produit, une marque, une référence…"
-                className="w-full rounded-2xl border border-sky-100 bg-sky-50/70 py-4 pl-12 pr-4 text-sm outline-none transition focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-500/20"
+                className="w-full rounded-2xl border border-white/40 bg-white py-4 pl-12 pr-4 text-sm text-sky-950 outline-none shadow-[0_14px_35px_rgba(8,47,73,0.22)] transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-300/30"
               />
             </form>
           </div>
@@ -972,13 +983,13 @@ export function Shop() {
             <PromotionSection />
 
             <section className="mb-8">
-          <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="mb-5 flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-wide text-sky-700">
-                Navigation
+                Accès rapide
               </p>
               <h2 className="text-2xl font-bold text-sky-950">
-                Choisir une catégorie
+                Choisir votre univers matériel
               </h2>
             </div>
 
@@ -1340,34 +1351,43 @@ export function Shop() {
 
 function PromotionSection() {
   return (
-    <section className="mb-10 overflow-hidden rounded-[2rem] bg-gradient-to-br from-sky-950 via-sky-900 to-cyan-800 p-6 text-white shadow-[0_22px_60px_rgba(12,74,110,0.28)]">
-      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+    <section className="relative mb-12 overflow-hidden rounded-[2rem] border border-cyan-300/40 bg-gradient-to-br from-sky-950 via-blue-950 to-cyan-800 p-6 text-white shadow-[0_28px_80px_rgba(8,47,73,0.34)]">
+      <div className="absolute -left-20 top-8 h-48 w-48 rounded-full bg-cyan-300/20 blur-3xl" />
+      <div className="absolute -right-16 -bottom-20 h-64 w-64 rounded-full bg-blue-400/20 blur-3xl" />
+      <div className="absolute left-8 top-8 h-2 w-2 rounded-full bg-cyan-200 shadow-[0_0_18px_rgba(165,243,252,0.9)] animate-ping" />
+
+      <div className="relative mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <span className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-cyan-200 ring-1 ring-white/15">
-          <BadgePercent className="h-5 w-5" />
+          <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-300/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-cyan-100">
+            <BadgePercent className="h-4 w-4" />
+            Offres à saisir
           </span>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">
             Promotions du moment
           </p>
-          <h2 className="mt-1 text-3xl font-bold tracking-tight">
-            Sélections professionnelles à prix réduit
+          <h2 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl">
+            Des prix qui bougent, du matériel qui tient.
           </h2>
         </div>
-        <p className="max-w-md text-sm text-sky-100/75">
-          Des références reconditionnées, prêtes pour les entreprises.
+        <p className="max-w-md text-sm leading-6 text-sky-100/80">
+          Mettez en avant les lots, fins de série et références reconditionnées
+          les plus intéressantes du moment.
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {PROMOTION_CARDS.map((card) => (
+      <div className="relative grid gap-4 lg:grid-cols-3">
+        {PROMOTION_CARDS.map((card, index) => (
           <article
             key={card.title}
-            className="group overflow-hidden rounded-[1.5rem] border border-white/15 bg-white/10 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15"
+            className={`group relative overflow-hidden rounded-[1.5rem] border border-white/15 bg-white/10 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-cyan-200/70 hover:bg-white/15 hover:shadow-[0_22px_50px_rgba(34,211,238,0.22)] ${
+              index === 0 ? "lg:scale-[1.03] lg:border-cyan-200/60" : ""
+            }`}
           >
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200 to-transparent opacity-80" />
             <div className={`h-2 bg-gradient-to-r ${card.accent}`} />
             <div className="flex items-start justify-between gap-4 p-5">
               <div className="min-w-0 flex-1">
-                <span className="mb-4 inline-flex rounded-full bg-cyan-300 px-3 py-1 text-sm font-bold text-sky-950 shadow-sm">
+                <span className="mb-4 inline-flex rounded-full bg-cyan-300 px-3 py-1 text-sm font-black text-sky-950 shadow-[0_0_24px_rgba(103,232,249,0.35)]">
                   {card.badge}
                 </span>
 
@@ -1379,13 +1399,13 @@ function PromotionSection() {
                   {card.description}
                 </p>
 
-                <span className="inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-sky-950 transition group-hover:bg-cyan-100">
+                <span className="inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-sky-950 transition group-hover:bg-cyan-100 group-hover:shadow-[0_0_24px_rgba(103,232,249,0.28)]">
                   Découvrir
                 </span>
               </div>
 
-              <div className="flex h-24 w-28 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-cyan-200 ring-1 ring-white/15">
-                <Laptop className="h-12 w-12" />
+              <div className="flex h-24 w-28 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-cyan-200 ring-1 ring-white/15 transition duration-300 group-hover:rotate-2 group-hover:scale-105">
+                <Laptop className="h-12 w-12 drop-shadow-[0_0_18px_rgba(103,232,249,0.45)]" />
               </div>
             </div>
           </article>
@@ -1420,7 +1440,7 @@ function CategorySelectionCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`group w-full overflow-hidden rounded-2xl border bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(3,105,161,0.16)] sm:w-[calc(50%-0.625rem)] xl:w-[calc(25%-0.9375rem)] ${
+      className={`group w-full overflow-hidden rounded-2xl border bg-white text-left shadow-[0_10px_28px_rgba(3,105,161,0.08)] transition-all duration-300 hover:-translate-y-1 hover:rotate-[0.25deg] hover:shadow-[0_18px_42px_rgba(3,105,161,0.22)] sm:w-[calc(50%-0.625rem)] xl:w-[calc(25%-0.9375rem)] ${
         isSelected
           ? "border-sky-800 ring-2 ring-sky-300"
           : "border-sky-100 hover:border-sky-300"
@@ -1430,7 +1450,7 @@ function CategorySelectionCard({
       <span className="flex min-h-[178px] flex-col p-5">
         <span className="mb-4 flex items-start justify-between gap-3">
           <span
-            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ring-1 ${details.icon}`}
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ring-1 transition duration-300 group-hover:scale-110 group-hover:-rotate-3 ${details.icon}`}
           >
             <Icon className="h-7 w-7" />
           </span>
@@ -1443,7 +1463,7 @@ function CategorySelectionCard({
         <span className="mt-2 min-h-[42px] text-sm leading-5 text-sky-900/65">
           {details.description}
         </span>
-        <span className="mt-auto pt-4 text-sm font-semibold text-sky-700 transition group-hover:text-sky-950">
+        <span className="mt-auto pt-4 text-sm font-semibold text-sky-700 transition group-hover:translate-x-1 group-hover:text-sky-950">
           Explorer la catégorie →
         </span>
       </span>
@@ -1535,7 +1555,7 @@ function ProductListItem({
   const productName = decodeHtmlEntities(product.name);
 
   return (
-    <article className="group flex min-w-0 flex-col gap-5 overflow-hidden rounded-2xl border border-sky-100 bg-white p-4 transition-all hover:border-sky-300 hover:shadow-lg hover:shadow-sky-900/10 sm:flex-row">
+    <article className="group flex min-w-0 flex-col gap-5 overflow-hidden rounded-2xl border border-sky-100 bg-white p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-[0_18px_42px_rgba(3,105,161,0.16)] sm:flex-row">
       <Link to={`/produit/${product.slug}`} className="block shrink-0">
         <div className="h-48 w-full overflow-hidden rounded-xl border border-sky-100 bg-sky-50 sm:h-32 sm:w-40">
           <img
@@ -1612,7 +1632,7 @@ function ProductListItem({
           <button
             type="button"
             onClick={(event) => onAddToCart(event, product)}
-            className="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-800"
+            className="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 hover:shadow-[0_10px_24px_rgba(3,105,161,0.22)]"
           >
             <ShoppingCart className="h-4 w-4" />
             Ajouter
@@ -1640,7 +1660,7 @@ function ProductGridItem({
   const productName = decodeHtmlEntities(product.name);
 
   return (
-    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-sky-100 bg-white transition-all hover:border-sky-300 hover:shadow-lg hover:shadow-sky-900/10">
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-sky-100 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300 hover:shadow-[0_18px_42px_rgba(3,105,161,0.16)]">
       <Link to={`/produit/${product.slug}`} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-sky-50">
           <img
@@ -1692,7 +1712,7 @@ function ProductGridItem({
           <button
             type="button"
             onClick={(event) => onAddToCart(event, product)}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-800"
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 hover:shadow-[0_10px_24px_rgba(3,105,161,0.22)]"
           >
             <ShoppingCart className="h-4 w-4" />
             Ajouter au panier
