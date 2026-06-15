@@ -905,7 +905,7 @@ export function Shop() {
               Aucune catégorie disponible.
             </div>
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="flex flex-wrap justify-center gap-5">
               {categoryGroups.map((group) => (
                 <CategorySelectionCard
                   key={group.title}
@@ -1315,7 +1315,7 @@ function CategorySelectionCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`group overflow-hidden rounded-2xl border bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(3,64,45,0.12)] ${
+      className={`group w-full overflow-hidden rounded-2xl border bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(3,64,45,0.12)] sm:w-[calc(50%-0.625rem)] xl:w-[calc(25%-0.9375rem)] ${
         isSelected
           ? "border-brand-800 ring-2 ring-sky-200"
           : "border-sky-100 hover:border-sky-300"
