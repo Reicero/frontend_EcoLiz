@@ -1384,7 +1384,7 @@ function PromotionSection() {
 
       <div className="relative mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-300/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-cyan-100">
+          <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-300/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-cyan-100 shadow-[0_0_24px_rgba(103,232,249,0.18)]">
             <BadgePercent className="h-4 w-4" />
             Offres à saisir
           </span>
@@ -1395,10 +1395,17 @@ function PromotionSection() {
             Des prix qui bougent, du matériel qui tient.
           </h2>
         </div>
-        <p className="max-w-md text-sm leading-6 text-sky-100/80">
-          Mettez en avant les lots, fins de série et références reconditionnées
-          les plus intéressantes du moment.
-        </p>
+        <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100">
+          <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">
+            Stocks limités
+          </span>
+          <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">
+            Sélection pro
+          </span>
+          <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">
+            Prix réduits
+          </span>
+        </div>
       </div>
 
       <div className="relative grid gap-4 lg:grid-cols-3">
@@ -1411,12 +1418,17 @@ function PromotionSection() {
           >
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200 to-transparent opacity-80" />
             <div className={`h-2 bg-gradient-to-r ${card.accent}`} />
-            <div className="flex items-start justify-between gap-4 p-5">
-              <div className="min-w-0 flex-1">
-                <span className="mb-4 inline-flex rounded-full bg-cyan-300 px-3 py-1 text-sm font-black text-sky-950 shadow-[0_0_24px_rgba(103,232,249,0.35)]">
+            <div className="flex items-stretch justify-between gap-4 p-5">
+              <div className="flex min-w-[88px] shrink-0 flex-col items-center justify-center rounded-2xl border border-cyan-200/40 bg-cyan-300 px-2 text-sky-950 shadow-[0_0_34px_rgba(103,232,249,0.36)] transition duration-300 group-hover:scale-105 group-hover:shadow-[0_0_44px_rgba(103,232,249,0.5)] sm:min-w-[104px]">
+                <span className="text-4xl font-black leading-none tracking-tight sm:text-5xl">
                   {card.badge}
                 </span>
+                <span className="mt-1 text-[0.65rem] font-black uppercase tracking-[0.18em]">
+                  remise
+                </span>
+              </div>
 
+              <div className="min-w-0 flex-1">
                 <h3 className="mb-2 text-lg font-bold text-white">
                   {card.title}
                 </h3>
@@ -1430,7 +1442,7 @@ function PromotionSection() {
                 </span>
               </div>
 
-              <div className="flex h-24 w-28 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-cyan-200 ring-1 ring-white/15 transition duration-300 group-hover:rotate-2 group-hover:scale-105">
+              <div className="hidden h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-cyan-200 ring-1 ring-white/15 transition duration-300 group-hover:rotate-2 group-hover:scale-105 xl:flex">
                 <Laptop className="h-12 w-12 drop-shadow-[0_0_18px_rgba(103,232,249,0.45)]" />
               </div>
             </div>
