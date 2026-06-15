@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Dispatch, FormEvent, MouseEvent, SetStateAction } from "react";
+import type { Dispatch, FormEvent, SetStateAction } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -16,7 +16,6 @@ import {
   RotateCcw,
   Search,
   Server,
-  ShoppingCart,
   SlidersHorizontal,
   Wifi,
 } from "lucide-react";
@@ -35,9 +34,6 @@ import {
 import { formatPrice } from "../utils/formatPrice";
 
 const PRODUCTS_PER_PAGE_OPTIONS = [12, 24, 48, 96] as const;
-const WOOCOMMERCE_CART_URL =
-  import.meta.env.VITE_WOOCOMMERCE_CART_URL ??
-  "http://90.51.128.107:12443/index.php/panier";
 
 type SortOption =
   | "default"
@@ -865,13 +861,6 @@ export function Shop() {
     updateShopUrl({});
   }
 
-  function handleAddToCart(event: MouseEvent, product: Product) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    window.location.href = `${WOOCOMMERCE_CART_URL}?add-to-cart=${product.id}`;
-  }
-
   function getPaginationPages() {
     const pages: Array<number | "..."> = [];
 
@@ -1268,7 +1257,6 @@ export function Shop() {
                       <ProductListItem
                         key={product.id}
                         product={product}
-                        onAddToCart={handleAddToCart}
                       />
                     ))}
                   </div>
@@ -1278,7 +1266,6 @@ export function Shop() {
                       <ProductGridItem
                         key={product.id}
                         product={product}
-                        onAddToCart={handleAddToCart}
                       />
                     ))}
                   </div>
@@ -1545,13 +1532,7 @@ function FilterGroup({
   );
 }
 
-function ProductListItem({
-  product,
-  onAddToCart,
-}: {
-  product: Product;
-  onAddToCart: (event: MouseEvent, product: Product) => void;
-}) {
+function ProductListItem({ product }: { product: Product }) {
   const productName = decodeHtmlEntities(product.name);
 
   return (
@@ -1629,20 +1610,11 @@ function ProductListItem({
         </div>
 
         <div className="flex flex-wrap justify-end gap-2">
-          <button
-            type="button"
-            onClick={(event) => onAddToCart(event, product)}
-            className="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 hover:shadow-[0_10px_24px_rgba(3,105,161,0.22)]"
-          >
-            <ShoppingCart className="h-4 w-4" />
-            Ajouter
-          </button>
-
           <Link
             to={`/produit/${product.slug}`}
-            className="inline-flex items-center rounded-xl border border-sky-100 px-4 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-50"
+            className="inline-flex items-center rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 hover:shadow-[0_10px_24px_rgba(3,105,161,0.22)]"
           >
-            Détails
+            Voir la fiche →
           </Link>
         </div>
       </div>
@@ -1650,13 +1622,7 @@ function ProductListItem({
   );
 }
 
-function ProductGridItem({
-  product,
-  onAddToCart,
-}: {
-  product: Product;
-  onAddToCart: (event: MouseEvent, product: Product) => void;
-}) {
+function ProductGridItem({ product }: { product: Product }) {
   const productName = decodeHtmlEntities(product.name);
 
   return (
@@ -1709,14 +1675,12 @@ function ProductGridItem({
             </p>
           )}
 
-          <button
-            type="button"
-            onClick={(event) => onAddToCart(event, product)}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 hover:shadow-[0_10px_24px_rgba(3,105,161,0.22)]"
+          <Link
+            to={`/produit/${product.slug}`}
+            className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-sky-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 hover:shadow-[0_10px_24px_rgba(3,105,161,0.22)]"
           >
-            <ShoppingCart className="h-4 w-4" />
-            Ajouter au panier
-          </button>
+            Voir la fiche →
+          </Link>
         </div>
       </div>
     </article>
@@ -1753,4 +1717,3 @@ function StatusPill({
     </span>
   );
 }
-
