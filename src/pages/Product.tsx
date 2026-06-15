@@ -13,11 +13,8 @@ import {
 
 import type { Product, ProductAttribute } from "../types/product";
 import { getProductBySlug } from "../services/woocommerce";
+import { addToCart } from "../services/cart";
 import { formatPrice } from "../utils/formatPrice";
-
-const WOOCOMMERCE_CART_URL =
-  import.meta.env.VITE_WOOCOMMERCE_CART_URL ??
-  "http://90.51.128.107:12443/index.php/panier";
 
 type SpecificationGroup =
   | "Général"
@@ -289,6 +286,9 @@ export function ProductPage() {
   const [selectedImage, setSelectedImage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [cartSuccess, setCartSuccess] = useState(false);
+  const [cartError, setCartError] = useState("");
 
   useEffect(() => {
     if (!slug) {
@@ -378,12 +378,24 @@ export function ProductPage() {
       .filter((item) => Boolean(item.value));
   }, [product]);
 
-  function handleAddToCart() {
+  async function handleAddToCart() {
     if (!product || !product.stock) {
       return;
     }
 
-    window.location.href = `${WOOCOMMERCE_CART_URL}?add-to-cart=${product.id}`;
+    try {
+      setAddingToCart(true);
+      setCartSuccess(false);
+      setCartError("");
+
+      await addToCart(product.id, 1);
+      setCartSuccess(true);
+    } catch (requestError) {
+      console.error("Erreur ajout panier :", requestError);
+      setCartError("Impossible d'ajouter ce produit au panier.");
+    } finally {
+      setAddingToCart(false);
+    }
   }
 
   if (loading) {
@@ -546,15 +558,44 @@ export function ProductPage() {
                 )}
               </div>
 
+              {cartSuccess && (
+                <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-brand-200 bg-brand-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-semibold text-brand-950">
+                      Produit ajouté au panier.
+                    </p>
+                    <p className="text-sm text-brand-900/60">
+                      Vous pouvez continuer vos achats ou consulter votre panier.
+                    </p>
+                  </div>
+                  <Link
+                    to="/panier"
+                    className="inline-flex shrink-0 items-center justify-center rounded-xl bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+                  >
+                    Voir le panier
+                  </Link>
+                </div>
+              )}
+
+              {cartError && (
+                <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 font-medium text-red-700">
+                  {cartError}
+                </div>
+              )}
+
               <div className="mt-7 grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={handleAddToCart}
-                  disabled={!product.stock}
+                  disabled={!product.stock || addingToCart}
                   className="inline-flex min-w-0 items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-4 font-semibold text-white shadow-lg shadow-brand-900/15 transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ShoppingCart className="h-4 w-4 shrink-0" />
-                  {product.stock ? "Ajouter au panier" : "Produit indisponible"}
+                  {addingToCart
+                    ? "Ajout en cours…"
+                    : product.stock
+                      ? "Ajouter au panier"
+                      : "Produit indisponible"}
                 </button>
 
                 <Link
@@ -678,7 +719,7 @@ function StatusPill({
   variant: "success" | "warning" | "brand" | "info";
 }) {
   const styles = {
-    success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    success: "border-sky-200 bg-sky-50 text-sky-700",
     warning: "border-amber-200 bg-amber-50 text-amber-700",
     brand: "border-brand-100 bg-brand-50 text-brand-700",
     info: "border-cyan-100 bg-cyan-50 text-cyan-700",

@@ -181,6 +181,13 @@ function normalizeText(value: string) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function normalizeFilterValue(value: unknown) {
+  return normalizeText(decodeHtmlEntities(String(value ?? "")))
+    .replace(/[’']/g, "-")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function decodeHtmlEntities(value: string) {
   const namedEntities: Record<string, string> = {
     amp: "&",
@@ -358,14 +365,77 @@ function getVisibleFilterGroups(
   });
 }
 
+function getProductAttributeValues(product: Product, group: WooFilterGroup) {
+  const productAttributes = product.attributes ?? [];
+  const normalizedTitle = normalizeText(group.title);
+  const normalizedKey = normalizeText(group.key).replace(/_/g, "-");
+
+  return productAttributes.flatMap((attribute) => {
+    const normalizedAttributeName = normalizeText(attribute.name).replace(
+      /\s+/g,
+      "-"
+    );
+
+    const matchesGroup =
+      normalizedAttributeName === normalizedTitle.replace(/\s+/g, "-") ||
+      normalizedAttributeName.includes(normalizedTitle.replace(/\s+/g, "-")) ||
+      normalizedTitle.includes(normalizedAttributeName) ||
+      normalizedAttributeName.includes(normalizedKey);
+
+    return matchesGroup ? attribute.values : [];
+  });
+}
+
+function buildContextualFilterGroups(
+  filterGroups: WooFilterGroup[],
+  products: Product[],
+  selectedMainCategoryTitle: string | null
+) {
+  const visibleGroups = getVisibleFilterGroups(
+    filterGroups,
+    selectedMainCategoryTitle
+  );
+
+  if (products.length === 0) {
+    return visibleGroups.map((group) => ({
+      ...group,
+      options: [],
+    }));
+  }
+
+  return visibleGroups
+    .map((group) => {
+      const availableValues = new Set<string>();
+
+      products.forEach((product) => {
+        getProductAttributeValues(product, group).forEach((value) => {
+          availableValues.add(normalizeFilterValue(value));
+        });
+      });
+
+      return {
+        ...group,
+        options: group.options.filter((option) =>
+          availableValues.has(normalizeFilterValue(option.name))
+        ),
+      };
+    })
+    .filter((group) => group.options.length > 0);
+}
+
 export function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<WooCategory[]>([]);
   const [filterGroups, setFilterGroups] = useState<WooFilterGroup[]>([]);
+  const [categoryFilterProducts, setCategoryFilterProducts] = useState<
+    Product[]
+  >([]);
 
   const [loading, setLoading] = useState(false);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [filterGroupsLoading, setFilterGroupsLoading] = useState(false);
+  const [contextualFiltersLoading, setContextualFiltersLoading] =
+    useState(false);
 
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
   const [expandedCategoryGroup, setExpandedCategoryGroup] = useState<
@@ -434,6 +504,63 @@ export function Shop() {
 
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (searchTerm || !selectedMainCategoryTitle || selectedCategoryIds.length === 0) {
+      setCategoryFilterProducts([]);
+      setContextualFiltersLoading(false);
+      return;
+    }
+
+    async function loadCategoryProductsForFilters() {
+      setContextualFiltersLoading(true);
+
+      try {
+        const firstPage = await listProducts({
+          page: 1,
+          perPage: 100,
+          categoryIds: selectedCategoryIds,
+        });
+
+        const allProducts = [...firstPage.products];
+
+        for (let page = 2; page <= firstPage.totalPages; page += 1) {
+          const nextPage = await listProducts({
+            page,
+            perPage: 100,
+            categoryIds: selectedCategoryIds,
+          });
+
+          allProducts.push(...nextPage.products);
+        }
+
+        if (!cancelled) {
+          setCategoryFilterProducts(allProducts);
+        }
+      } catch (error) {
+        console.error(
+          "Erreur lors de la récupération des filtres de catégorie :",
+          error
+        );
+
+        if (!cancelled) {
+          setCategoryFilterProducts([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setContextualFiltersLoading(false);
+        }
+      }
+    }
+
+    loadCategoryProductsForFilters();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchTerm, selectedMainCategoryTitle, selectedCategoryIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -633,8 +760,9 @@ export function Shop() {
   const selectedMainCategory =
     categoryGroups.find((group) => group.title === selectedMainCategoryTitle) ??
     null;
-  const visibleFilterGroups = getVisibleFilterGroups(
+  const visibleFilterGroups = buildContextualFilterGroups(
     filterGroups,
+    categoryFilterProducts,
     selectedMainCategoryTitle
   );
   const paginationPages = getPaginationPages();
@@ -837,9 +965,9 @@ export function Shop() {
                       }
                     />
 
-                    {filterGroupsLoading ? (
+                    {filterGroupsLoading || contextualFiltersLoading ? (
                       <p className="mb-3 text-sm text-brand-900/50">
-                        Chargement des filtres…
+                        Chargement des filtres adaptés…
                       </p>
                     ) : (
                       visibleFilterGroups.map((group) => (
@@ -880,9 +1008,7 @@ export function Shop() {
                     <p className="mt-1 text-sm text-brand-900/60">
                       {loading
                         ? "Chargement des produits…"
-                        : `${totalProducts} produit${
-                            totalProducts > 1 ? "s" : ""
-                          } trouvé${totalProducts > 1 ? "s" : ""}`}
+                        : "Catalogue filtré selon votre sélection"}
                     </p>
                   </div>
 
@@ -958,8 +1084,8 @@ export function Shop() {
                 <div className="mb-6 flex min-w-0 items-center gap-2 rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-900/60">
                   <SlidersHorizontal className="h-4 w-4 shrink-0" />
                   <span className="truncate">
-                    Page {currentPage} / {totalPages} — filtres WooCommerce
-                    conservés
+                    Page {currentPage} / {totalPages} — filtres appliqués à la
+                    catégorie complète
                   </span>
                 </div>
 
@@ -1004,7 +1130,7 @@ export function Shop() {
                         setCurrentPage((page) => Math.max(page - 1, 1))
                       }
                       disabled={currentPage === 1 || loading}
-                      className="rounded-full border border-emerald-200 bg-white/70 px-4 py-2 text-brand-900 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-brand-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Précédent
                     </button>
@@ -1029,7 +1155,7 @@ export function Shop() {
                           className={`h-11 w-11 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                             currentPage === page
                               ? "border-brand-700 bg-brand-700 text-white"
-                              : "border-emerald-200 bg-white/70 text-brand-900 hover:bg-emerald-50"
+                              : "border-sky-200 bg-white/70 text-brand-900 hover:bg-sky-50"
                           }`}
                         >
                           {page}
@@ -1043,7 +1169,7 @@ export function Shop() {
                         setCurrentPage((page) => Math.min(page + 1, totalPages))
                       }
                       disabled={currentPage === totalPages || loading}
-                      className="rounded-full border border-emerald-200 bg-white/70 px-4 py-2 text-brand-900 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-brand-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Suivant
                     </button>
@@ -1070,7 +1196,7 @@ function PromotionSection() {
         {PROMOTION_CARDS.map((card) => (
           <article
             key={card.title}
-            className="group overflow-hidden rounded-[1.5rem] border border-brand-100 bg-gradient-to-br from-emerald-50 via-white to-brand-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            className="group overflow-hidden rounded-[1.5rem] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-brand-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -1193,13 +1319,11 @@ function FilterGroup({
               typeof option === "string" ? option : option.slug;
             const optionLabel =
               typeof option === "string" ? option : option.name;
-            const optionCount =
-              typeof option === "string" ? null : option.count;
 
             return (
               <label
                 key={optionValue}
-                className="flex cursor-pointer items-center justify-between gap-2 text-sm text-brand-900/70"
+                className="flex cursor-pointer items-center gap-2 text-sm text-brand-900/70"
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <input
@@ -1211,12 +1335,6 @@ function FilterGroup({
 
                   <span className="break-words">{optionLabel}</span>
                 </span>
-
-                {optionCount !== null && (
-                  <span className="shrink-0 text-xs text-brand-900/40">
-                    {optionCount}
-                  </span>
-                )}
               </label>
             );
           })}
@@ -1421,7 +1539,7 @@ function StatusPill({
   variant: "success" | "warning" | "brand";
 }) {
   const styles = {
-    success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    success: "border-sky-200 bg-sky-50 text-sky-700",
     warning: "border-amber-200 bg-amber-50 text-amber-700",
     brand: "border-brand-100 bg-brand-50 text-brand-700",
   };
