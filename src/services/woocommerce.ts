@@ -1,7 +1,3 @@
-/**
- * Service de lecture du catalogue WooCommerce via la Store API.
- */
-
 import type { Product, ProductAttribute, ProductGrade } from "../types/product";
 import { config } from "../config/env";
 import {
