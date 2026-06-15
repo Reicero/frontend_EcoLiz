@@ -397,10 +397,7 @@ function buildContextualFilterGroups(
   );
 
   if (products.length === 0) {
-    return visibleGroups.map((group) => ({
-      ...group,
-      options: [],
-    }));
+    return visibleGroups;
   }
 
   return visibleGroups
@@ -464,6 +461,7 @@ export function Shop() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const selectedCategoryKey = selectedCategoryIds.join(",");
 
   useEffect(() => {
     setCategoriesLoading(true);
@@ -508,7 +506,11 @@ export function Shop() {
   useEffect(() => {
     let cancelled = false;
 
-    if (searchTerm || !selectedMainCategoryTitle || selectedCategoryIds.length === 0) {
+    if (
+      searchTerm ||
+      !selectedMainCategoryTitle ||
+      selectedCategoryIds.length === 0
+    ) {
       setCategoryFilterProducts([]);
       setContextualFiltersLoading(false);
       return;
@@ -524,17 +526,25 @@ export function Shop() {
           categoryIds: selectedCategoryIds,
         });
 
-        const allProducts = [...firstPage.products];
+        const extraPages = Array.from(
+          { length: Math.max(firstPage.totalPages - 1, 0) },
+          (_, index) => index + 2
+        );
 
-        for (let page = 2; page <= firstPage.totalPages; page += 1) {
-          const nextPage = await listProducts({
-            page,
-            perPage: 100,
-            categoryIds: selectedCategoryIds,
-          });
+        const extraResults = await Promise.all(
+          extraPages.map((page) =>
+            listProducts({
+              page,
+              perPage: 100,
+              categoryIds: selectedCategoryIds,
+            })
+          )
+        );
 
-          allProducts.push(...nextPage.products);
-        }
+        const allProducts = [
+          ...firstPage.products,
+          ...extraResults.flatMap((result) => result.products),
+        ];
 
         if (!cancelled) {
           setCategoryFilterProducts(allProducts);
@@ -560,7 +570,7 @@ export function Shop() {
     return () => {
       cancelled = true;
     };
-  }, [searchTerm, selectedMainCategoryTitle, selectedCategoryIds]);
+  }, [searchTerm, selectedMainCategoryTitle, selectedCategoryKey]);
 
   useEffect(() => {
     let cancelled = false;
