@@ -1,5 +1,10 @@
-import { useEffect, useState } from "react";
-import type { Dispatch, FormEvent, SetStateAction } from "react";
+import { useEffect, useRef, useState } from "react";
+import type {
+  Dispatch,
+  FormEvent,
+  SetStateAction,
+  SyntheticEvent,
+} from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -464,8 +469,20 @@ function buildContextualFilterGroups(
     .filter((group) => group.options.length > 0);
 }
 
+function handleProductImageError(event: SyntheticEvent<HTMLImageElement>) {
+  const image = event.currentTarget;
+
+  if (image.src.includes("/placeholder-product.png")) {
+    return;
+  }
+
+  image.src = "/placeholder-product.png";
+  image.classList.remove("mix-blend-multiply");
+}
+
 export function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const filterProductsCache = useRef<Record<string, Product[]>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<WooCategory[]>([]);
   const [filterGroups, setFilterGroups] = useState<WooFilterGroup[]>([]);
@@ -631,6 +648,14 @@ export function Shop() {
       return;
     }
 
+    const cachedProducts = filterProductsCache.current[selectedCategoryKey];
+
+    if (cachedProducts) {
+      setCategoryFilterProducts(cachedProducts);
+      setContextualFiltersLoading(false);
+      return;
+    }
+
     async function loadCategoryProductsForFilters() {
       setContextualFiltersLoading(true);
 
@@ -662,6 +687,7 @@ export function Shop() {
         ];
 
         if (!cancelled) {
+          filterProductsCache.current[selectedCategoryKey] = allProducts;
           setCategoryFilterProducts(allProducts);
         }
       } catch (error) {
@@ -1114,7 +1140,7 @@ export function Shop() {
                       La recherche parcourt toute la boutique.
                     </p>
                   ) : (
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap items-start gap-3">
                       <FilterGroup
                         title="Disponibilité"
                         options={["En stock", "Rupture de stock"]}
@@ -1130,9 +1156,9 @@ export function Shop() {
                         }
                       />
 
-                      {filterGroupsLoading || contextualFiltersLoading ? (
+                      {filterGroupsLoading ? (
                         <p className="text-sm text-sky-900/50">
-                          Chargement des filtres adaptés…
+                          Chargement des filtres…
                         </p>
                       ) : (
                         visibleFilterGroups.map((group) => (
@@ -1148,6 +1174,12 @@ export function Shop() {
                             }
                           />
                         ))
+                      )}
+
+                      {contextualFiltersLoading && !filterGroupsLoading && (
+                        <span className="self-center rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">
+                          Filtres en cours d’affinage…
+                        </span>
                       )}
                     </div>
                   )}
@@ -1474,12 +1506,14 @@ function FilterGroup({
   onToggle: (optionSlug: string) => void;
 }) {
   return (
-    <div className="min-w-[180px] overflow-hidden rounded-xl border border-sky-100 bg-white">
+    <div className="relative w-full self-start sm:w-[180px]">
       <button
         type="button"
         onClick={onToggleGroup}
         aria-expanded={isOpen}
-        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-sky-50"
+        className={`flex w-full items-center justify-between gap-3 rounded-xl border border-sky-100 bg-white px-3 py-2.5 text-left transition-colors hover:bg-sky-50 ${
+          isOpen ? "border-sky-200 bg-sky-50 shadow-sm" : ""
+        }`}
       >
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate text-sm font-semibold text-sky-950">
@@ -1501,7 +1535,7 @@ function FilterGroup({
       </button>
 
       {isOpen && (
-        <div className="space-y-2 border-t border-sky-100 bg-sky-50/50 px-3 py-3">
+        <div className="absolute left-0 top-full z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-sky-100 bg-white px-3 py-3 shadow-[0_18px_42px_rgba(3,105,161,0.18)]">
           {options.map((option) => {
             const optionValue =
               typeof option === "string" ? option : option.slug;
@@ -1543,6 +1577,8 @@ function ProductListItem({ product }: { product: Product }) {
             src={product.image || "/placeholder-product.png"}
             alt={productName}
             loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={handleProductImageError}
             className="h-full w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-[1.03]"
           />
         </div>
@@ -1633,6 +1669,8 @@ function ProductGridItem({ product }: { product: Product }) {
             src={product.image || "/placeholder-product.png"}
             alt={productName}
             loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={handleProductImageError}
             className="h-full w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-[1.03]"
           />
 

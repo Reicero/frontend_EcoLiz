@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ElementType } from "react";
+import type { ElementType, SyntheticEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -279,6 +279,17 @@ function getAttributeValues(
   return attribute?.values ?? [];
 }
 
+function handleProductImageError(event: SyntheticEvent<HTMLImageElement>) {
+  const image = event.currentTarget;
+
+  if (image.src.includes("/placeholder-product.png")) {
+    return;
+  }
+
+  image.src = "/placeholder-product.png";
+  image.classList.remove("mix-blend-multiply");
+}
+
 export function ProductPage() {
   const { slug } = useParams<{ slug: string }>();
 
@@ -464,6 +475,8 @@ export function ProductPage() {
                 <img
                   src={selectedImage || "/placeholder-product.png"}
                   alt={productName}
+                  referrerPolicy="no-referrer"
+                  onError={handleProductImageError}
                   className="h-full w-full object-contain p-3 mix-blend-multiply"
                 />
               </div>
@@ -485,6 +498,8 @@ export function ProductPage() {
                       <img
                         src={image}
                         alt=""
+                        referrerPolicy="no-referrer"
+                        onError={handleProductImageError}
                         className="h-full w-full object-contain mix-blend-multiply"
                       />
                     </button>
