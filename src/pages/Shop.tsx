@@ -122,7 +122,7 @@ const PROMOTION_CARDS = [
     badge: "-15%",
     title: "Promotion notebooks",
     description: "Une sélection de PC portables professionnels reconditionnés.",
-    accent: "from-brand-950 to-sky-700",
+    accent: "from-sky-950 to-cyan-600",
   },
   {
     badge: "-10%",
@@ -134,7 +134,7 @@ const PROMOTION_CARDS = [
     badge: "-20%",
     title: "Écrans reconditionnés",
     description: "Écrans, accessoires et périphériques à prix réduits.",
-    accent: "from-brand-800 to-brand-600",
+    accent: "from-blue-800 to-cyan-500",
   },
 ] as const;
 
@@ -163,8 +163,8 @@ const CATEGORY_DETAILS: Record<
   },
   Workstations: {
     description: "Postes fixes et stations puissantes pour le bureau.",
-    color: "from-brand-800 to-sky-600",
-    icon: "bg-brand-50 text-brand-800 ring-brand-100",
+    color: "from-sky-900 to-sky-600",
+    icon: "bg-sky-50 text-sky-800 ring-sky-100",
   },
   Réseau: {
     description: "Switchs, routeurs, firewalls et équipements réseau.",
@@ -178,17 +178,17 @@ const CATEGORY_DETAILS: Record<
   },
   "Server / Stockage": {
     description: "Serveurs, stockage, RAID et pièces datacenter.",
-    color: "from-brand-950 to-brand-700",
-    icon: "bg-brand-50 text-brand-800 ring-brand-100",
+    color: "from-sky-950 to-blue-700",
+    icon: "bg-sky-50 text-sky-800 ring-sky-100",
   },
   Licence: {
     description: "Logiciels, licences et systèmes professionnels.",
-    color: "from-cyan-600 to-brand-700",
+    color: "from-cyan-600 to-sky-800",
     icon: "bg-cyan-50 text-cyan-700 ring-cyan-100",
   },
   Écrans: {
     description: "Moniteurs, résolutions et formats de travail.",
-    color: "from-sky-600 to-brand-700",
+    color: "from-sky-600 to-cyan-600",
     icon: "bg-sky-50 text-sky-700 ring-sky-100",
   },
 };
@@ -937,16 +937,16 @@ export function Shop() {
     (searchTerm ? 1 : 0);
 
   return (
-    <section className="min-h-screen bg-[radial-gradient(circle_at_top_left,#dff6ff_0,#ffffff_34%,#f7fbfa_72%)] pb-24 pt-28">
+    <section className="min-h-screen bg-[radial-gradient(circle_at_top_left,#c8f2ff_0,#eaf8ff_38%,#dff3ff_100%)] pb-24 pt-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <header className="mb-8 overflow-hidden rounded-[2rem] border border-sky-100 bg-white shadow-[0_18px_50px_rgba(3,64,45,0.08)]">
-          <div className="h-2 bg-gradient-to-r from-brand-800 via-sky-500 to-cyan-400" />
+        <header className="mb-8 overflow-hidden rounded-[2rem] border border-sky-200 bg-white/95 shadow-[0_18px_50px_rgba(3,105,161,0.16)]">
+          <div className="h-2 bg-gradient-to-r from-sky-900 via-sky-500 to-cyan-400" />
           <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-sky-700">
                 Boutique EcoLiz
               </p>
-              <h1 className="text-3xl font-bold tracking-tight text-brand-950 lg:text-4xl">
+              <h1 className="text-3xl font-bold tracking-tight text-sky-950 lg:text-4xl">
                 Catégories, promotions et catalogue professionnel
               </h1>
             </div>
@@ -955,7 +955,7 @@ export function Shop() {
               onSubmit={submitSearch}
               className="relative min-w-0 flex-1 lg:max-w-xl"
             >
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-900/40" />
+              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-sky-900/40" />
 
               <input
                 value={searchInput}
@@ -974,10 +974,10 @@ export function Shop() {
             <section className="mb-8">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">
+              <p className="text-sm font-semibold uppercase tracking-wide text-sky-700">
                 Navigation
               </p>
-              <h2 className="text-2xl font-bold text-brand-950">
+              <h2 className="text-2xl font-bold text-sky-950">
                 Choisir une catégorie
               </h2>
             </div>
@@ -986,7 +986,7 @@ export function Shop() {
               <button
                 type="button"
                 onClick={returnToCategories}
-                className="hidden rounded-full border border-brand-100 bg-white px-4 py-2 text-sm font-medium text-brand-700 shadow-sm transition hover:bg-brand-50 sm:inline-flex"
+                className="hidden rounded-full border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-sky-700 shadow-sm transition hover:bg-sky-50 sm:inline-flex"
               >
                 Voir toutes les catégories
               </button>
@@ -994,11 +994,11 @@ export function Shop() {
           </div>
 
           {categoriesLoading ? (
-            <div className="rounded-2xl border border-brand-100 bg-white py-10 text-center text-brand-900/50">
+            <div className="rounded-2xl border border-sky-100 bg-white py-10 text-center text-sky-900/50">
               Chargement des catégories…
             </div>
           ) : categoryGroups.length === 0 ? (
-            <div className="rounded-2xl border border-brand-100 bg-white py-10 text-center text-brand-900/50">
+            <div className="rounded-2xl border border-sky-100 bg-white py-10 text-center text-sky-900/50">
               Aucune catégorie disponible.
             </div>
           ) : (
@@ -1018,11 +1018,11 @@ export function Shop() {
         )}
 
         {shouldShowProductArea && (
-          <div className="overflow-hidden rounded-[2rem] border border-brand-100 bg-white shadow-sm">
-            <div className="border-b border-brand-100 bg-brand-50/70 px-5 py-4 text-sm text-brand-900/60">
+          <div className="overflow-hidden rounded-[2rem] border border-sky-100 bg-white shadow-[0_18px_50px_rgba(3,105,161,0.12)]">
+            <div className="border-b border-sky-100 bg-sky-50 px-5 py-4 text-sm text-sky-900/60">
               <span>Boutique</span>
               <span className="mx-2">›</span>
-              <span className="font-semibold text-brand-950">{pageTitle}</span>
+              <span className="font-semibold text-sky-950">{pageTitle}</span>
             </div>
 
             <div>
@@ -1031,7 +1031,7 @@ export function Shop() {
                   <button
                     type="button"
                     onClick={returnToCategories}
-                    className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-700 transition hover:text-sky-700"
+                    className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-sky-700 transition hover:text-sky-900"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     Retour aux catégories
@@ -1040,7 +1040,7 @@ export function Shop() {
 
                 {!searchTerm && selectedMainCategory ? (
                   <div className="mb-6">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-700">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-sky-700">
                       Sous-catégories
                     </p>
                     <div className="flex gap-4 overflow-x-auto pb-2">
@@ -1062,8 +1062,8 @@ export function Shop() {
                             }
                             className={`min-w-[150px] rounded-2xl border px-4 py-3 text-left text-sm transition ${
                               checked
-                                ? "border-brand-700 bg-brand-950 text-white"
-                                : "border-brand-100 bg-brand-50 text-brand-900 hover:border-sky-300 hover:bg-sky-50"
+                                ? "border-sky-700 bg-sky-950 text-white"
+                                : "border-sky-100 bg-sky-50 text-sky-950 hover:border-sky-300 hover:bg-white"
                             }`}
                           >
                             <span className="block font-semibold">
@@ -1072,7 +1072,7 @@ export function Shop() {
                             {typeof category.count === "number" && (
                               <span
                                 className={`mt-1 block text-xs ${
-                                  checked ? "text-white/70" : "text-brand-900/45"
+                                  checked ? "text-white/70" : "text-sky-900/45"
                                 }`}
                               >
                                 {category.count} produits
@@ -1085,11 +1085,11 @@ export function Shop() {
                   </div>
                 ) : null}
 
-                <div className="mb-6 rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
+                <div className="mb-6 rounded-2xl border border-sky-100 bg-white p-4 shadow-[0_12px_30px_rgba(3,105,161,0.08)]">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <Filter className="h-4 w-4 text-brand-900/60" />
-                      <h2 className="font-semibold text-brand-950">Filtres</h2>
+                      <Filter className="h-4 w-4 text-sky-900/60" />
+                      <h2 className="font-semibold text-sky-950">Filtres</h2>
                       {activeFilterCount > 0 && (
                         <span className="rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-700">
                           {activeFilterCount}
@@ -1101,7 +1101,7 @@ export function Shop() {
                       <button
                         type="button"
                         onClick={resetFilters}
-                        className="inline-flex items-center gap-2 text-sm text-brand-700 underline hover:text-sky-700"
+                        className="inline-flex items-center gap-2 text-sm text-sky-700 underline hover:text-sky-900"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                         Réinitialiser
@@ -1110,7 +1110,7 @@ export function Shop() {
                   </div>
 
                   {searchTerm ? (
-                    <p className="text-sm text-brand-900/60">
+                    <p className="text-sm text-sky-900/60">
                       La recherche parcourt toute la boutique.
                     </p>
                   ) : (
@@ -1131,7 +1131,7 @@ export function Shop() {
                       />
 
                       {filterGroupsLoading || contextualFiltersLoading ? (
-                        <p className="text-sm text-brand-900/50">
+                        <p className="text-sm text-sky-900/50">
                           Chargement des filtres adaptés…
                         </p>
                       ) : (
@@ -1154,10 +1154,10 @@ export function Shop() {
                 </div>
                 <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div className="min-w-0">
-                    <h2 className="text-3xl font-bold text-brand-950">
+                    <h2 className="text-3xl font-bold text-sky-950">
                       {pageTitle}
                     </h2>
-                    <p className="mt-1 text-sm text-brand-900/60">
+                    <p className="mt-1 text-sm text-sky-900/60">
                       {loading
                         ? "Chargement des produits…"
                         : "Catalogue filtré selon votre sélection"}
@@ -1165,7 +1165,7 @@ export function Shop() {
                   </div>
 
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <label className="flex items-center justify-between gap-2 text-sm text-brand-900/60 sm:justify-start">
+                    <label className="flex items-center justify-between gap-2 text-sm text-sky-900/60 sm:justify-start">
                       <span className="whitespace-nowrap">Trier par</span>
 
                       <select
@@ -1174,7 +1174,7 @@ export function Shop() {
                           setCurrentPage(1);
                           setSortOption(event.target.value as SortOption);
                         }}
-                        className="min-w-0 rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-950 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
+                        className="min-w-0 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
                       >
                         <option value="default">Défaut</option>
                         <option value="price-asc">Prix croissant</option>
@@ -1184,7 +1184,7 @@ export function Shop() {
                       </select>
                     </label>
 
-                    <label className="flex items-center justify-between gap-2 text-sm text-brand-900/60 sm:justify-start">
+                    <label className="flex items-center justify-between gap-2 text-sm text-sky-900/60 sm:justify-start">
                       <span className="whitespace-nowrap">Afficher</span>
 
                       <select
@@ -1193,7 +1193,7 @@ export function Shop() {
                           setCurrentPage(1);
                           setProductsPerPage(Number(event.target.value));
                         }}
-                        className="min-w-0 rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-950 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
+                        className="min-w-0 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
                       >
                         {PRODUCTS_PER_PAGE_OPTIONS.map((option) => (
                           <option key={option} value={option}>
@@ -1203,14 +1203,14 @@ export function Shop() {
                       </select>
                     </label>
 
-                    <div className="flex shrink-0 items-center gap-1 rounded-xl border border-brand-100 bg-brand-50 p-1">
+                    <div className="flex shrink-0 items-center gap-1 rounded-xl border border-sky-100 bg-sky-50 p-1">
                       <button
                         type="button"
                         onClick={() => setViewMode("list")}
                         className={`rounded-lg p-2 transition-colors ${
                           viewMode === "list"
-                            ? "bg-white text-brand-700 shadow-sm"
-                            : "text-brand-900/40 hover:text-brand-900"
+                            ? "bg-white text-sky-700 shadow-sm"
+                            : "text-sky-900/40 hover:text-sky-900"
                         }`}
                         aria-label="Vue liste"
                       >
@@ -1222,8 +1222,8 @@ export function Shop() {
                         onClick={() => setViewMode("grid")}
                         className={`rounded-lg p-2 transition-colors ${
                           viewMode === "grid"
-                            ? "bg-white text-brand-700 shadow-sm"
-                            : "text-brand-900/40 hover:text-brand-900"
+                            ? "bg-white text-sky-700 shadow-sm"
+                            : "text-sky-900/40 hover:text-sky-900"
                         }`}
                         aria-label="Vue grille"
                       >
@@ -1233,7 +1233,7 @@ export function Shop() {
                   </div>
                 </div>
 
-                <div className="mb-6 flex min-w-0 items-center justify-between gap-3 border-b border-brand-100 pb-4 text-sm text-brand-900/60">
+                <div className="mb-6 flex min-w-0 items-center justify-between gap-3 border-b border-sky-100 pb-4 text-sm text-sky-900/60">
                   <SlidersHorizontal className="h-4 w-4 shrink-0" />
                   <span className="mr-auto truncate">
                     Page {currentPage} / {totalPages}
@@ -1244,11 +1244,11 @@ export function Shop() {
                 </div>
 
                 {loading ? (
-                  <div className="rounded-2xl border border-brand-100 bg-white py-20 text-center text-brand-900/50">
+                  <div className="rounded-2xl border border-sky-100 bg-white py-20 text-center text-sky-900/50">
                     Chargement du catalogue…
                   </div>
                 ) : products.length === 0 ? (
-                  <div className="rounded-2xl border border-brand-100 bg-white py-20 text-center text-brand-900/50">
+                  <div className="rounded-2xl border border-sky-100 bg-white py-20 text-center text-sky-900/50">
                     Aucun produit ne correspond aux filtres sélectionnés.
                   </div>
                 ) : viewMode === "list" ? (
@@ -1284,7 +1284,7 @@ export function Shop() {
                         setCurrentPage((page) => Math.max(page - 1, 1))
                       }
                       disabled={currentPage === 1 || loading}
-                      className="rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-brand-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-sky-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Précédent
                     </button>
@@ -1293,7 +1293,7 @@ export function Shop() {
                       page === "..." ? (
                         <span
                           key={`ellipsis-${index}`}
-                          className="px-3 py-2 text-brand-900/50"
+                          className="px-3 py-2 text-sky-900/50"
                         >
                           …
                         </span>
@@ -1308,8 +1308,8 @@ export function Shop() {
                           }
                           className={`h-11 w-11 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                             currentPage === page
-                              ? "border-brand-700 bg-brand-700 text-white"
-                              : "border-sky-200 bg-white/70 text-brand-900 hover:bg-sky-50"
+                              ? "border-sky-700 bg-sky-700 text-white"
+                              : "border-sky-200 bg-white/70 text-sky-900 hover:bg-sky-50"
                           }`}
                         >
                           {page}
@@ -1323,7 +1323,7 @@ export function Shop() {
                         setCurrentPage((page) => Math.min(page + 1, totalPages))
                       }
                       disabled={currentPage === totalPages || loading}
-                      className="rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-brand-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-sky-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Suivant
                     </button>
@@ -1340,41 +1340,51 @@ export function Shop() {
 
 function PromotionSection() {
   return (
-    <section className="mb-8">
-      <div className="mb-4 flex items-center gap-2">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
+    <section className="mb-10 overflow-hidden rounded-[2rem] bg-gradient-to-br from-sky-950 via-sky-900 to-cyan-800 p-6 text-white shadow-[0_22px_60px_rgba(12,74,110,0.28)]">
+      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <span className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-cyan-200 ring-1 ring-white/15">
           <BadgePercent className="h-5 w-5" />
-        </span>
-        <h2 className="text-2xl font-bold text-brand-950">Promotions</h2>
+          </span>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">
+            Promotions du moment
+          </p>
+          <h2 className="mt-1 text-3xl font-bold tracking-tight">
+            Sélections professionnelles à prix réduit
+          </h2>
+        </div>
+        <p className="max-w-md text-sm text-sky-100/75">
+          Des références reconditionnées, prêtes pour les entreprises.
+        </p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {PROMOTION_CARDS.map((card) => (
           <article
             key={card.title}
-            className="group overflow-hidden rounded-[1.5rem] border border-sky-100 bg-white shadow-[0_12px_30px_rgba(3,64,45,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(3,64,45,0.14)]"
+            className="group overflow-hidden rounded-[1.5rem] border border-white/15 bg-white/10 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15"
           >
             <div className={`h-2 bg-gradient-to-r ${card.accent}`} />
             <div className="flex items-start justify-between gap-4 p-5">
               <div className="min-w-0 flex-1">
-                <span className={`mb-4 inline-flex rounded-full bg-gradient-to-r ${card.accent} px-3 py-1 text-sm font-bold text-white shadow-sm`}>
+                <span className="mb-4 inline-flex rounded-full bg-cyan-300 px-3 py-1 text-sm font-bold text-sky-950 shadow-sm">
                   {card.badge}
                 </span>
 
-                <h3 className="mb-2 text-lg font-bold text-brand-950">
+                <h3 className="mb-2 text-lg font-bold text-white">
                   {card.title}
                 </h3>
 
-                <p className="mb-5 text-sm text-brand-900/65">
+                <p className="mb-5 text-sm text-sky-100/75">
                   {card.description}
                 </p>
 
-                <span className="inline-flex rounded-xl bg-brand-950 px-4 py-2 text-sm font-semibold text-white transition group-hover:bg-sky-700">
+                <span className="inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-sky-950 transition group-hover:bg-cyan-100">
                   Découvrir
                 </span>
               </div>
 
-              <div className={`flex h-24 w-28 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${card.accent} text-white shadow-inner`}>
+              <div className="flex h-24 w-28 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-cyan-200 ring-1 ring-white/15">
                 <Laptop className="h-12 w-12" />
               </div>
             </div>
@@ -1398,8 +1408,8 @@ function CategorySelectionCard({
     CATEGORY_ICONS[group.title as keyof typeof CATEGORY_ICONS] ?? Grid3X3;
   const details = CATEGORY_DETAILS[group.title] ?? {
     description: "Matériel professionnel reconditionné.",
-    color: "from-brand-800 to-sky-600",
-    icon: "bg-brand-50 text-brand-800 ring-brand-100",
+    color: "from-sky-800 to-cyan-500",
+    icon: "bg-sky-50 text-sky-800 ring-sky-100",
   };
   const productCount = group.children.reduce(
     (total, category) => total + (category.count ?? 0),
@@ -1410,9 +1420,9 @@ function CategorySelectionCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`group w-full overflow-hidden rounded-2xl border bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(3,64,45,0.12)] sm:w-[calc(50%-0.625rem)] xl:w-[calc(25%-0.9375rem)] ${
+      className={`group w-full overflow-hidden rounded-2xl border bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(3,105,161,0.16)] sm:w-[calc(50%-0.625rem)] xl:w-[calc(25%-0.9375rem)] ${
         isSelected
-          ? "border-brand-800 ring-2 ring-sky-200"
+          ? "border-sky-800 ring-2 ring-sky-300"
           : "border-sky-100 hover:border-sky-300"
       }`}
     >
@@ -1429,11 +1439,11 @@ function CategorySelectionCard({
           </span>
         </span>
 
-        <span className="text-lg font-bold text-brand-950">{group.title}</span>
-        <span className="mt-2 min-h-[42px] text-sm leading-5 text-brand-900/65">
+        <span className="text-lg font-bold text-sky-950">{group.title}</span>
+        <span className="mt-2 min-h-[42px] text-sm leading-5 text-sky-900/65">
           {details.description}
         </span>
-        <span className="mt-auto pt-4 text-sm font-semibold text-sky-700 transition group-hover:text-brand-800">
+        <span className="mt-auto pt-4 text-sm font-semibold text-sky-700 transition group-hover:text-sky-950">
           Explorer la catégorie →
         </span>
       </span>
@@ -1457,34 +1467,34 @@ function FilterGroup({
   onToggle: (optionSlug: string) => void;
 }) {
   return (
-    <div className="min-w-[180px] overflow-hidden rounded-xl border border-brand-100 bg-white">
+    <div className="min-w-[180px] overflow-hidden rounded-xl border border-sky-100 bg-white">
       <button
         type="button"
         onClick={onToggleGroup}
         aria-expanded={isOpen}
-        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-brand-50"
+        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-sky-50"
       >
         <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-semibold text-brand-950">
+          <span className="truncate text-sm font-semibold text-sky-950">
             {title}
           </span>
 
           {selectedOptions.length > 0 && (
-            <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
+            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">
               {selectedOptions.length}
             </span>
           )}
         </span>
 
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-brand-900/50 transition-transform duration-200 ${
+          className={`h-4 w-4 shrink-0 text-sky-900/50 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
           }`}
         />
       </button>
 
       {isOpen && (
-        <div className="space-y-2 border-t border-brand-100 bg-brand-50/40 px-3 py-3">
+        <div className="space-y-2 border-t border-sky-100 bg-sky-50/50 px-3 py-3">
           {options.map((option) => {
             const optionValue =
               typeof option === "string" ? option : option.slug;
@@ -1494,14 +1504,14 @@ function FilterGroup({
             return (
               <label
                 key={optionValue}
-                className="flex cursor-pointer items-center gap-2 text-sm text-brand-900/70"
+                className="flex cursor-pointer items-center gap-2 text-sm text-sky-900/70"
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <input
                     type="checkbox"
                     checked={selectedOptions.includes(optionValue)}
                     onChange={() => onToggle(optionValue)}
-                    className="rounded border-brand-300 text-brand-700 focus:ring-brand-700"
+                    className="rounded border-sky-300 text-sky-700 focus:ring-sky-700"
                   />
 
                   <span className="break-words">{optionLabel}</span>
@@ -1525,9 +1535,9 @@ function ProductListItem({
   const productName = decodeHtmlEntities(product.name);
 
   return (
-    <article className="group flex min-w-0 flex-col gap-5 overflow-hidden rounded-2xl border border-brand-100 bg-white p-4 transition-all hover:shadow-lg hover:shadow-brand-900/10 sm:flex-row">
+    <article className="group flex min-w-0 flex-col gap-5 overflow-hidden rounded-2xl border border-sky-100 bg-white p-4 transition-all hover:border-sky-300 hover:shadow-lg hover:shadow-sky-900/10 sm:flex-row">
       <Link to={`/produit/${product.slug}`} className="block shrink-0">
-        <div className="h-48 w-full overflow-hidden rounded-xl border border-brand-100 bg-brand-50 sm:h-32 sm:w-40">
+        <div className="h-48 w-full overflow-hidden rounded-xl border border-sky-100 bg-sky-50 sm:h-32 sm:w-40">
           <img
             src={product.image || "/placeholder-product.png"}
             alt={productName}
@@ -1551,18 +1561,18 @@ function ProductListItem({
               )}
 
             {product.manufacturer && (
-              <span className="break-words text-xs text-brand-900/50">
+              <span className="break-words text-xs text-sky-900/50">
                 {decodeHtmlEntities(product.manufacturer)}
               </span>
             )}
           </div>
 
-          <h3 className="mb-2 line-clamp-3 break-words text-lg font-bold text-brand-950 [overflow-wrap:anywhere] transition-colors group-hover:text-brand-700">
+          <h3 className="mb-2 line-clamp-3 break-words text-lg font-bold text-sky-950 [overflow-wrap:anywhere] transition-colors group-hover:text-sky-700">
             {productName}
           </h3>
         </Link>
 
-        <div className="mb-3 grid min-w-0 gap-x-4 gap-y-1 text-xs text-brand-900/60 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-3 grid min-w-0 gap-x-4 gap-y-1 text-xs text-sky-900/60 sm:grid-cols-2 xl:grid-cols-4">
           {product.sku && <InfoLine label="SKU" value={product.sku} />}
 
           {product.manufacturerPartNumber && (
@@ -1579,20 +1589,20 @@ function ProductListItem({
         </div>
 
         {product.specs && (
-          <p className="line-clamp-2 break-words text-sm text-brand-900/60 [overflow-wrap:anywhere]">
+          <p className="line-clamp-2 break-words text-sm text-sky-900/60 [overflow-wrap:anywhere]">
             {decodeHtmlEntities(product.specs)}
           </p>
         )}
       </div>
 
-      <div className="flex shrink-0 items-end justify-between gap-4 border-t border-brand-100 pt-4 sm:w-full md:w-auto md:min-w-[190px] md:flex-col md:items-end md:border-l md:border-t-0 md:pl-4 md:pt-0">
+      <div className="flex shrink-0 items-end justify-between gap-4 border-t border-sky-100 pt-4 sm:w-full md:w-auto md:min-w-[190px] md:flex-col md:items-end md:border-l md:border-t-0 md:pl-4 md:pt-0">
         <div className="text-right">
-          <p className="text-xl font-bold text-brand-950 sm:text-2xl">
+          <p className="text-xl font-bold text-sky-950 sm:text-2xl">
             {formatPrice(product.price)} HT
           </p>
 
           {product.priceTTC && (
-            <p className="text-sm text-brand-900/50">
+            <p className="text-sm text-sky-900/50">
               {formatPrice(product.priceTTC)} TTC
             </p>
           )}
@@ -1602,7 +1612,7 @@ function ProductListItem({
           <button
             type="button"
             onClick={(event) => onAddToCart(event, product)}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-800"
+            className="inline-flex items-center gap-2 rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-800"
           >
             <ShoppingCart className="h-4 w-4" />
             Ajouter
@@ -1610,7 +1620,7 @@ function ProductListItem({
 
           <Link
             to={`/produit/${product.slug}`}
-            className="inline-flex items-center rounded-xl border border-brand-100 px-4 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-50"
+            className="inline-flex items-center rounded-xl border border-sky-100 px-4 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-50"
           >
             Détails
           </Link>
@@ -1630,9 +1640,9 @@ function ProductGridItem({
   const productName = decodeHtmlEntities(product.name);
 
   return (
-    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white transition-all hover:shadow-lg hover:shadow-brand-900/10">
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-sky-100 bg-white transition-all hover:border-sky-300 hover:shadow-lg hover:shadow-sky-900/10">
       <Link to={`/produit/${product.slug}`} className="block">
-        <div className="relative aspect-[4/3] overflow-hidden bg-brand-50">
+        <div className="relative aspect-[4/3] overflow-hidden bg-sky-50">
           <img
             src={product.image || "/placeholder-product.png"}
             alt={productName}
@@ -1651,11 +1661,11 @@ function ProductGridItem({
 
       <div className="flex min-w-0 flex-1 flex-col p-5">
         <Link to={`/produit/${product.slug}`} className="block flex-1">
-          <h3 className="mb-2 line-clamp-3 break-words text-lg font-bold text-brand-950 [overflow-wrap:anywhere] transition-colors group-hover:text-brand-700">
+          <h3 className="mb-2 line-clamp-3 break-words text-lg font-bold text-sky-950 [overflow-wrap:anywhere] transition-colors group-hover:text-sky-700">
             {productName}
           </h3>
 
-          <div className="mb-4 min-w-0 space-y-1 text-xs text-brand-900/60">
+          <div className="mb-4 min-w-0 space-y-1 text-xs text-sky-900/60">
             {product.manufacturer && (
               <InfoLine label="Marque" value={product.manufacturer} />
             )}
@@ -1669,12 +1679,12 @@ function ProductGridItem({
         </Link>
 
         <div className="mt-auto">
-          <p className="text-2xl font-bold text-brand-950">
+          <p className="text-2xl font-bold text-sky-950">
             {formatPrice(product.price)} HT
           </p>
 
           {product.priceTTC && (
-            <p className="text-sm text-brand-900/50">
+            <p className="text-sm text-sky-900/50">
               {formatPrice(product.priceTTC)} TTC
             </p>
           )}
@@ -1682,7 +1692,7 @@ function ProductGridItem({
           <button
             type="button"
             onClick={(event) => onAddToCart(event, product)}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-800"
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-800"
           >
             <ShoppingCart className="h-4 w-4" />
             Ajouter au panier
@@ -1696,7 +1706,7 @@ function ProductGridItem({
 function InfoLine({ label, value }: { label: string; value: string }) {
   return (
     <p className="min-w-0 break-words [overflow-wrap:anywhere]">
-      <span className="font-medium text-brand-900/70">{label} :</span>{" "}
+      <span className="font-medium text-sky-900/70">{label} :</span>{" "}
       <span>{decodeHtmlEntities(value)}</span>
     </p>
   );
@@ -1712,7 +1722,7 @@ function StatusPill({
   const styles = {
     success: "border-sky-200 bg-sky-50 text-sky-700",
     warning: "border-amber-200 bg-amber-50 text-amber-700",
-    brand: "border-brand-100 bg-brand-50 text-brand-700",
+    brand: "border-cyan-100 bg-cyan-50 text-cyan-700",
   };
 
   return (
@@ -1723,3 +1733,4 @@ function StatusPill({
     </span>
   );
 }
+

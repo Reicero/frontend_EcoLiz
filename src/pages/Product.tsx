@@ -400,9 +400,9 @@ export function ProductPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-brand-50 pt-32">
+      <main className="min-h-screen bg-sky-50 pt-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="rounded-2xl border border-brand-100 bg-white px-6 py-16 text-center text-brand-900/60">
+          <div className="rounded-2xl border border-sky-100 bg-white px-6 py-16 text-center text-sky-900/60">
             Chargement du produit…
           </div>
         </div>
@@ -412,21 +412,21 @@ export function ProductPage() {
 
   if (error || !product) {
     return (
-      <main className="min-h-screen bg-brand-50 pt-32">
+      <main className="min-h-screen bg-sky-50 pt-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Link
             to="/boutique"
-            className="mb-6 inline-flex items-center gap-2 text-brand-700 hover:text-brand-800"
+            className="mb-6 inline-flex items-center gap-2 text-sky-700 hover:text-sky-900"
           >
             <ArrowLeft className="h-4 w-4" />
             Retour à la boutique
           </Link>
 
-          <div className="rounded-2xl border border-brand-100 bg-white p-8">
-            <h1 className="mb-2 text-2xl font-bold text-brand-950">
+          <div className="rounded-2xl border border-sky-100 bg-white p-8">
+            <h1 className="mb-2 text-2xl font-bold text-sky-950">
               Produit introuvable
             </h1>
-            <p className="text-brand-900/60">
+            <p className="text-sky-900/60">
               {error || "Impossible d’afficher cette fiche produit."}
             </p>
           </div>
@@ -443,20 +443,21 @@ export function ProductPage() {
       : [product.image || "/placeholder-product.png"];
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-brand-50 pb-24 pt-32">
+    <main className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,#c8f2ff_0,#eaf8ff_42%,#dff3ff_100%)] pb-24 pt-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <Link
           to="/boutique"
-          className="mb-7 inline-flex items-center gap-2 font-medium text-brand-700 transition-colors hover:text-brand-800"
+          className="mb-7 inline-flex items-center gap-2 font-medium text-sky-700 transition-colors hover:text-sky-900"
         >
           <ArrowLeft className="h-4 w-4" />
           Retour à la boutique
         </Link>
 
-        <section className="overflow-hidden rounded-3xl border border-brand-100 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-[0_22px_60px_rgba(3,105,161,0.16)]">
+          <div className="h-2 bg-gradient-to-r from-sky-900 via-sky-500 to-cyan-400" />
           <div className="grid min-w-0 lg:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.45fr)]">
-            <div className="min-w-0 border-b border-brand-100 bg-brand-50/50 p-5 sm:p-7 lg:border-b-0 lg:border-r">
-              <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-brand-100 bg-white">
+            <div className="min-w-0 border-b border-sky-100 bg-sky-50/70 p-5 sm:p-7 lg:border-b-0 lg:border-r">
+              <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-sky-100 bg-white">
                 <img
                   src={selectedImage || "/placeholder-product.png"}
                   alt={productName}
@@ -474,8 +475,8 @@ export function ProductPage() {
                       aria-label="Afficher cette image du produit"
                       className={`aspect-square overflow-hidden rounded-xl border bg-white p-1 transition-all ${
                         selectedImage === image
-                          ? "border-brand-700 ring-2 ring-brand-700/20"
-                          : "border-brand-100 hover:border-brand-300"
+                          ? "border-sky-700 ring-2 ring-sky-700/20"
+                          : "border-sky-100 hover:border-sky-300"
                       }`}
                     >
                       <img
@@ -507,11 +508,11 @@ export function ProductPage() {
                 <StatusPill label="Garantie sur devis" variant="info" />
               </div>
 
-              <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-brand-700">
+              <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-sky-700">
                 {decodeHtmlEntities(product.category)}
               </p>
 
-              <h1 className="max-w-full break-words text-3xl font-bold leading-[1.08] tracking-tight text-brand-950 [overflow-wrap:anywhere] sm:text-4xl">
+              <h1 className="max-w-full break-words text-3xl font-bold leading-[1.08] tracking-tight text-sky-950 [overflow-wrap:anywhere] sm:text-4xl">
                 {productName}
               </h1>
 
@@ -520,9 +521,9 @@ export function ProductPage() {
                   {summarySpecifications.map((item) => (
                     <span
                       key={`${item.name}-${item.value}`}
-                      className="max-w-full rounded-full border border-brand-100 bg-brand-50 px-3 py-1.5 text-sm text-brand-900/75"
+                      className="max-w-full rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5 text-sm text-sky-900/75"
                     >
-                      <strong className="font-semibold text-brand-950">
+                      <strong className="font-semibold text-sky-950">
                         {item.name} :
                       </strong>{" "}
                       <span className="break-words">{item.value}</span>
@@ -532,14 +533,14 @@ export function ProductPage() {
               )}
 
               {identityRows.length > 0 && (
-                <dl className="mt-7 grid min-w-0 gap-x-8 gap-y-3 border-y border-brand-100 py-5 sm:grid-cols-2">
+                <dl className="mt-7 grid min-w-0 gap-x-8 gap-y-3 border-y border-sky-100 py-5 sm:grid-cols-2">
                   {identityRows.map((item) => (
                     <div
                       key={item.label}
                       className="grid min-w-0 grid-cols-[120px_minmax(0,1fr)] gap-3 text-sm"
                     >
-                      <dt className="text-brand-900/50">{item.label}</dt>
-                      <dd className="min-w-0 break-words font-medium text-brand-950 [overflow-wrap:anywhere]">
+                      <dt className="text-sky-900/50">{item.label}</dt>
+                      <dd className="min-w-0 break-words font-medium text-sky-950 [overflow-wrap:anywhere]">
                         {item.value}
                       </dd>
                     </div>
@@ -548,29 +549,29 @@ export function ProductPage() {
               )}
 
               <div className="mt-7">
-                <p className="text-4xl font-bold tracking-tight text-brand-950">
+                <p className="text-4xl font-bold tracking-tight text-sky-950">
                   {formatPrice(product.price)} HT
                 </p>
                 {product.priceTTC && (
-                  <p className="mt-1 text-lg text-brand-900/55">
+                  <p className="mt-1 text-lg text-sky-900/55">
                     {formatPrice(product.priceTTC)} TTC
                   </p>
                 )}
               </div>
 
               {cartSuccess && (
-                <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-brand-200 bg-brand-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="font-semibold text-brand-950">
+                    <p className="font-semibold text-sky-950">
                       Produit ajouté au panier.
                     </p>
-                    <p className="text-sm text-brand-900/60">
+                    <p className="text-sm text-sky-900/60">
                       Vous pouvez continuer vos achats ou consulter votre panier.
                     </p>
                   </div>
                   <Link
                     to="/panier"
-                    className="inline-flex shrink-0 items-center justify-center rounded-xl bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+                    className="inline-flex shrink-0 items-center justify-center rounded-xl bg-sky-700 px-4 py-2 text-sm font-medium text-white hover:bg-sky-800"
                   >
                     Voir le panier
                   </Link>
@@ -588,7 +589,7 @@ export function ProductPage() {
                   type="button"
                   onClick={handleAddToCart}
                   disabled={!product.stock || addingToCart}
-                  className="inline-flex min-w-0 items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-4 font-semibold text-white shadow-lg shadow-brand-900/15 transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-5 py-4 font-semibold text-white shadow-lg shadow-sky-900/20 transition-colors hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ShoppingCart className="h-4 w-4 shrink-0" />
                   {addingToCart
@@ -600,13 +601,13 @@ export function ProductPage() {
 
                 <Link
                   to="/contact"
-                  className="inline-flex items-center justify-center rounded-xl border border-brand-200 bg-white px-5 py-4 font-semibold text-brand-900 transition-colors hover:bg-brand-50"
+                  className="inline-flex items-center justify-center rounded-xl border border-sky-200 bg-white px-5 py-4 font-semibold text-sky-900 transition-colors hover:bg-sky-50"
                 >
                   Demander un devis
                 </Link>
               </div>
 
-              <div className="mt-7 grid gap-4 border-t border-brand-100 pt-6 sm:grid-cols-3">
+              <div className="mt-7 grid gap-4 border-t border-sky-100 pt-6 sm:grid-cols-3">
                 <TrustItem icon={ShieldCheck} text="Garantie sur devis" />
                 <TrustItem icon={Truck} text="Livraison professionnelle" />
                 <TrustItem icon={Leaf} text="Matériel professionnel" />
@@ -615,22 +616,22 @@ export function ProductPage() {
           </div>
         </section>
 
-        <section className="mt-8 overflow-hidden rounded-3xl border border-brand-100 bg-white shadow-sm">
+        <section className="mt-8 overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-[0_12px_34px_rgba(3,105,161,0.1)]">
           <details open className="group">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 sm:px-8">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">
+                <p className="text-sm font-semibold uppercase tracking-wide text-sky-700">
                   Informations
                 </p>
-                <h2 className="mt-1 text-2xl font-bold text-brand-950">
+                <h2 className="mt-1 text-2xl font-bold text-sky-950">
                   Description du produit
                 </h2>
               </div>
-              <ChevronDown className="h-5 w-5 shrink-0 text-brand-900/50 transition-transform group-open:rotate-180" />
+              <ChevronDown className="h-5 w-5 shrink-0 text-sky-900/50 transition-transform group-open:rotate-180" />
             </summary>
 
-            <div className="border-t border-brand-100 px-6 py-6 sm:px-8">
-              <p className="max-w-5xl whitespace-pre-line break-words leading-7 text-brand-900/70 [overflow-wrap:anywhere]">
+            <div className="border-t border-sky-100 px-6 py-6 sm:px-8">
+              <p className="max-w-5xl whitespace-pre-line break-words leading-7 text-sky-900/70 [overflow-wrap:anywhere]">
                 {productDescription ||
                   "Aucune description détaillée n’est disponible pour ce produit."}
               </p>
@@ -638,42 +639,42 @@ export function ProductPage() {
           </details>
         </section>
 
-        <section className="mt-6 overflow-hidden rounded-3xl border border-brand-100 bg-white shadow-sm">
+        <section className="mt-6 overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-[0_12px_34px_rgba(3,105,161,0.1)]">
           <details open className="group">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 sm:px-8">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">
+                <p className="text-sm font-semibold uppercase tracking-wide text-sky-700">
                   Données fournisseur
                 </p>
-                <h2 className="mt-1 text-2xl font-bold text-brand-950">
+                <h2 className="mt-1 text-2xl font-bold text-sky-950">
                   Spécifications techniques
                 </h2>
               </div>
-              <ChevronDown className="h-5 w-5 shrink-0 text-brand-900/50 transition-transform group-open:rotate-180" />
+              <ChevronDown className="h-5 w-5 shrink-0 text-sky-900/50 transition-transform group-open:rotate-180" />
             </summary>
 
-            <div className="border-t border-brand-100 px-4 py-5 sm:px-8 sm:py-7">
+            <div className="border-t border-sky-100 px-4 py-5 sm:px-8 sm:py-7">
               {specificationGroups.length > 0 ? (
                 <div className="space-y-8">
                   {specificationGroups.map((section) => (
                     <div key={section.group}>
-                      <h3 className="mb-3 text-lg font-bold text-brand-950">
+                      <h3 className="mb-3 text-lg font-bold text-sky-950">
                         {section.group}
                       </h3>
 
-                      <div className="overflow-hidden rounded-xl border border-brand-100">
+                      <div className="overflow-hidden rounded-xl border border-sky-100">
                         <dl>
                           {section.rows.map((row, index) => (
                             <div
                               key={`${section.group}-${row.name}`}
                               className={`grid min-w-0 gap-2 px-4 py-3 text-sm sm:grid-cols-[minmax(180px,0.8fr)_minmax(0,1.8fr)] sm:gap-6 ${
-                                index % 2 === 0 ? "bg-brand-50/70" : "bg-white"
+                                index % 2 === 0 ? "bg-sky-50/70" : "bg-white"
                               }`}
                             >
-                              <dt className="font-semibold text-brand-950">
+                              <dt className="font-semibold text-sky-950">
                                 {row.name}
                               </dt>
-                              <dd className="min-w-0 break-words text-brand-900/75 [overflow-wrap:anywhere]">
+                              <dd className="min-w-0 break-words text-sky-900/75 [overflow-wrap:anywhere]">
                                 {row.values.join(", ")}
                               </dd>
                             </div>
@@ -684,7 +685,7 @@ export function ProductPage() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl bg-brand-50 px-5 py-8 text-center text-brand-900/55">
+                <div className="rounded-xl bg-sky-50 px-5 py-8 text-center text-sky-900/55">
                   Les caractéristiques techniques seront complétées prochainement.
                 </div>
               )}
@@ -704,8 +705,8 @@ function TrustItem({
   text: string;
 }) {
   return (
-    <div className="flex min-w-0 items-start gap-2 text-sm text-brand-900/65">
-      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
+    <div className="flex min-w-0 items-start gap-2 text-sm text-sky-900/65">
+      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
       <span className="min-w-0 break-words">{text}</span>
     </div>
   );
@@ -721,7 +722,7 @@ function StatusPill({
   const styles = {
     success: "border-sky-200 bg-sky-50 text-sky-700",
     warning: "border-amber-200 bg-amber-50 text-amber-700",
-    brand: "border-brand-100 bg-brand-50 text-brand-700",
+    brand: "border-sky-100 bg-sky-50 text-sky-700",
     info: "border-cyan-100 bg-cyan-50 text-cyan-700",
   };
 
