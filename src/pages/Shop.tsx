@@ -471,13 +471,20 @@ function buildContextualFilterGroups(
 
 function handleProductImageError(event: SyntheticEvent<HTMLImageElement>) {
   const image = event.currentTarget;
+  const originalSrc = image.dataset.originalSrc || image.src;
 
-  if (image.src.includes("/placeholder-product.png")) {
+  if (
+    image.dataset.retryDone === "true" ||
+    originalSrc.includes("/placeholder-product.png")
+  ) {
     return;
   }
 
-  image.src = "/placeholder-product.png";
-  image.classList.remove("mix-blend-multiply");
+  const retryUrl = new URL(originalSrc, window.location.href);
+
+  retryUrl.searchParams.set("ecoliz_image_retry", Date.now().toString());
+  image.dataset.retryDone = "true";
+  image.src = retryUrl.toString();
 }
 
 export function Shop() {
@@ -1577,7 +1584,7 @@ function ProductListItem({ product }: { product: Product }) {
             src={product.image || "/placeholder-product.png"}
             alt={productName}
             loading="lazy"
-            referrerPolicy="no-referrer"
+            data-original-src={product.image || "/placeholder-product.png"}
             onError={handleProductImageError}
             className="h-full w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-[1.03]"
           />
@@ -1669,7 +1676,7 @@ function ProductGridItem({ product }: { product: Product }) {
             src={product.image || "/placeholder-product.png"}
             alt={productName}
             loading="lazy"
-            referrerPolicy="no-referrer"
+            data-original-src={product.image || "/placeholder-product.png"}
             onError={handleProductImageError}
             className="h-full w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-[1.03]"
           />

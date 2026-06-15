@@ -281,13 +281,20 @@ function getAttributeValues(
 
 function handleProductImageError(event: SyntheticEvent<HTMLImageElement>) {
   const image = event.currentTarget;
+  const originalSrc = image.dataset.originalSrc || image.src;
 
-  if (image.src.includes("/placeholder-product.png")) {
+  if (
+    image.dataset.retryDone === "true" ||
+    originalSrc.includes("/placeholder-product.png")
+  ) {
     return;
   }
 
-  image.src = "/placeholder-product.png";
-  image.classList.remove("mix-blend-multiply");
+  const retryUrl = new URL(originalSrc, window.location.href);
+
+  retryUrl.searchParams.set("ecoliz_image_retry", Date.now().toString());
+  image.dataset.retryDone = "true";
+  image.src = retryUrl.toString();
 }
 
 export function ProductPage() {
@@ -475,7 +482,7 @@ export function ProductPage() {
                 <img
                   src={selectedImage || "/placeholder-product.png"}
                   alt={productName}
-                  referrerPolicy="no-referrer"
+                  data-original-src={selectedImage || "/placeholder-product.png"}
                   onError={handleProductImageError}
                   className="h-full w-full object-contain p-3 mix-blend-multiply"
                 />
@@ -498,7 +505,7 @@ export function ProductPage() {
                       <img
                         src={image}
                         alt=""
-                        referrerPolicy="no-referrer"
+                        data-original-src={image}
                         onError={handleProductImageError}
                         className="h-full w-full object-contain mix-blend-multiply"
                       />
