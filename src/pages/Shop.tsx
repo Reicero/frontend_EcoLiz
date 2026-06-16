@@ -551,7 +551,6 @@ export function Shop() {
     listProducts({
       page: 1,
       perPage: 6,
-      onSale: true,
     } as Parameters<typeof listProducts>[0] & { onSale: boolean })
       .then((result) => {
         if (cancelled) return;
