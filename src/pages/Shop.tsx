@@ -544,8 +544,37 @@ export function Shop() {
   }, []);
 
   useEffect(() => {
-    setPromotionProducts([]);
-    setPromotionsLoading(false);
+    let cancelled = false;
+
+    setPromotionsLoading(true);
+
+    listProducts({
+      page: 1,
+      perPage: 6,
+      onSale: true,
+    } as Parameters<typeof listProducts>[0] & { onSale: boolean })
+      .then((result) => {
+        if (cancelled) return;
+        setPromotionProducts(result.products);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+
+        console.error(
+          "Erreur lors de la récupération des produits en promotion :",
+          error
+        );
+        setPromotionProducts([]);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPromotionsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
