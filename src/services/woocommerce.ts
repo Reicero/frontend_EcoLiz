@@ -79,6 +79,7 @@ export interface ProductListParams {
   search?: string;
   categoryIds?: number[];
   stockStatus?: "instock" | "outofstock" | null;
+  onSale?: boolean;
   orderby?: "date" | "price" | "title";
   order?: "asc" | "desc";
   attributeFilters?: SelectedProductFilters;
@@ -707,6 +708,7 @@ export async function listProducts({
   search = "",
   categoryIds = [],
   stockStatus = null,
+  onSale = false,
   orderby,
   order,
   attributeFilters = {},
@@ -730,6 +732,10 @@ export async function listProducts({
 
     if (stockStatus) {
       params.set("stock_status[0]", stockStatus);
+    }
+
+    if (onSale) {
+      params.set("on_sale", "true");
     }
 
     if (orderby) {
