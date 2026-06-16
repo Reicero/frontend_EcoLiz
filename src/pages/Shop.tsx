@@ -1413,6 +1413,26 @@ function PromotionSection({
   products: Product[];
   loading: boolean;
 }) {
+  const [currentProductIndex, setCurrentProductIndex] = useState(0);
+  const activeProduct = products[currentProductIndex];
+  const hasMultiplePromotions = products.length > 1;
+
+  useEffect(() => {
+    setCurrentProductIndex(0);
+  }, [products.length]);
+
+  function showPreviousPromotion() {
+    setCurrentProductIndex((currentIndex) =>
+      currentIndex === 0 ? products.length - 1 : currentIndex - 1
+    );
+  }
+
+  function showNextPromotion() {
+    setCurrentProductIndex((currentIndex) =>
+      currentIndex === products.length - 1 ? 0 : currentIndex + 1
+    );
+  }
+
   return (
     <section className="relative mb-12 overflow-hidden rounded-[2rem] border border-cyan-300/40 bg-gradient-to-br from-sky-950 via-blue-950 to-cyan-800 p-6 text-white shadow-[0_28px_80px_rgba(8,47,73,0.34)]">
       <div className="absolute -left-20 top-8 h-48 w-48 rounded-full bg-cyan-300/20 blur-3xl" />
@@ -1458,10 +1478,33 @@ function PromotionSection({
           </div>
         )}
 
-        {!loading && products.length > 0 && (
-          <div className="col-span-full -mx-2 overflow-x-auto pb-3">
-            <div className="flex snap-x snap-mandatory gap-4 px-2">
-              {products.map((product) => {
+        {!loading && activeProduct && (
+          <div className="col-span-full">
+            <div className="relative mx-auto max-w-5xl px-10 sm:px-14">
+              {hasMultiplePromotions && (
+                <>
+                  <button
+                    type="button"
+                    onClick={showPreviousPromotion}
+                    className="absolute left-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-3xl leading-none text-white shadow-[0_14px_34px_rgba(0,0,0,0.24)] backdrop-blur transition hover:bg-cyan-300 hover:text-sky-950"
+                    aria-label="Promotion précédente"
+                  >
+                    ‹
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={showNextPromotion}
+                    className="absolute right-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-3xl leading-none text-white shadow-[0_14px_34px_rgba(0,0,0,0.24)] backdrop-blur transition hover:bg-cyan-300 hover:text-sky-950"
+                    aria-label="Promotion suivante"
+                  >
+                    ›
+                  </button>
+                </>
+              )}
+
+              {(() => {
+                const product = activeProduct;
                 const productName = decodeHtmlEntities(product.name);
                 const discountPercent = getPromotionDiscountPercent(product);
                 const originalPrice = Number(
@@ -1470,19 +1513,13 @@ function PromotionSection({
                 );
 
                 return (
-                  <article
-                    key={product.id}
-                    className="group relative flex min-h-[360px] w-[82vw] max-w-[360px] shrink-0 snap-start flex-col overflow-hidden rounded-[1.5rem] border border-white/15 bg-white/10 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-cyan-200/70 hover:bg-white/15 hover:shadow-[0_22px_50px_rgba(34,211,238,0.22)] sm:w-[330px]"
-                  >
-                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200 to-transparent opacity-80" />
-                    <div className="h-2 bg-gradient-to-r from-cyan-300 via-sky-400 to-blue-500" />
-
+                  <article className="group grid min-h-[340px] overflow-hidden rounded-[1.75rem] border border-white/15 bg-white/10 shadow-[0_18px_48px_rgba(0,0,0,0.2)] backdrop-blur transition duration-300 hover:border-cyan-200/70 hover:bg-white/15 md:grid-cols-[0.95fr_1.25fr]">
                     <Link
                       to={`/produit/${product.slug}`}
-                      className="relative flex h-40 items-center justify-center bg-white/95 p-4"
+                      className="relative flex min-h-[260px] items-center justify-center bg-white/95 p-6"
                     >
                       {discountPercent && (
-                        <span className="absolute left-4 top-4 rounded-2xl bg-cyan-300 px-3 py-2 text-2xl font-black leading-none text-sky-950 shadow-[0_0_28px_rgba(103,232,249,0.45)]">
+                        <span className="absolute left-5 top-5 rounded-2xl bg-cyan-300 px-4 py-3 text-4xl font-black leading-none text-sky-950 shadow-[0_0_34px_rgba(103,232,249,0.5)]">
                           -{discountPercent}%
                         </span>
                       )}
@@ -1495,26 +1532,26 @@ function PromotionSection({
                           product.image || "/placeholder-product.png"
                         }
                         onError={handleProductImageError}
-                        className="h-full w-full object-contain mix-blend-multiply transition duration-300 group-hover:scale-105"
+                        className="h-full max-h-72 w-full object-contain mix-blend-multiply transition duration-300 group-hover:scale-105"
                       />
                     </Link>
 
-                    <div className="flex flex-1 flex-col p-5">
-                      <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">
+                    <div className="flex min-w-0 flex-col justify-center p-6 sm:p-8">
+                      <p className="mb-3 inline-flex w-fit rounded-full border border-cyan-200/40 bg-cyan-300 px-4 py-2 text-sm font-black uppercase tracking-[0.18em] text-sky-950 shadow-[0_0_28px_rgba(103,232,249,0.28)]">
                         En promotion
                       </p>
 
-                      <h3 className="line-clamp-3 min-h-[4.5rem] text-lg font-bold leading-6 text-white">
+                      <h3 className="max-w-2xl break-words text-2xl font-black leading-tight text-white [overflow-wrap:anywhere] sm:text-4xl">
                         {productName}
                       </h3>
 
-                      <div className="mt-4">
-                        <p className="text-3xl font-black text-white">
+                      <div className="mt-5">
+                        <p className="text-4xl font-black text-white">
                           {formatPrice(product.price)} HT
                         </p>
 
                         {originalPrice > product.price && (
-                          <p className="mt-1 text-sm text-sky-100/65 line-through">
+                          <p className="mt-1 text-lg text-sky-100/65 line-through">
                             {formatPrice(originalPrice)} HT
                           </p>
                         )}
@@ -1522,15 +1559,33 @@ function PromotionSection({
 
                       <Link
                         to={`/produit/${product.slug}`}
-                        className="mt-auto inline-flex w-fit rounded-xl bg-white px-4 py-2 text-sm font-semibold text-sky-950 transition group-hover:bg-cyan-100 group-hover:shadow-[0_0_24px_rgba(103,232,249,0.28)]"
+                        className="mt-7 inline-flex w-fit rounded-xl bg-white px-5 py-3 text-sm font-bold text-sky-950 transition group-hover:bg-cyan-100 group-hover:shadow-[0_0_24px_rgba(103,232,249,0.28)]"
                       >
                         Voir l’offre
                       </Link>
                     </div>
                   </article>
                 );
-              })}
+              })()}
             </div>
+
+            {hasMultiplePromotions && (
+              <div className="mt-5 flex justify-center gap-2">
+                {products.map((product, index) => (
+                  <button
+                    key={product.id}
+                    type="button"
+                    onClick={() => setCurrentProductIndex(index)}
+                    aria-label={`Voir la promotion ${index + 1}`}
+                    className={`h-3 rounded-full transition-all ${
+                      index === currentProductIndex
+                        ? "w-8 bg-cyan-300"
+                        : "w-3 bg-white/45 hover:bg-white/80"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1892,10 +1947,14 @@ function StatusPill({
     brand: "border-cyan-100 bg-cyan-50 text-cyan-700",
     promo: "border-cyan-200 bg-cyan-300 text-sky-950",
   };
+  const baseClass =
+    variant === "promo"
+      ? "inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-black uppercase tracking-wide shadow-[0_0_18px_rgba(103,232,249,0.35)]"
+      : "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium";
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${styles[variant]}`}
+      className={`${baseClass} ${styles[variant]}`}
     >
       {decodeHtmlEntities(label)}
     </span>

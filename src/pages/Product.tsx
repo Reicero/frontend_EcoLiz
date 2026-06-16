@@ -770,10 +770,14 @@ function StatusPill({
     info: "border-cyan-100 bg-cyan-50 text-cyan-700",
     promo: "border-cyan-200 bg-cyan-300 text-sky-950",
   };
+  const baseClass =
+    variant === "promo"
+      ? "inline-flex max-w-full items-center rounded-full border px-4 py-2 text-sm font-black uppercase tracking-wide shadow-[0_0_20px_rgba(103,232,249,0.35)]"
+      : "inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-medium";
 
   return (
     <span
-      className={`inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-medium ${styles[variant]}`}
+      className={`${baseClass} ${styles[variant]}`}
     >
       <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 shrink-0" />
       <span className="break-words">{decodeHtmlEntities(label)}</span>
