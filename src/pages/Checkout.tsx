@@ -326,9 +326,7 @@ export default function Checkout() {
             <div className="rounded-2xl bg-brand-50 border border-brand-100 p-5 mb-8 text-left">
               <p className="text-brand-900/70">Numéro de commande :</p>
               <p className="text-2xl font-bold text-brand-950">
-                #{successOrder && typeof successOrder === 'object' && 'order_number' in successOrder
-  ? String((successOrder as { order_number?: string | number | null }).order_number ?? 'N/A')
-  : 'N/A'}
+                #{successOrder && typeof successOrder === 'object' && 'order_number' in successOrder ? (successOrder as { order_number?: unknown }).order_number : 'N/A'}
               </p>
             </div>
 
