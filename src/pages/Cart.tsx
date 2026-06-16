@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft } from 'lucide-react'
 import { getCart, updateCartItem, removeCartItem } from '../services/cart'
-import { config } from '../config/env'
 
 type WooCartItem = {
   key: string
@@ -36,94 +35,10 @@ type WooCart = {
   }
 }
 
-const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, '')
-
-function decodeHtmlEntities(value?: string): string {
-  if (!value) return ''
-
-  const textarea = document.createElement('textarea')
-  textarea.innerHTML = value
-  return textarea.value
-}
-
 function formatWooPrice(value?: string, minorUnit = 2): string {
   if (!value) return '0,00 €'
-
   const num = Number(value) / Math.pow(10, minorUnit)
-
-  return (
-    num.toLocaleString('fr-FR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }) + ' €'
-  )
-}
-
-function getItemMinorUnit(item: WooCartItem, cartMinorUnit = 2): number {
-  return (
-    item.prices?.currency_minor_unit ??
-    item.totals?.currency_minor_unit ??
-    cartMinorUnit
-  )
-}
-
-function getItemUnitPrice(item: WooCartItem, cartMinorUnit = 2): string {
-  const minorUnit = getItemMinorUnit(item, cartMinorUnit)
-
-  if (item.prices?.price) {
-    return formatWooPrice(item.prices.price, minorUnit)
-  }
-
-  if (item.totals?.line_total && item.quantity > 0) {
-    const unitPrice = Math.round(Number(item.totals.line_total) / item.quantity)
-    return formatWooPrice(String(unitPrice), minorUnit)
-  }
-
-  return '0,00 €'
-}
-
-function getItemLinePrice(item: WooCartItem, cartMinorUnit = 2): string {
-  const minorUnit = getItemMinorUnit(item, cartMinorUnit)
-  return formatWooPrice(item.totals?.line_total, minorUnit)
-}
-
-function getCartItemImage(item: WooCartItem, resolvedImages: Record<number, string>): string {
-  return decodeHtmlEntities(
-    item.images?.[0]?.src ||
-      item.images?.[0]?.thumbnail ||
-      resolvedImages[item.id] ||
-      ''
-  )
-}
-
-async function fetchProductImage(productId: number): Promise<string> {
-  const response = await fetch(`${WOO_API_URL}/products/${productId}`)
-
-  if (!response.ok) {
-    return ''
-  }
-
-  const product = await response.json()
-  return decodeHtmlEntities(product?.images?.[0]?.src || '')
-}
-
-async function resolveMissingImages(items: WooCartItem[]): Promise<Record<number, string>> {
-  const itemsWithoutImage = items.filter(
-    (item) => !item.images?.[0]?.src && !item.images?.[0]?.thumbnail
-  )
-
-  if (itemsWithoutImage.length === 0) {
-    return {}
-  }
-
-  const resolvedEntries = await Promise.all(
-    itemsWithoutImage.map(async (item) => {
-      const image = await fetchProductImage(item.id)
-      return [item.id, image] as const
-    })
-  )
-
-  return Object.fromEntries(resolvedEntries.filter(([, image]) => image))
+  return num.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 }
 
 function buildQuantityInputs(cart: WooCart): Record<string, string> {
@@ -136,21 +51,6 @@ export function Cart() {
   const [updatingKey, setUpdatingKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [quantityInputs, setQuantityInputs] = useState<Record<string, string>>({})
-  const [resolvedImages, setResolvedImages] = useState<Record<number, string>>({})
-
-  async function refreshCartState(data: WooCart) {
-    setCart(data)
-    setQuantityInputs(buildQuantityInputs(data))
-
-    const images = await resolveMissingImages(data.items)
-
-    if (Object.keys(images).length > 0) {
-      setResolvedImages((previous) => ({
-        ...previous,
-        ...images,
-      }))
-    }
-  }
 
   async function loadCart() {
     try {
@@ -158,7 +58,8 @@ export function Cart() {
       setError(null)
 
       const data = await getCart()
-      await refreshCartState(data)
+      setCart(data)
+      setQuantityInputs(buildQuantityInputs(data))
     } catch (err) {
       console.error('Erreur chargement panier :', err)
       setError('Impossible de charger le panier.')
@@ -168,7 +69,7 @@ export function Cart() {
   }
 
   useEffect(() => {
-    void loadCart()
+    loadCart()
   }, [])
 
   async function handleUpdateQuantity(item: WooCartItem, quantity: number) {
@@ -179,7 +80,8 @@ export function Cart() {
       setError(null)
 
       const updatedCart = await updateCartItem(item.key, quantity)
-      await refreshCartState(updatedCart)
+      setCart(updatedCart)
+      setQuantityInputs(buildQuantityInputs(updatedCart))
     } catch (err) {
       console.error('Erreur mise à jour quantité :', err)
       setError('Impossible de modifier la quantité.')
@@ -223,7 +125,8 @@ export function Cart() {
       setError(null)
 
       const updatedCart = await removeCartItem(item.key)
-      await refreshCartState(updatedCart)
+      setCart(updatedCart)
+      setQuantityInputs(buildQuantityInputs(updatedCart))
     } catch (err) {
       console.error('Erreur suppression produit :', err)
       setError('Impossible de supprimer ce produit.')
@@ -252,7 +155,7 @@ export function Cart() {
         <h1 className="text-4xl sm:text-5xl font-bold text-brand-950 mb-8">Votre panier</h1>
 
         {loading ? (
-          <div className="text-center text-brand-900/50 py-16">Chargement du panier...</div>
+          <div className="text-center text-brand-900/50 py-16">Chargement du panier…</div>
         ) : items.length === 0 ? (
           <div className="rounded-2xl border border-brand-100 bg-white p-8 text-center">
             <ShoppingBag className="h-12 w-12 mx-auto text-brand-900/30 mb-4" />
@@ -268,37 +171,25 @@ export function Cart() {
               {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
               {items.map((item) => {
-                const image = getCartItemImage(item, resolvedImages)
+                const image = item.images?.[0]?.src || item.images?.[0]?.thumbnail
+                const lineTotal = item.totals?.line_total
                 const isUpdating = updatingKey === item.key
 
                 return (
                   <div key={item.key} className="bg-white rounded-3xl border border-brand-100 p-5 shadow-sm flex flex-col sm:flex-row gap-5">
                     <div className="w-full sm:w-32 h-32 bg-brand-50 rounded-2xl overflow-hidden border border-brand-100 flex-shrink-0">
                       {image ? (
-                        <img src={image} alt={item.images?.[0]?.alt || item.name} className="w-full h-full object-contain p-3" />
+                        <img src={image} alt={item.name} className="w-full h-full object-cover mix-blend-multiply" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-brand-900/30 text-sm">Image indisponible</div>
+                        <div className="w-full h-full flex items-center justify-center text-brand-900/30 text-sm">Image</div>
                       )}
                     </div>
 
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div>
-                          <h2 className="text-lg font-semibold text-brand-950 mb-3">{item.name}</h2>
-                          <div className="space-y-1 text-sm text-brand-900/70">
-                            <p>
-                              Prix unitaire HT :{' '}
-                              <span className="font-semibold text-brand-950">
-                                {getItemUnitPrice(item, minorUnit)}
-                              </span>
-                            </p>
-                            <p>
-                              Total ligne HT :{' '}
-                              <span className="font-semibold text-brand-950">
-                                {getItemLinePrice(item, minorUnit)}
-                              </span>
-                            </p>
-                          </div>
+                          <h2 className="text-lg font-semibold text-brand-950 mb-2">{item.name}</h2>
+                          <p className="text-brand-900/60">{formatWooPrice(item.totals?.line_total, minorUnit)}</p>
                         </div>
 
                         <button
