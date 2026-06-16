@@ -455,6 +455,13 @@ export function ProductPage() {
 
   const productName = decodeHtmlEntities(product.name);
   const productDescription = decodeHtmlEntities(product.description);
+  const originalPrice = Number(
+    (product as Product & { originalPrice?: number }).originalPrice ?? 0
+  );
+  const discountPercent =
+    originalPrice > product.price
+      ? Math.round(((originalPrice - product.price) / originalPrice) * 100)
+      : null;
   const images =
     product.images && product.images.length > 0
       ? product.images
@@ -530,6 +537,13 @@ export function ProductPage() {
                     />
                   )}
 
+                {discountPercent && (
+                  <StatusPill
+                    label={`Promotion -${discountPercent}%`}
+                    variant="promo"
+                  />
+                )}
+
                 <StatusPill label="Garantie sur devis" variant="info" />
               </div>
 
@@ -577,6 +591,11 @@ export function ProductPage() {
                 <p className="text-4xl font-bold tracking-tight text-sky-950">
                   {formatPrice(product.price)} HT
                 </p>
+                {discountPercent && (
+                  <p className="mt-1 text-lg text-sky-900/45 line-through">
+                    {formatPrice(originalPrice)} HT
+                  </p>
+                )}
                 {product.priceTTC && (
                   <p className="mt-1 text-lg text-sky-900/55">
                     {formatPrice(product.priceTTC)} TTC
@@ -742,13 +761,14 @@ function StatusPill({
   variant,
 }: {
   label: string;
-  variant: "success" | "warning" | "brand" | "info";
+  variant: "success" | "warning" | "brand" | "info" | "promo";
 }) {
   const styles = {
     success: "border-sky-200 bg-sky-50 text-sky-700",
     warning: "border-amber-200 bg-amber-50 text-amber-700",
     brand: "border-sky-100 bg-sky-50 text-sky-700",
     info: "border-cyan-100 bg-cyan-50 text-cyan-700",
+    promo: "border-cyan-200 bg-cyan-300 text-sky-950",
   };
 
   return (

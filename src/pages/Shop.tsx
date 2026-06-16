@@ -550,7 +550,7 @@ export function Shop() {
 
     listProducts({
       page: 1,
-      perPage: 3,
+      perPage: 12,
       onSale: true,
     } as Parameters<typeof listProducts>[0] & { onSale: boolean })
       .then((result) => {
@@ -1458,77 +1458,81 @@ function PromotionSection({
           </div>
         )}
 
-        {!loading && products.map((product, index) => {
-          const productName = decodeHtmlEntities(product.name);
-          const discountPercent = getPromotionDiscountPercent(product);
-          const originalPrice = Number(
-            (product as Product & { originalPrice?: number }).originalPrice ?? 0
-          );
+        {!loading && products.length > 0 && (
+          <div className="col-span-full -mx-2 overflow-x-auto pb-3">
+            <div className="flex snap-x snap-mandatory gap-4 px-2">
+              {products.map((product) => {
+                const productName = decodeHtmlEntities(product.name);
+                const discountPercent = getPromotionDiscountPercent(product);
+                const originalPrice = Number(
+                  (product as Product & { originalPrice?: number })
+                    .originalPrice ?? 0
+                );
 
-          return (
-          <article
-            key={product.id}
-            className={`group relative overflow-hidden rounded-[1.5rem] border border-white/15 bg-white/10 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-cyan-200/70 hover:bg-white/15 hover:shadow-[0_22px_50px_rgba(34,211,238,0.22)] ${
-              index === 0 ? "lg:scale-[1.03] lg:border-cyan-200/60" : ""
-            }`}
-          >
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200 to-transparent opacity-80" />
-            <div className="h-2 bg-gradient-to-r from-cyan-300 via-sky-400 to-blue-500" />
-            <div className="flex items-stretch justify-between gap-4 p-5">
-              <div className="flex min-w-[88px] shrink-0 flex-col items-center justify-center rounded-2xl border border-cyan-200/40 bg-cyan-300 px-2 text-sky-950 shadow-[0_0_34px_rgba(103,232,249,0.36)] transition duration-300 group-hover:scale-105 group-hover:shadow-[0_0_44px_rgba(103,232,249,0.5)] sm:min-w-[104px]">
-                <span className="text-4xl font-black leading-none tracking-tight sm:text-5xl">
-                  {discountPercent ? `-${discountPercent}%` : "Promo"}
-                </span>
-                {discountPercent && (
-                  <span className="mt-1 text-[0.65rem] font-black uppercase tracking-[0.18em]">
-                    remise
-                  </span>
-                )}
-              </div>
+                return (
+                  <article
+                    key={product.id}
+                    className="group relative flex min-h-[360px] w-[82vw] max-w-[360px] shrink-0 snap-start flex-col overflow-hidden rounded-[1.5rem] border border-white/15 bg-white/10 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-cyan-200/70 hover:bg-white/15 hover:shadow-[0_22px_50px_rgba(34,211,238,0.22)] sm:w-[330px]"
+                  >
+                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200 to-transparent opacity-80" />
+                    <div className="h-2 bg-gradient-to-r from-cyan-300 via-sky-400 to-blue-500" />
 
-              <div className="min-w-0 flex-1">
-                <h3 className="mb-2 text-lg font-bold text-white">
-                  {productName}
-                </h3>
+                    <Link
+                      to={`/produit/${product.slug}`}
+                      className="relative flex h-40 items-center justify-center bg-white/95 p-4"
+                    >
+                      {discountPercent && (
+                        <span className="absolute left-4 top-4 rounded-2xl bg-cyan-300 px-3 py-2 text-2xl font-black leading-none text-sky-950 shadow-[0_0_28px_rgba(103,232,249,0.45)]">
+                          -{discountPercent}%
+                        </span>
+                      )}
 
-                <div className="mb-5">
-                  <p className="text-2xl font-black text-white">
-                    {formatPrice(product.price)} HT
-                  </p>
+                      <img
+                        src={product.image || "/placeholder-product.png"}
+                        alt={productName}
+                        loading="lazy"
+                        data-original-src={
+                          product.image || "/placeholder-product.png"
+                        }
+                        onError={handleProductImageError}
+                        className="h-full w-full object-contain mix-blend-multiply transition duration-300 group-hover:scale-105"
+                      />
+                    </Link>
 
-                  {originalPrice > product.price && (
-                    <p className="text-sm text-sky-100/65 line-through">
-                      {formatPrice(originalPrice)} HT
-                    </p>
-                  )}
-                </div>
+                    <div className="flex flex-1 flex-col p-5">
+                      <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">
+                        En promotion
+                      </p>
 
-                <Link
-                  to={`/produit/${product.slug}`}
-                  className="inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-sky-950 transition group-hover:bg-cyan-100 group-hover:shadow-[0_0_24px_rgba(103,232,249,0.28)]"
-                >
-                  Voir l’offre
-                </Link>
-              </div>
+                      <h3 className="line-clamp-3 min-h-[4.5rem] text-lg font-bold leading-6 text-white">
+                        {productName}
+                      </h3>
 
-              <div className="hidden h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-cyan-200 ring-1 ring-white/15 transition duration-300 group-hover:rotate-2 group-hover:scale-105 xl:flex">
-                {product.image ? (
-                  <img
-                    src={product.image}
-                    alt=""
-                    loading="lazy"
-                    data-original-src={product.image}
-                    onError={handleProductImageError}
-                    className="h-full w-full object-contain mix-blend-multiply"
-                  />
-                ) : (
-                  <Laptop className="h-12 w-12 drop-shadow-[0_0_18px_rgba(103,232,249,0.45)]" />
-                )}
-              </div>
+                      <div className="mt-4">
+                        <p className="text-3xl font-black text-white">
+                          {formatPrice(product.price)} HT
+                        </p>
+
+                        {originalPrice > product.price && (
+                          <p className="mt-1 text-sm text-sky-100/65 line-through">
+                            {formatPrice(originalPrice)} HT
+                          </p>
+                        )}
+                      </div>
+
+                      <Link
+                        to={`/produit/${product.slug}`}
+                        className="mt-auto inline-flex w-fit rounded-xl bg-white px-4 py-2 text-sm font-semibold text-sky-950 transition group-hover:bg-cyan-100 group-hover:shadow-[0_0_24px_rgba(103,232,249,0.28)]"
+                      >
+                        Voir l’offre
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
-          </article>
-          );
-        })}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -1668,6 +1672,7 @@ function FilterGroup({
 
 function ProductListItem({ product }: { product: Product }) {
   const productName = decodeHtmlEntities(product.name);
+  const discountPercent = getPromotionDiscountPercent(product);
 
   return (
     <article className="group flex min-w-0 flex-col gap-5 overflow-hidden rounded-2xl border border-sky-100 bg-white p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-[0_18px_42px_rgba(3,105,161,0.16)] sm:flex-row">
@@ -1696,6 +1701,10 @@ function ProductListItem({ product }: { product: Product }) {
               product.conditionLabel !== "Non renseigné" && (
                 <StatusPill label={product.conditionLabel} variant="brand" />
               )}
+
+            {discountPercent && (
+              <StatusPill label={`Promo -${discountPercent}%`} variant="promo" />
+            )}
 
             {product.manufacturer && (
               <span className="break-words text-xs text-sky-900/50">
@@ -1738,6 +1747,19 @@ function ProductListItem({ product }: { product: Product }) {
             {formatPrice(product.price)} HT
           </p>
 
+          {discountPercent &&
+            (product as Product & { originalPrice?: number }).originalPrice && (
+              <p className="text-sm text-sky-900/45 line-through">
+                {formatPrice(
+                  Number(
+                    (product as Product & { originalPrice?: number })
+                      .originalPrice
+                  )
+                )}{" "}
+                HT
+              </p>
+            )}
+
           {product.priceTTC && (
             <p className="text-sm text-sky-900/50">
               {formatPrice(product.priceTTC)} TTC
@@ -1760,6 +1782,7 @@ function ProductListItem({ product }: { product: Product }) {
 
 function ProductGridItem({ product }: { product: Product }) {
   const productName = decodeHtmlEntities(product.name);
+  const discountPercent = getPromotionDiscountPercent(product);
 
   return (
     <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-sky-100 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300 hover:shadow-[0_18px_42px_rgba(3,105,161,0.16)]">
@@ -1780,6 +1803,15 @@ function ProductGridItem({ product }: { product: Product }) {
               variant={product.stock ? "success" : "warning"}
             />
           </div>
+
+          {discountPercent && (
+            <div className="absolute left-3 top-3">
+              <StatusPill
+                label={`Promo -${discountPercent}%`}
+                variant="promo"
+              />
+            </div>
+          )}
         </div>
       </Link>
 
@@ -1806,6 +1838,19 @@ function ProductGridItem({ product }: { product: Product }) {
           <p className="text-2xl font-bold text-sky-950">
             {formatPrice(product.price)} HT
           </p>
+
+          {discountPercent &&
+            (product as Product & { originalPrice?: number }).originalPrice && (
+              <p className="text-sm text-sky-900/45 line-through">
+                {formatPrice(
+                  Number(
+                    (product as Product & { originalPrice?: number })
+                      .originalPrice
+                  )
+                )}{" "}
+                HT
+              </p>
+            )}
 
           {product.priceTTC && (
             <p className="text-sm text-sky-900/50">
@@ -1839,12 +1884,13 @@ function StatusPill({
   variant,
 }: {
   label: string;
-  variant: "success" | "warning" | "brand";
+  variant: "success" | "warning" | "brand" | "promo";
 }) {
   const styles = {
     success: "border-sky-200 bg-sky-50 text-sky-700",
     warning: "border-amber-200 bg-amber-50 text-amber-700",
     brand: "border-cyan-100 bg-cyan-50 text-cyan-700",
+    promo: "border-cyan-200 bg-cyan-300 text-sky-950",
   };
 
   return (
