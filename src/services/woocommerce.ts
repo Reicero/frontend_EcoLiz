@@ -493,28 +493,6 @@ function getMostSpecificCategoryName(product: any) {
   return decodeHtmlEntities(lastCategory?.name ?? "Non classé");
 }
 
-function getProductImageUrls(product: any): string[] {
-  if (!Array.isArray(product.images)) {
-    return [];
-  }
-
-  const urls = product.images.flatMap((image: any) => [
-    image?.src,
-    image?.thumbnail,
-    image?.full_src,
-    image?.url,
-  ]);
-
-  return Array.from(
-    new Set(
-      urls
-        .map((value: unknown) => decodeHtmlEntities(value).trim())
-        .filter(Boolean)
-        .filter((value: string) => !value.includes("/placeholder-product.png"))
-    )
-  );
-}
-
 function isProductInStock(product: any): boolean {
   const stockCount = product.stock_quantity;
 
@@ -531,7 +509,6 @@ function mapWooProduct(product: any): Product {
   const priceTTC = calculatePriceTTC(priceHT, VAT_RATE);
   const vatAmount = calculateVATAmount(priceTTC, priceHT);
   const inStock = isProductInStock(product);
-  const productImages = getProductImageUrls(product);
 
   const status =
     getAttributeValue(product, ["état", "etat", "status", "condition"]) ||
@@ -556,8 +533,14 @@ function mapWooProduct(product: any): Product {
     priceTTC,
     vatAmount,
 
-    image: productImages[0] || "/placeholder-product.png",
-    images: productImages,
+    image:
+      decodeHtmlEntities(product.images?.[0]?.src) ||
+      "/placeholder-product.png",
+    images: Array.isArray(product.images)
+      ? product.images
+          .map((image: any) => decodeHtmlEntities(image?.src))
+          .filter(Boolean)
+      : [],
 
     category: getMostSpecificCategoryName(product),
     manufacturer:
