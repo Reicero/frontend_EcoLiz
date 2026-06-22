@@ -41,6 +41,15 @@ function formatWooPrice(value?: string, minorUnit = 2): string {
   return num.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 }
 
+function normalizeWooImageUrl(value?: string): string {
+  if (!value) return ""
+
+  return value.replace(
+    /^https?:\/\/90\.51\.128\.107:12443/i,
+    ""
+  )
+}
+
 function buildQuantityInputs(cart: WooCart): Record<string, string> {
   return Object.fromEntries(cart.items.map((item) => [item.key, String(item.quantity)]))
 }
@@ -171,7 +180,7 @@ export function Cart() {
               {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
               {items.map((item) => {
-                const image = item.images?.[0]?.src || item.images?.[0]?.thumbnail
+                const image = normalizeWooImageUrl(item.images?.[0]?.src || item.images?.[0]?.thumbnail)
                 const lineTotal = item.totals?.line_total
                 const isUpdating = updatingKey === item.key
 

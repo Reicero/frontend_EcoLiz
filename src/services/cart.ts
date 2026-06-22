@@ -13,12 +13,42 @@ export const CART_UPDATED_EVENT = "ecoliz_cart_updated";
 
 const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, "");
 
-function getStoredCartToken() {
+export function getStoredCartToken() {
   return window.localStorage.getItem(STORAGE_KEY) ?? "";
 }
 
-function getStoredNonce() {
+export function getStoredNonce() {
   return window.localStorage.getItem(NONCE_STORAGE_KEY) ?? "";
+}
+
+function normalizeWooImageUrl(value: unknown) {
+  const imageUrl = String(value ?? "").trim();
+
+  if (!imageUrl) {
+    return "";
+  }
+
+  return imageUrl.replace(/^https?:\/\/90\.51\.128\.107:12443/i, "");
+}
+
+function normalizeCartImages(data: any): any {
+  if (!data || !Array.isArray(data.items)) {
+    return data;
+  }
+
+  return {
+    ...data,
+    items: data.items.map((item: any) => ({
+      ...item,
+      images: Array.isArray(item.images)
+        ? item.images.map((image: any) => ({
+            ...image,
+            src: normalizeWooImageUrl(image?.src),
+            thumbnail: normalizeWooImageUrl(image?.thumbnail),
+          }))
+        : item.images,
+    })),
+  };
 }
 
 function storeResponseTokens(response: Response) {
@@ -36,7 +66,7 @@ function storeResponseTokens(response: Response) {
   }
 }
 
-function buildHeaders() {
+export function buildCartHeaders() {
   const cartToken = getStoredCartToken();
   const nonce = getStoredNonce();
 
@@ -55,14 +85,15 @@ function notifyCartUpdated(itemsCount: number): void {
   );
 }
 
-async function requestCart(path: string, init: RequestInit = {}) {
+export async function requestCart(path: string, init: RequestInit = {}) {
   const response = await fetch(`${WOO_API_URL}${path}`, {
     ...init,
     credentials: "include",
     headers: {
-      ...buildHeaders(),
+      ...buildCartHeaders(),
       ...init.headers,
     },
+    cache: "no-store",
   });
 
   storeResponseTokens(response);
@@ -74,7 +105,8 @@ async function requestCart(path: string, init: RequestInit = {}) {
     );
   }
 
-  return response.json();
+  const data = await response.json();
+  return normalizeCartImages(data);
 }
 
 export async function getCart() {

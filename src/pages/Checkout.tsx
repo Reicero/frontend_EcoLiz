@@ -57,6 +57,15 @@ function decodeHtmlEntities(value?: string): string {
   return textarea.value
 }
 
+function normalizeWooImageUrl(value?: string): string {
+  if (!value) return ""
+
+  return decodeHtmlEntities(value).replace(
+    /^https?:\/\/90\.51\.128\.107:12443/i,
+    ""
+  )
+}
+
 function formatWooPrice(value?: string, minorUnit = 2): string {
   if (!value) return '0,00 €'
 
@@ -98,15 +107,17 @@ function getItemLinePrice(item: WooCartItem, cartMinorUnit = 2): string {
   return formatWooPrice(item.totals?.line_total, minorUnit)
 }
 
-function getCartItemImage(item: WooCartItem, resolvedImages: Record<number, string>): string {
-  return decodeHtmlEntities(
+function getCartItemImage(
+  item: WooCartItem,
+  resolvedImages: Record<number, string>
+): string {
+  return normalizeWooImageUrl(
     item.images?.[0]?.src ||
       item.images?.[0]?.thumbnail ||
       resolvedImages[item.id] ||
-      ''
+      ""
   )
 }
-
 async function fetchProductImage(productId: number): Promise<string> {
   const response = await fetch(`${WOO_API_URL}/products/${productId}`)
 
@@ -115,7 +126,7 @@ async function fetchProductImage(productId: number): Promise<string> {
   }
 
   const product = await response.json()
-  return decodeHtmlEntities(product?.images?.[0]?.src || '')
+  return normalizeWooImageUrl(product?.images?.[0]?.src || "")
 }
 
 async function resolveMissingImages(items: WooCartItem[]): Promise<Record<number, string>> {
