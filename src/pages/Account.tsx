@@ -1,18 +1,30 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  FileText,
-  Settings,
-  LogOut,
   AlertCircle,
-  User,
   Building2,
+  FileText,
+  Home,
+  KeyRound,
+  LogOut,
   Mail,
-  ShoppingBag,
+  MapPin,
+  PackageCheck,
+  Phone,
+  Settings,
   ShieldCheck,
+  ShoppingBag,
+  User,
 } from "lucide-react";
 import { fetchMyOrders } from "../services/ecoliz-api";
 import { formatPrice } from "../utils/formatPrice";
+
+type AccountTab =
+  | "overview"
+  | "infos"
+  | "addresses"
+  | "commandes"
+  | "security";
 
 type Order = {
   id: string | number;
@@ -29,18 +41,43 @@ type EcolizUser = {
   lastName?: string;
   company?: string;
   siret?: string;
+  phone?: string;
+
+  address_1?: string;
+  address_2?: string;
+  postcode?: string;
+  city?: string;
+  country?: string;
+
+  billing_address_1?: string;
+  billing_address_2?: string;
+  billing_postcode?: string;
+  billing_city?: string;
+  billing_country?: string;
+
+  shipping_address_1?: string;
+  shipping_address_2?: string;
+  shipping_postcode?: string;
+  shipping_city?: string;
+  shipping_country?: string;
 };
 
-const navItems = [
+const navItems: Array<{
+  key: AccountTab;
+  label: string;
+  icon: typeof User;
+}> = [
   { key: "overview", label: "Vue d’ensemble", icon: User },
-  { key: "commandes", label: "Commandes", icon: FileText },
-  { key: "parametres", label: "Paramètres", icon: Settings },
+  { key: "infos", label: "Mes informations", icon: Building2 },
+  { key: "addresses", label: "Mes adresses", icon: MapPin },
+  { key: "commandes", label: "Commandes & devis", icon: FileText },
+  { key: "security", label: "Sécurité", icon: Settings },
 ];
 
 export function Account() {
   const navigate = useNavigate();
 
-  const [active, setActive] = useState("overview");
+  const [active, setActive] = useState<AccountTab>("overview");
   const [user, setUser] = useState<EcolizUser | null>(null);
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -66,6 +103,8 @@ export function Account() {
   useEffect(() => {
     if (!user) return;
 
+    setOrdersLoading(true);
+
     fetchMyOrders()
       .then((data) => {
         setOrders(Array.isArray(data) ? data : []);
@@ -81,10 +120,33 @@ export function Account() {
       });
   }, [user]);
 
-  const handleLogout = () => {
+  function handleLogout() {
     localStorage.removeItem("ecoliz_user");
     navigate("/connexion", { replace: true });
-  };
+  }
+
+  const fullName = useMemo(() => {
+    if (!user) return "";
+    return `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+  }, [user]);
+
+  const initials = useMemo(() => {
+    if (!user) return "CL";
+
+    const first = user.firstName?.[0] ?? "";
+    const last = user.lastName?.[0] ?? "";
+
+    return `${first}${last}`.trim().toUpperCase() || "CL";
+  }, [user]);
+
+  const pendingOrders = orders.filter((order) =>
+    normalizeStatus(order.status).includes("attente")
+  );
+
+  const totalOrdersAmount = orders.reduce(
+    (total, order) => total + Number(order.total || 0),
+    0
+  );
 
   if (!user) {
     return (
@@ -95,8 +157,6 @@ export function Account() {
       </section>
     );
   }
-
-  const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
 
   return (
     <section className="pt-32 pb-24 bg-brand-50 min-h-screen">
@@ -115,8 +175,8 @@ export function Account() {
             </h1>
 
             <p className="text-brand-900/70 max-w-2xl">
-              Retrouvez vos informations client, vos commandes et le suivi de
-              votre compte EcoLiz.
+              Retrouvez vos informations client, vos adresses, vos commandes et
+              vos demandes de devis EcoLiz.
             </p>
           </div>
 
@@ -130,11 +190,11 @@ export function Account() {
           </button>
         </header>
 
-        <div className="grid lg:grid-cols-[260px_1fr] gap-8">
-          <aside className="bg-white rounded-2xl border border-brand-100 p-4 h-fit">
+        <div className="grid lg:grid-cols-[280px_1fr] gap-8">
+          <aside className="bg-white rounded-2xl border border-brand-100 p-4 h-fit shadow-sm">
             <div className="p-4 mb-4 rounded-xl bg-brand-50 border border-brand-100">
-              <div className="w-12 h-12 rounded-full bg-brand-700 text-white flex items-center justify-center mb-3">
-                <User className="w-6 h-6" />
+              <div className="w-14 h-14 rounded-full bg-brand-700 text-white flex items-center justify-center mb-3 font-bold">
+                {initials}
               </div>
 
               <p className="font-bold text-brand-950">
@@ -144,6 +204,12 @@ export function Account() {
               <p className="text-sm text-brand-900/60 break-all">
                 {user.email}
               </p>
+
+              {user.company && (
+                <p className="mt-2 text-xs font-medium text-brand-700">
+                  {user.company}
+                </p>
+              )}
             </div>
 
             <nav className="space-y-1">
@@ -181,88 +247,85 @@ export function Account() {
           <div className="space-y-8">
             {active === "overview" && (
               <>
-                <div className="grid sm:grid-cols-3 gap-4">
-                  <div className="bg-white rounded-2xl border border-brand-100 p-6">
-                    <p className="text-sm text-brand-900/60 mb-1">
-                      Commandes
-                    </p>
-                    <p className="text-3xl font-bold text-brand-950">
-                      {orders.length}
-                    </p>
-                  </div>
+                <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                  <StatCard
+                    label="Commandes"
+                    value={String(orders.length)}
+                    icon={ShoppingBag}
+                  />
 
-                  <div className="bg-white rounded-2xl border border-brand-100 p-6">
-                    <p className="text-sm text-brand-900/60 mb-1">
-                      Statut compte
-                    </p>
-                    <p className="text-lg font-bold text-brand-700">
-                      Actif
-                    </p>
-                  </div>
+                  <StatCard
+                    label="En attente"
+                    value={String(pendingOrders.length)}
+                    icon={FileText}
+                  />
 
-                  <div className="bg-white rounded-2xl border border-brand-100 p-6">
-                    <p className="text-sm text-brand-900/60 mb-1">
-                      Type client
-                    </p>
-                    <p className="text-lg font-bold text-brand-950">
-                      Professionnel
-                    </p>
-                  </div>
+                  <StatCard
+                    label="Total demandes"
+                    value={formatPrice(totalOrdersAmount)}
+                    icon={PackageCheck}
+                  />
+
+                  <StatCard
+                    label="Statut compte"
+                    value="Actif"
+                    icon={ShieldCheck}
+                  />
                 </div>
 
-                <div className="bg-white rounded-2xl border border-brand-100 p-6">
-                  <h2 className="text-xl font-bold text-brand-950 mb-6">
-                    Informations du compte
-                  </h2>
-
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="rounded-xl bg-brand-50 border border-brand-100 p-4">
-                      <div className="flex items-center gap-2 text-brand-700 mb-2">
-                        <Building2 className="w-4 h-4" />
-                        <p className="text-sm font-semibold">Entreprise</p>
-                      </div>
-                      <p className="text-brand-950 font-medium">
-                        {user.company || "Non renseignée"}
-                      </p>
+                <div className="grid xl:grid-cols-2 gap-6">
+                  <InfoPanel title="Informations client">
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <InfoItem
+                        icon={Building2}
+                        label="Entreprise"
+                        value={user.company || "Non renseignée"}
+                      />
+                      <InfoItem
+                        icon={User}
+                        label="Contact"
+                        value={fullName || "Non renseigné"}
+                      />
+                      <InfoItem
+                        icon={Mail}
+                        label="Email"
+                        value={user.email}
+                      />
+                      <InfoItem
+                        icon={ShieldCheck}
+                        label="SIRET"
+                        value={user.siret || "Non renseigné"}
+                      />
                     </div>
+                  </InfoPanel>
 
-                    <div className="rounded-xl bg-brand-50 border border-brand-100 p-4">
-                      <div className="flex items-center gap-2 text-brand-700 mb-2">
-                        <User className="w-4 h-4" />
-                        <p className="text-sm font-semibold">Contact</p>
-                      </div>
-                      <p className="text-brand-950 font-medium">
-                        {fullName || "Non renseigné"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-xl bg-brand-50 border border-brand-100 p-4">
-                      <div className="flex items-center gap-2 text-brand-700 mb-2">
-                        <Mail className="w-4 h-4" />
-                        <p className="text-sm font-semibold">Email</p>
-                      </div>
-                      <p className="text-brand-950 font-medium break-all">
-                        {user.email}
-                      </p>
-                    </div>
-
-                    <div className="rounded-xl bg-brand-50 border border-brand-100 p-4">
-                      <div className="flex items-center gap-2 text-brand-700 mb-2">
-                        <ShieldCheck className="w-4 h-4" />
-                        <p className="text-sm font-semibold">SIRET</p>
-                      </div>
-                      <p className="text-brand-950 font-medium">
-                        {user.siret || "Non renseigné"}
-                      </p>
-                    </div>
-                  </div>
+                  <InfoPanel title="Adresse principale">
+                    <AddressPreview
+                      lines={[
+                        user.address_1 || user.billing_address_1,
+                        user.address_2 || user.billing_address_2,
+                        [
+                          user.postcode || user.billing_postcode,
+                          user.city || user.billing_city,
+                        ]
+                          .filter(Boolean)
+                          .join(" "),
+                        user.country || user.billing_country,
+                      ]}
+                    />
+                  </InfoPanel>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-brand-100 overflow-hidden">
+                <div className="bg-white rounded-2xl border border-brand-100 overflow-hidden shadow-sm">
                   <div className="flex items-center justify-between px-6 py-4 border-b border-brand-100">
-                    <h2 className="font-bold text-brand-950">
-                      Dernières commandes
-                    </h2>
+                    <div>
+                      <h2 className="font-bold text-brand-950">
+                        Dernières commandes / demandes
+                      </h2>
+                      <p className="text-sm text-brand-900/60 mt-1">
+                        Les dernières demandes envoyées depuis la boutique.
+                      </p>
+                    </div>
 
                     <button
                       type="button"
@@ -282,14 +345,83 @@ export function Account() {
               </>
             )}
 
+            {active === "infos" && (
+              <InfoPanel title="Mes informations">
+                <div className="mb-6 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  La modification des informations client pourra ensuite être
+                  reliée à l’API WordPress. Pour l’instant, cette page affiche
+                  les données du compte connecté.
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <InfoItem
+                    icon={User}
+                    label="Prénom"
+                    value={user.firstName || "Non renseigné"}
+                  />
+                  <InfoItem
+                    icon={User}
+                    label="Nom"
+                    value={user.lastName || "Non renseigné"}
+                  />
+                  <InfoItem
+                    icon={Building2}
+                    label="Entreprise"
+                    value={user.company || "Non renseignée"}
+                  />
+                  <InfoItem
+                    icon={ShieldCheck}
+                    label="SIRET"
+                    value={user.siret || "Non renseigné"}
+                  />
+                  <InfoItem icon={Mail} label="Email" value={user.email} />
+                  <InfoItem
+                    icon={Phone}
+                    label="Téléphone"
+                    value={user.phone || "Non renseigné"}
+                  />
+                </div>
+              </InfoPanel>
+            )}
+
+            {active === "addresses" && (
+              <div className="grid xl:grid-cols-2 gap-6">
+                <AddressCard
+                  title="Adresse de facturation"
+                  description="Adresse utilisée pour les documents commerciaux et les demandes."
+                  lines={[
+                    user.billing_address_1 || user.address_1,
+                    user.billing_address_2 || user.address_2,
+                    [user.billing_postcode || user.postcode, user.billing_city || user.city]
+                      .filter(Boolean)
+                      .join(" "),
+                    user.billing_country || user.country,
+                  ]}
+                />
+
+                <AddressCard
+                  title="Adresse de livraison"
+                  description="Adresse utilisée pour l’expédition du matériel."
+                  lines={[
+                    user.shipping_address_1 || user.address_1,
+                    user.shipping_address_2 || user.address_2,
+                    [user.shipping_postcode || user.postcode, user.shipping_city || user.city]
+                      .filter(Boolean)
+                      .join(" "),
+                    user.shipping_country || user.country,
+                  ]}
+                />
+              </div>
+            )}
+
             {active === "commandes" && (
-              <div className="bg-white rounded-2xl border border-brand-100 overflow-hidden">
+              <div className="bg-white rounded-2xl border border-brand-100 overflow-hidden shadow-sm">
                 <div className="px-6 py-4 border-b border-brand-100">
                   <h2 className="font-bold text-brand-950">
-                    Mes commandes
+                    Mes commandes et demandes de devis
                   </h2>
                   <p className="text-sm text-brand-900/60 mt-1">
-                    Historique des commandes liées à votre compte.
+                    Historique des commandes liées à votre compte EcoLiz.
                   </p>
                 </div>
 
@@ -301,50 +433,181 @@ export function Account() {
               </div>
             )}
 
-            {active === "parametres" && (
-              <div className="bg-white rounded-2xl border border-brand-100 p-6">
-                <h2 className="text-xl font-bold text-brand-950 mb-4">
-                  Paramètres du compte
-                </h2>
+            {active === "security" && (
+              <InfoPanel title="Sécurité du compte">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="rounded-2xl border border-brand-100 bg-brand-50 p-5">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-brand-100 flex items-center justify-center text-brand-700 mb-4">
+                      <KeyRound className="w-5 h-5" />
+                    </div>
 
-                <p className="text-brand-900/70 mb-6">
-                  Cette section permettra ensuite de modifier les informations
-                  du compte, l’adresse de facturation et les préférences client.
-                </p>
+                    <h3 className="font-bold text-brand-950 mb-2">
+                      Mot de passe
+                    </h3>
 
-                <div className="rounded-2xl border border-brand-100 bg-brand-50 p-5">
-                  <p className="font-semibold text-brand-950 mb-2">
-                    Informations actuelles
-                  </p>
+                    <p className="text-sm text-brand-900/60 mb-4">
+                      Le changement de mot de passe sera relié ensuite au
+                      système WordPress.
+                    </p>
 
-                  <div className="space-y-2 text-sm text-brand-900/70">
-                    <p>
-                      <strong>Email :</strong> {user.email}
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex rounded-full border border-brand-200 bg-white px-4 py-2 text-sm font-medium text-brand-900/50 cursor-not-allowed"
+                    >
+                      Modification bientôt disponible
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl border border-red-100 bg-red-50 p-5">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-red-100 flex items-center justify-center text-red-600 mb-4">
+                      <LogOut className="w-5 h-5" />
+                    </div>
+
+                    <h3 className="font-bold text-brand-950 mb-2">
+                      Déconnexion
+                    </h3>
+
+                    <p className="text-sm text-brand-900/60 mb-4">
+                      Déconnectez-vous de votre espace client EcoLiz sur cet
+                      appareil.
                     </p>
-                    <p>
-                      <strong>Entreprise :</strong>{" "}
-                      {user.company || "Non renseignée"}
-                    </p>
-                    <p>
-                      <strong>SIRET :</strong>{" "}
-                      {user.siret || "Non renseigné"}
-                    </p>
+
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="inline-flex rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+                    >
+                      Se déconnecter
+                    </button>
                   </div>
                 </div>
-              </div>
+              </InfoPanel>
             )}
-
-            {active !== "overview" &&
-              active !== "commandes" &&
-              active !== "parametres" && (
-                <div className="bg-white rounded-2xl border border-brand-100 p-8 text-brand-900/60">
-                  Section en cours de préparation.
-                </div>
-              )}
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: typeof User;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-brand-100 p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm text-brand-900/60 mb-1">{label}</p>
+          <p className="text-2xl font-bold text-brand-950">{value}</p>
+        </div>
+
+        <div className="w-10 h-10 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-700">
+          <Icon className="w-5 h-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoPanel({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-brand-100 p-6 shadow-sm">
+      <h2 className="text-xl font-bold text-brand-950 mb-6">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function InfoItem({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof User;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl bg-brand-50 border border-brand-100 p-4">
+      <div className="flex items-center gap-2 text-brand-700 mb-2">
+        <Icon className="w-4 h-4" />
+        <p className="text-sm font-semibold">{label}</p>
+      </div>
+
+      <p className="text-brand-950 font-medium break-words">{value}</p>
+    </div>
+  );
+}
+
+function AddressPreview({ lines }: { lines: Array<string | undefined> }) {
+  const cleanLines = lines.map((line) => line?.trim()).filter(Boolean);
+
+  if (cleanLines.length === 0) {
+    return (
+      <div className="rounded-xl bg-brand-50 border border-brand-100 p-5 text-brand-900/60 text-sm">
+        Aucune adresse renseignée pour le moment.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl bg-brand-50 border border-brand-100 p-5 text-brand-950">
+      {cleanLines.map((line) => (
+        <p key={line}>{line}</p>
+      ))}
+    </div>
+  );
+}
+
+function AddressCard({
+  title,
+  description,
+  lines,
+}: {
+  title: string;
+  description: string;
+  lines: Array<string | undefined>;
+}) {
+  const cleanLines = lines.map((line) => line?.trim()).filter(Boolean);
+
+  return (
+    <div className="bg-white rounded-2xl border border-brand-100 p-6 shadow-sm">
+      <div className="flex items-start gap-3 mb-5">
+        <div className="w-11 h-11 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-700">
+          <Home className="w-5 h-5" />
+        </div>
+
+        <div>
+          <h2 className="text-xl font-bold text-brand-950">{title}</h2>
+          <p className="text-sm text-brand-900/60 mt-1">{description}</p>
+        </div>
+      </div>
+
+      {cleanLines.length > 0 ? (
+        <div className="rounded-xl bg-brand-50 border border-brand-100 p-5 text-brand-950">
+          {cleanLines.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl bg-brand-50 border border-brand-100 p-5 text-sm text-brand-900/60">
+          Aucune adresse renseignée pour le moment.
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -389,7 +652,8 @@ function OrdersList({
         </p>
 
         <p className="text-sm text-brand-900/60 mb-5">
-          Les commandes passées depuis la boutique apparaîtront ici.
+          Les commandes ou demandes de devis passées depuis la boutique
+          apparaîtront ici.
         </p>
 
         <Link
@@ -404,32 +668,94 @@ function OrdersList({
 
   return (
     <div className="divide-y divide-brand-50">
-      {orders.map((o) => (
+      {orders.map((order) => (
         <div
-          key={o.id}
+          key={order.id}
           className="px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
         >
           <div>
             <p className="font-medium text-brand-950 text-sm">
-              Commande #{o.id}
+              Commande #{order.id}
             </p>
 
             <p className="text-xs text-brand-900/60">
-              {o.date} · {o.items} article(s)
+              {formatOrderDate(order.date)} · {order.items} article
+              {Number(order.items) > 1 ? "s" : ""}
             </p>
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-xs font-medium px-2 py-1 rounded-full bg-brand-50 text-brand-700">
-              {o.status}
-            </span>
+            <StatusBadge status={order.status} />
 
             <p className="font-bold text-brand-950">
-              {formatPrice(o.total)}
+              {formatPrice(Number(order.total || 0))}
             </p>
           </div>
         </div>
       ))}
     </div>
   );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const normalized = normalizeStatus(status);
+
+  const style = normalized.includes("termine")
+    ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+    : normalized.includes("annule")
+      ? "bg-red-50 text-red-700 border-red-100"
+      : normalized.includes("attente") || normalized.includes("pending")
+        ? "bg-amber-50 text-amber-700 border-amber-100"
+        : "bg-brand-50 text-brand-700 border-brand-100";
+
+  return (
+    <span className={`text-xs font-medium px-2 py-1 rounded-full border ${style}`}>
+      {formatOrderStatus(status)}
+    </span>
+  );
+}
+
+function normalizeStatus(value: string) {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function formatOrderStatus(value: string) {
+  const normalized = normalizeStatus(value);
+
+  if (normalized.includes("pending") || normalized.includes("attente")) {
+    return "En attente";
+  }
+
+  if (normalized.includes("processing") || normalized.includes("traitement")) {
+    return "En traitement";
+  }
+
+  if (normalized.includes("completed") || normalized.includes("termine")) {
+    return "Terminée";
+  }
+
+  if (normalized.includes("cancelled") || normalized.includes("annule")) {
+    return "Annulée";
+  }
+
+  return value || "Statut inconnu";
+}
+
+function formatOrderDate(value: string) {
+  if (!value) return "Date inconnue";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
 }
