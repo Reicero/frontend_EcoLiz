@@ -13,16 +13,13 @@ import {
   ChevronDown,
   Filter,
   Grid3X3,
-  KeyRound,
   Laptop,
   List,
-  Monitor,
   Network,
   RotateCcw,
   Search,
   Server,
   SlidersHorizontal,
-  Wifi,
 } from "lucide-react";
 
 import type { Product } from "../types/product";
@@ -54,78 +51,106 @@ type CategoryGroup = {
   children: WooCategory[];
 };
 
-const CATEGORY_ORDER = [
-  "Notebooks",
-  "Workstations",
-  "Réseau",
-  "Wi-Fi",
-  "Server / Stockage",
-  "Licence",
-  "Écrans",
-] as const;
+const CATEGORY_ORDER = ["PC", "Infra", "Réseau", "Service"] as const;
 
 const FILTERS_BY_CATEGORY: Record<string, string[]> = {
-  notebooks: [
+  pc: [
     "marque",
     "etat",
     "processeur",
+    "cpu",
+    "modele-processeur",
+    "cpumodel",
+    "generation-processeur",
+    "cpugeneration",
+    "nombre-coeurs",
+    "cpucores",
     "ram",
+    "type-ram",
+    "ramtype",
     "stockage",
-    "type-de-stockage",
+    "type-stockage",
+    "storagetype",
     "os",
     "taille-ecran",
+    "screen",
+    "resolution",
+    "technologie-dalle",
+    "paneltechnology",
     "carte-graphique",
+    "gpu",
+    "modele-carte-graphique",
+    "gpumodel",
+    "ecran-tactile",
+    "touchscreen",
+    "connectique",
+    "connectivity",
+    "webcam-integree",
+    "webcam",
+    "compatible-vesa",
+    "vesa",
   ],
-  workstations: [
+  infra: [
     "marque",
     "etat",
+    "type-serveur",
+    "servertype",
     "processeur",
+    "cpu",
+    "modele-processeur",
+    "cpumodel",
+    "nombre-coeurs",
+    "cpucores",
     "ram",
+    "type-ram",
+    "ramtype",
     "stockage",
-    "type-de-stockage",
-    "os",
-    "taille-ecran",
-    "carte-graphique",
+    "type-stockage",
+    "storagetype",
+    "format-disque",
+    "diskformat",
+    "controleur-raid",
+    "raidcontroller",
+    "connectique",
+    "connectivity",
   ],
   reseau: [
     "marque",
     "etat",
     "type-equipement",
-    "nombre-de-ports",
-    "debit-reseau",
-    "poe",
+    "equipmenttype",
+    "administration-reseau",
+    "switchmanagement",
+    "nombre-ports",
     "ports",
-    "switch",
+    "type-port-reseau",
+    "networkporttype",
+    "debit-reseau",
+    "speed",
+    "poe",
+    "norme-wifi",
+    "wifistandard",
+    "type-equipement-wifi",
+    "wifiequipmenttype",
+    "connectique",
+    "connectivity",
   ],
-  wifi: ["marque", "etat", "norme-wifi", "wifi", "debit-reseau", "poe"],
-  serveur: [
+  service: [
     "marque",
     "etat",
-    "processeur",
-    "ram",
-    "stockage",
-    "type-de-stockage",
-    "raid",
-    "serveur",
-  ],
-  licence: ["marque", "type-licence", "licence", "os"],
-  ecrans: [
-    "marque",
-    "etat",
-    "taille-ecran",
-    "resolution",
-    "technologie-dalle",
+    "editeur-licence",
+    "licenseeditor",
+    "type-licence",
+    "licensetype",
+    "os",
   ],
 };
 
 const CATEGORY_ICONS = {
-  Notebooks: Laptop,
-  Workstations: Briefcase,
+  PC: Laptop,
+  Infra: Server,
   Réseau: Network,
-  "Server / Stockage": Server,
-  "Wi-Fi": Wifi,
-  Licence: KeyRound,
-  Écrans: Monitor,
+  Service: Briefcase,
 } as const;
 
 const CATEGORY_DETAILS: Record<
@@ -136,52 +161,34 @@ const CATEGORY_DETAILS: Record<
     icon: string;
   }
 > = {
-  Notebooks: {
-    description: "PC portables, docks, tablettes et mobilité pro.",
+  PC: {
+    description: "Postes utilisateurs, écrans, docks et mobilité pro.",
     color: "from-sky-500 to-cyan-400",
     icon: "bg-sky-50 text-sky-700 ring-sky-100",
   },
-  Workstations: {
-    description: "Postes fixes et stations puissantes pour le bureau.",
-    color: "from-sky-900 to-sky-600",
-    icon: "bg-sky-50 text-sky-800 ring-sky-100",
-  },
-  Réseau: {
-    description: "Switchs, routeurs, firewalls et équipements réseau.",
-    color: "from-cyan-500 to-sky-700",
-    icon: "bg-cyan-50 text-cyan-700 ring-cyan-100",
-  },
-  "Wi-Fi": {
-    description: "Bornes, contrôleurs et solutions sans fil.",
-    color: "from-sky-400 to-blue-600",
-    icon: "bg-sky-50 text-sky-700 ring-sky-100",
-  },
-  "Server / Stockage": {
-    description: "Serveurs, stockage, RAID et pièces datacenter.",
+  Infra: {
+    description: "Serveurs, stockage, disques, RAID et infrastructure.",
     color: "from-sky-950 to-blue-700",
     icon: "bg-sky-50 text-sky-800 ring-sky-100",
   },
-  Licence: {
-    description: "Logiciels, licences et systèmes professionnels.",
-    color: "from-cyan-600 to-sky-800",
+  Réseau: {
+    description: "Switches, routeurs, firewalls, Wi-Fi et modules optiques.",
+    color: "from-cyan-500 to-sky-700",
     icon: "bg-cyan-50 text-cyan-700 ring-cyan-100",
   },
-  Écrans: {
-    description: "Moniteurs, résolutions et formats de travail.",
-    color: "from-sky-600 to-cyan-600",
-    icon: "bg-sky-50 text-sky-700 ring-sky-100",
+  Service: {
+    description: "Licences, prestations, audit et demandes sur devis.",
+    color: "from-sky-900 to-cyan-600",
+    icon: "bg-cyan-50 text-cyan-700 ring-cyan-100",
   },
 };
 
 function getCategorySlug(title: string) {
   const slugMap: Record<string, string> = {
-    Notebooks: "notebooks",
-    Workstations: "workstations",
+    PC: "pc",
+    Infra: "infra",
     Réseau: "reseau",
-    "Wi-Fi": "wifi",
-    "Server / Stockage": "serveur",
-    Licence: "licence",
-    Écrans: "ecrans",
+    Service: "service",
   };
 
   return slugMap[title] ?? normalizeText(title).replace(/\s+/g, "-");
@@ -267,32 +274,44 @@ function getCategoryDisplayName(name: string) {
 function getParentGroupTitle(category: WooCategory) {
   const name = normalizeText(decodeHtmlEntities(category.name));
 
-  if (name.includes("ordinateurs portables")) return "Notebooks";
+  if (name === "pc") return "PC";
+  if (name === "infra") return "Infra";
+  if (name === "reseau") return "Réseau";
+  if (name === "service") return "Service";
 
-  if (name.includes("pc fixes") || name.includes("workstations")) {
-    return "Workstations";
+  // Compatibilité avec les anciennes catégories encore présentes dans WooCommerce
+  if (
+    name.includes("ordinateurs portables") ||
+    name.includes("pc fixes") ||
+    name.includes("workstations") ||
+    name.includes("ecrans")
+  ) {
+    return "PC";
   }
-
-  if (name.includes("reseau")) return "Réseau";
 
   if (name.includes("serveurs") || name.includes("stockage")) {
-    return "Server / Stockage";
+    return "Infra";
   }
 
-  if (name.includes("licences") || name.includes("logiciels")) {
-    return "Licence";
+  if (
+    name.includes("reseau") ||
+    name.includes("wi-fi") ||
+    name.includes("wifi")
+  ) {
+    return "Réseau";
   }
 
-  if (name.includes("ecrans")) return "Écrans";
+  if (
+    name.includes("licences") ||
+    name.includes("logiciels") ||
+    name.includes("service") ||
+    name.includes("autres")
+  ) {
+    return "Service";
+  }
 
   return null;
 }
-
-function isWifiCategory(category: WooCategory) {
-  const name = normalizeText(decodeHtmlEntities(category.name));
-  return name.includes("wi-fi") || name.includes("wifi");
-}
-
 function getCategoryGroups(categories: WooCategory[]) {
   const visibleCategories = categories.filter(
     (category) => (category.count ?? 0) > 0
@@ -341,11 +360,6 @@ function getCategoryGroups(categories: WooCategory[]) {
     const parentTitle = getParentGroupTitle(parent);
 
     if (!parentTitle) return;
-
-    if (parentTitle === "Réseau" && isWifiCategory(category)) {
-      addChild("Wi-Fi", category);
-      return;
-    }
 
     addChild(parentTitle, category);
   });
