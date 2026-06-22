@@ -303,6 +303,18 @@ function decodeHtmlEntities(value: unknown) {
   return result;
 }
 
+function normalizeWooImageUrl(value: unknown) {
+  const imageUrl = decodeHtmlEntities(value).trim();
+
+  if (!imageUrl) {
+    return "";
+  }
+
+  return imageUrl.replace(
+    /^https?:\/\/90\.51\.128\.107:12443/i,
+    ""
+  );
+}
 async function fetchJson<T>(url: string): Promise<{
   data: T;
   response: Response;
@@ -534,11 +546,11 @@ function mapWooProduct(product: any): Product {
     vatAmount,
 
     image:
-      decodeHtmlEntities(product.images?.[0]?.src) ||
+      normalizeWooImageUrl(product.images?.[0]?.src) ||
       "/placeholder-product.png",
     images: Array.isArray(product.images)
       ? product.images
-          .map((image: any) => decodeHtmlEntities(image?.src))
+          .map((image: any) => normalizeWooImageUrl(image?.src))
           .filter(Boolean)
       : [],
 
