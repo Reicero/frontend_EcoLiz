@@ -1,5 +1,7 @@
 const ECOLIZ_API_URL = "/wp-api/ecoliz/v1";
 
+const NONCE_STORAGE_KEY = "ecoliz_wp_nonce";
+
 export type RegisterPayload = {
   company: string;
   siret: string;
@@ -44,11 +46,24 @@ export type PasswordResetPayload = {
   email: string;
 };
 
+function getStoredNonce() {
+  return localStorage.getItem(NONCE_STORAGE_KEY) || "";
+}
+
+function saveNonceIfPresent(data: any) {
+  if (data?.nonce) {
+    localStorage.setItem(NONCE_STORAGE_KEY, data.nonce);
+  }
+}
+
 async function authRequest(endpoint: string, body?: unknown) {
+  const nonce = getStoredNonce();
+
   const response = await fetch(`${ECOLIZ_API_URL}${endpoint}`, {
     method: body ? "POST" : "GET",
     headers: {
       "Content-Type": "application/json",
+      ...(nonce ? { "X-WP-Nonce": nonce } : {}),
     },
     credentials: "include",
     body: body ? JSON.stringify(body) : undefined,
@@ -56,6 +71,8 @@ async function authRequest(endpoint: string, body?: unknown) {
 
   const text = await response.text();
   const data = text ? JSON.parse(text) : {};
+
+  saveNonceIfPresent(data);
 
   if (!response.ok) {
     throw new Error(data.message || "Erreur API EcoLiz.");
@@ -65,6 +82,8 @@ async function authRequest(endpoint: string, body?: unknown) {
 }
 
 function saveUserIfPresent(data: any) {
+  saveNonceIfPresent(data);
+
   if (data?.user) {
     localStorage.setItem("ecoliz_user", JSON.stringify(data.user));
   }
@@ -110,5 +129,6 @@ export async function logoutCustomer() {
     await authRequest("/logout", {});
   } finally {
     localStorage.removeItem("ecoliz_user");
+    localStorage.removeItem(NONCE_STORAGE_KEY);
   }
 }
