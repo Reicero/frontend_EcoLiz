@@ -35,12 +35,37 @@ type AccountTab =
   | "commandes"
   | "security";
 
+type OrderProduct = {
+  name: string;
+  quantity: number;
+  subtotal: number;
+  total: number;
+  sku?: string;
+  product_id?: number;
+};
+
+type OrderAddress = {
+  first_name?: string;
+  last_name?: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+  address_1?: string;
+  address_2?: string;
+  postcode?: string;
+  city?: string;
+  country?: string;
+};
+
 type Order = {
   id: string | number;
   date: string;
   total: number;
   items: number;
   status: string;
+  products?: OrderProduct[];
+  billing?: OrderAddress;
+  shipping?: OrderAddress;
 };
 
 type EcolizUser = {
@@ -1070,6 +1095,8 @@ function OrdersList({
   loading: boolean;
   error: string | null;
 }) {
+  const [openOrderId, setOpenOrderId] = useState<string | number | null>(null);
+
   if (error) {
     return (
       <div className="px-6 py-6 text-sm text-amber-700 bg-amber-50 flex items-start gap-3">
@@ -1118,31 +1145,146 @@ function OrdersList({
 
   return (
     <div className="divide-y divide-brand-50">
-      {orders.map((order) => (
-        <div
-          key={order.id}
-          className="px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-        >
-          <div>
-            <p className="font-medium text-brand-950 text-sm">
-              Commande #{order.id}
-            </p>
+      {orders.map((order) => {
+        const isOpen = openOrderId === order.id;
+        const products = order.products ?? [];
 
-            <p className="text-xs text-brand-900/60">
-              {formatOrderDate(order.date)} · {order.items} article
-              {Number(order.items) > 1 ? "s" : ""}
-            </p>
+        return (
+          <div key={order.id}>
+            <button
+              type="button"
+              onClick={() => setOpenOrderId(isOpen ? null : order.id)}
+              className="w-full px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-left hover:bg-brand-50/60 transition-colors"
+            >
+              <div>
+                <p className="font-medium text-brand-950 text-sm">
+                  Commande #{order.id}
+                </p>
+
+                <p className="text-xs text-brand-900/60">
+                  {formatOrderDate(order.date)} · {order.items} article
+                  {Number(order.items) > 1 ? "s" : ""}
+                </p>
+
+                <p className="text-xs font-medium text-brand-700 mt-1">
+                  {isOpen ? "Masquer le détail" : "Voir le détail"}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <StatusBadge status={order.status} />
+
+                <p className="font-bold text-brand-950">
+                  {formatPrice(Number(order.total || 0))}
+                </p>
+              </div>
+            </button>
+
+            {isOpen && (
+              <div className="px-6 pb-6 bg-brand-50/40">
+                <div className="rounded-2xl border border-brand-100 bg-white overflow-hidden">
+                  <div className="px-5 py-4 border-b border-brand-100">
+                    <p className="font-semibold text-brand-950">
+                      Détail de la commande
+                    </p>
+                    <p className="text-xs text-brand-900/60">
+                      Produits commandés, quantités et montants.
+                    </p>
+                  </div>
+
+                  {products.length > 0 ? (
+                    <div className="divide-y divide-brand-50">
+                      {products.map((product, index) => (
+                        <div
+                          key={`${product.product_id ?? product.sku ?? index}-${index}`}
+                          className="px-5 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-brand-950">
+                              {product.name}
+                            </p>
+
+                            <p className="text-xs text-brand-900/60 mt-1">
+                              SKU : {product.sku || "Non renseigné"} · Quantité :{" "}
+                              {product.quantity}
+                            </p>
+                          </div>
+
+                          <div className="text-sm font-bold text-brand-950">
+                            {formatPrice(Number(product.total || 0))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-5 py-4 text-sm text-brand-900/60">
+                      Aucun détail produit disponible pour cette commande.
+                    </div>
+                  )}
+
+                  <div className="px-5 py-4 border-t border-brand-100 flex justify-between items-center">
+                    <span className="text-sm font-medium text-brand-900/70">
+                      Total commande
+                    </span>
+                    <span className="text-lg font-bold text-brand-950">
+                      {formatPrice(Number(order.total || 0))}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4 mt-4">
+                  <OrderAddressCard title="Adresse de facturation" address={order.billing} />
+                  <OrderAddressCard title="Adresse de livraison" address={order.shipping} />
+                </div>
+              </div>
+            )}
           </div>
+        );
+      })}
+    </div>
+  );
+}
 
-          <div className="flex items-center gap-4">
-            <StatusBadge status={order.status} />
+function OrderAddressCard({
+  title,
+  address,
+}: {
+  title: string;
+  address?: OrderAddress;
+}) {
+  if (!address) {
+    return null;
+  }
 
-            <p className="font-bold text-brand-950">
-              {formatPrice(Number(order.total || 0))}
-            </p>
-          </div>
-        </div>
-      ))}
+  const fullName = `${address.first_name ?? ""} ${address.last_name ?? ""}`.trim();
+  const cityLine = `${address.postcode ?? ""} ${address.city ?? ""}`.trim();
+
+  const lines = [
+    address.company,
+    fullName,
+    address.address_1,
+    address.address_2,
+    cityLine,
+    address.country,
+    address.phone ? `Téléphone : ${address.phone}` : "",
+    address.email ? `Email : ${address.email}` : "",
+  ].filter((line): line is string => Boolean(line));
+
+  if (lines.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-2xl border border-brand-100 bg-white p-5">
+      <p className="text-sm font-semibold text-brand-950 mb-3">{title}</p>
+
+      <div className="space-y-1">
+        {lines.map((line, index) => (
+          <p key={`${title}-${index}`} className="text-xs text-brand-900/60">
+            {line}
+          </p>
+        ))}
+      </div>
     </div>
   );
 }
