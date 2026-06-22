@@ -1,7 +1,5 @@
 const ECOLIZ_API_URL = "/wp-api/ecoliz/v1";
 
-const NONCE_STORAGE_KEY = "ecoliz_wp_nonce";
-
 export type RegisterPayload = {
   company: string;
   siret: string;
@@ -46,33 +44,44 @@ export type PasswordResetPayload = {
   email: string;
 };
 
-function getStoredNonce() {
-  return localStorage.getItem(NONCE_STORAGE_KEY) || "";
-}
-
-function saveNonceIfPresent(data: any) {
-  if (data?.nonce) {
-    localStorage.setItem(NONCE_STORAGE_KEY, data.nonce);
+function getStoredCustomerId() {
+  try {
+    const user = JSON.parse(localStorage.getItem("ecoliz_user") || "{}");
+    return user?.id || null;
+  } catch {
+    return null;
   }
 }
 
+function addCustomerId(payload: unknown) {
+  const customerId = getStoredCustomerId();
+
+  if (!payload || typeof payload !== "object") {
+    return customerId ? { customerId } : payload;
+  }
+
+  return customerId
+    ? {
+        ...(payload as Record<string, unknown>),
+        customerId,
+      }
+    : payload;
+}
+
 async function authRequest(endpoint: string, body?: unknown) {
-  const nonce = getStoredNonce();
+  const payload = body ? addCustomerId(body) : undefined;
 
   const response = await fetch(`${ECOLIZ_API_URL}${endpoint}`, {
     method: body ? "POST" : "GET",
     headers: {
       "Content-Type": "application/json",
-      ...(nonce ? { "X-WP-Nonce": nonce } : {}),
     },
     credentials: "include",
-    body: body ? JSON.stringify(body) : undefined,
+    body: payload ? JSON.stringify(payload) : undefined,
   });
 
   const text = await response.text();
   const data = text ? JSON.parse(text) : {};
-
-  saveNonceIfPresent(data);
 
   if (!response.ok) {
     throw new Error(data.message || "Erreur API EcoLiz.");
@@ -82,8 +91,6 @@ async function authRequest(endpoint: string, body?: unknown) {
 }
 
 function saveUserIfPresent(data: any) {
-  saveNonceIfPresent(data);
-
   if (data?.user) {
     localStorage.setItem("ecoliz_user", JSON.stringify(data.user));
   }
@@ -102,8 +109,7 @@ export async function loginCustomer(payload: LoginPayload) {
 }
 
 export async function getCurrentCustomer() {
-  const data = await authRequest("/me");
-  return saveUserIfPresent(data);
+  return authRequest("/me");
 }
 
 export async function updateCustomerProfile(payload: CustomerProfilePayload) {
@@ -129,6 +135,5 @@ export async function logoutCustomer() {
     await authRequest("/logout", {});
   } finally {
     localStorage.removeItem("ecoliz_user");
-    localStorage.removeItem(NONCE_STORAGE_KEY);
   }
 }
