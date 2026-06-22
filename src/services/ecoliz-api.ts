@@ -1,8 +1,5 @@
 /**
  * EcoLiz Custom API Service
- *
- * This service handles all calls to the custom WordPress REST API endpoints
- * at /wp-json/ecoliz/v1/
  */
 
 export interface Order {
@@ -15,46 +12,43 @@ export interface Order {
 
 const ECOLIZ_API_URL = "/wp-api/ecoliz/v1";
 
+async function ecolizRequest(endpoint: string) {
+  const response = await fetch(`${ECOLIZ_API_URL}${endpoint}`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message || `Erreur API EcoLiz ${response.status}`);
+  }
+
+  return data;
+}
+
 /**
  * Fetch orders for the current logged-in user.
  */
 export async function fetchMyOrders(): Promise<Order[]> {
-  try {
-    const user = JSON.parse(localStorage.getItem("ecoliz_user") || "{}");
-    const customerId = user?.id;
+  const user = JSON.parse(localStorage.getItem("ecoliz_user") || "{}");
+  const customerId = user?.id;
 
-    const url = customerId
-      ? `${ECOLIZ_API_URL}/my-orders?customer_id=${customerId}`
-      : `${ECOLIZ_API_URL}/my-orders`;
+  const endpoint = customerId
+    ? `/my-orders?customer_id=${encodeURIComponent(customerId)}`
+    : "/my-orders";
 
-    const response = await fetch(url, {
-      method: "GET",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+  const data = await ecolizRequest(endpoint);
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        console.warn("User not authenticated.");
-      }
-
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error("Error fetching orders:", error);
-    throw error;
-  }
+  return Array.isArray(data) ? data : [];
 }
 
 /**
  * Placeholder for future equipment API.
- * Currently not connected to any backend.
  */
 export async function fetchMyEquipment() {
   return [];
