@@ -46,6 +46,8 @@ type SortOption =
 
 type SelectedFilters = SelectedProductFilters;
 
+type HighlightSectionMode = "promotions" | "latest";
+
 type CategoryGroup = {
   title: string;
   children: WooCategory[];
@@ -485,6 +487,8 @@ export function Shop() {
   const filterProductsCache = useRef<Record<string, Product[]>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [promotionProducts, setPromotionProducts] = useState<Product[]>([]);
+  const [highlightSectionMode, setHighlightSectionMode] =
+    useState<HighlightSectionMode>("promotions");
   const [categories, setCategories] = useState<WooCategory[]>([]);
   const [filterGroups, setFilterGroups] = useState<WooFilterGroup[]>([]);
   const [categoryFilterProducts, setCategoryFilterProducts] = useState<
@@ -560,31 +564,53 @@ export function Shop() {
   useEffect(() => {
     let cancelled = false;
 
-    setPromotionsLoading(true);
+    async function loadHighlightProducts() {
+      setPromotionsLoading(true);
 
-    listProducts({
-      page: 1,
-      perPage: 6,
-      onSale: true,
-    } as Parameters<typeof listProducts>[0] & { onSale: boolean })
-      .then((result) => {
+      try {
+        const promotionsResult = await listProducts({
+          page: 1,
+          perPage: 6,
+          onSale: true,
+        } as Parameters<typeof listProducts>[0] & { onSale: boolean });
+
         if (cancelled) return;
-        setPromotionProducts(result.products);
-      })
-      .catch((error) => {
+
+        if (promotionsResult.products.length > 0) {
+          setHighlightSectionMode("promotions");
+          setPromotionProducts(promotionsResult.products);
+          return;
+        }
+
+        const latestResult = await listProducts({
+          page: 1,
+          perPage: 6,
+          stockStatus: "instock",
+          orderby: "date" as never,
+          order: "desc",
+        });
+
+        if (cancelled) return;
+
+        setHighlightSectionMode("latest");
+        setPromotionProducts(latestResult.products);
+      } catch (error) {
         if (cancelled) return;
 
         console.error(
-          "Erreur lors de la récupération des produits en promotion :",
+          "Erreur lors de la r?cup?ration des produits mis en avant :",
           error
         );
+        setHighlightSectionMode("latest");
         setPromotionProducts([]);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) {
           setPromotionsLoading(false);
         }
-      });
+      }
+    }
+
+    loadHighlightProducts();
 
     return () => {
       cancelled = true;
@@ -1034,6 +1060,7 @@ export function Shop() {
             <PromotionSection
               products={promotionProducts}
               loading={promotionsLoading}
+              mode={highlightSectionMode}
             />
 
             <section className="mb-8">
@@ -1423,13 +1450,29 @@ function getPromotionDiscountPercent(product: Product) {
 function PromotionSection({
   products,
   loading,
+  mode,
 }: {
   products: Product[];
   loading: boolean;
+  mode: HighlightSectionMode;
 }) {
   const [currentProductIndex, setCurrentProductIndex] = useState(0);
   const activeProduct = products[currentProductIndex];
   const hasMultiplePromotions = products.length > 1;
+  const isPromotionMode = mode === "promotions";
+
+  const eyebrow = isPromotionMode ? "{eyebrow}" : "Derniers arrivages";
+  const title = isPromotionMode
+    ? "{title}"
+    : "Les nouveaut?s du catalogue EcoLiz.";
+  const badgeLabel = isPromotionMode ? "{badgeLabel}" : "Nouveaut?s";
+  const productBadgeLabel = isPromotionMode
+    ? "{productBadgeLabel}"
+    : "Dernier arrivage";
+  const ctaLabel = isPromotionMode ? "{ctaLabel}" : "Voir le produit";
+  const tagLabels = isPromotionMode
+    ? ["{tagLabels[0]}", "{tagLabels[1]}", "{tagLabels[2]}"]
+    : ["Nouveaux arrivages", "S?lection pro", "Stock disponible"];
 
   useEffect(() => {
     setCurrentProductIndex(0);
@@ -1448,7 +1491,7 @@ function PromotionSection({
   }
 
   return (
-    <section className="relative mb-12 overflow-hidden rounded-[2rem] border border-cyan-300/40 bg-gradient-to-br from-sky-950 via-blue-950 to-cyan-800 p-6 text-white shadow-[0_28px_80px_rgba(8,47,73,0.34)]">
+    <section className="relative mb-8 overflow-hidden rounded-[2rem] border border-cyan-300/40 bg-gradient-to-br from-sky-950 via-blue-950 to-cyan-800 p-5 text-white shadow-[0_28px_80px_rgba(8,47,73,0.34)]">
       <div className="absolute -left-20 top-8 h-48 w-48 rounded-full bg-cyan-300/20 blur-3xl" />
       <div className="absolute -right-16 -bottom-20 h-64 w-64 rounded-full bg-blue-400/20 blur-3xl" />
       <div className="absolute left-8 top-8 h-2 w-2 rounded-full bg-cyan-200 shadow-[0_0_18px_rgba(165,243,252,0.9)] animate-ping" />
@@ -1457,24 +1500,24 @@ function PromotionSection({
         <div>
           <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-300/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-cyan-100 shadow-[0_0_24px_rgba(103,232,249,0.18)]">
             <BadgePercent className="h-4 w-4" />
-            Offres à saisir
+            {badgeLabel}
           </span>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">
-            Promotions du moment
+            {eyebrow}
           </p>
-          <h2 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl">
-            Des prix qui bougent, du matériel qui tient.
+          <h2 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">
+            {title}
           </h2>
         </div>
         <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100">
           <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">
-            Stocks limités
+            {tagLabels[0]}
           </span>
           <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">
-            Sélection pro
+            {tagLabels[1]}
           </span>
           <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">
-            Prix réduits
+            {tagLabels[2]}
           </span>
         </div>
       </div>
@@ -1488,7 +1531,7 @@ function PromotionSection({
 
         {!loading && products.length === 0 && (
           <div className="col-span-full rounded-[1.5rem] border border-white/15 bg-white/10 px-5 py-8 text-center text-sm text-sky-100/80">
-            Aucune promotion active pour le moment.
+            Les prochains produits mis en avant appara?tront bient?t ici.
           </div>
         )}
 
@@ -1527,13 +1570,13 @@ function PromotionSection({
                 );
 
                 return (
-                  <article className="group grid min-h-[340px] overflow-hidden rounded-[1.75rem] border border-white/15 bg-white/10 shadow-[0_18px_48px_rgba(0,0,0,0.2)] backdrop-blur transition duration-300 hover:border-cyan-200/70 hover:bg-white/15 md:grid-cols-[0.95fr_1.25fr]">
+                  <article className="group grid min-h-[260px] overflow-hidden rounded-[1.75rem] border border-white/15 bg-white/10 shadow-[0_18px_48px_rgba(0,0,0,0.2)] backdrop-blur transition duration-300 hover:border-cyan-200/70 hover:bg-white/15 md:grid-cols-[0.95fr_1.25fr]">
                     <Link
                       to={`/produit/${product.slug}`}
-                      className="relative flex min-h-[260px] items-center justify-center bg-white/95 p-6"
+                      className="relative flex min-h-[200px] items-center justify-center bg-white/95 p-6"
                     >
                       {discountPercent && (
-                        <span className="absolute left-5 top-5 rounded-2xl bg-cyan-300 px-4 py-3 text-4xl font-black leading-none text-sky-950 shadow-[0_0_34px_rgba(103,232,249,0.5)]">
+                        <span className="absolute left-5 top-5 rounded-2xl bg-cyan-300 px-3 py-2 text-3xl font-black leading-none text-sky-950 shadow-[0_0_34px_rgba(103,232,249,0.5)]">
                           -{discountPercent}%
                         </span>
                       )}
@@ -1546,21 +1589,21 @@ function PromotionSection({
                           product.image || "/placeholder-product.png"
                         }
                         onError={handleProductImageError}
-                        className="h-full max-h-72 w-full object-contain mix-blend-multiply transition duration-300 group-hover:scale-105"
+                        className="h-full max-h-52 w-full object-contain mix-blend-multiply transition duration-300 group-hover:scale-105"
                       />
                     </Link>
 
-                    <div className="flex min-w-0 flex-col justify-center p-6 sm:p-8">
+                    <div className="flex min-w-0 flex-col justify-center p-5 sm:p-6">
                       <p className="mb-3 inline-flex w-fit rounded-full border border-cyan-200/40 bg-cyan-300 px-4 py-2 text-sm font-black uppercase tracking-[0.18em] text-sky-950 shadow-[0_0_28px_rgba(103,232,249,0.28)]">
-                        En promotion
+                        {productBadgeLabel}
                       </p>
 
-                      <h3 className="max-w-2xl break-words text-2xl font-black leading-tight text-white [overflow-wrap:anywhere] sm:text-4xl">
+                      <h3 className="max-w-2xl break-words text-xl font-black leading-tight text-white [overflow-wrap:anywhere] sm:text-3xl">
                         {productName}
                       </h3>
 
                       <div className="mt-5">
-                        <p className="text-4xl font-black text-white">
+                        <p className="text-3xl font-black text-white">
                           {formatPrice(product.price)} HT
                         </p>
 
@@ -1575,7 +1618,7 @@ function PromotionSection({
                         to={`/produit/${product.slug}`}
                         className="mt-7 inline-flex w-fit rounded-xl bg-white px-5 py-3 text-sm font-bold text-sky-950 transition group-hover:bg-cyan-100 group-hover:shadow-[0_0_24px_rgba(103,232,249,0.28)]"
                       >
-                        Voir l’offre
+                        {ctaLabel}
                       </Link>
                     </div>
                   </article>
