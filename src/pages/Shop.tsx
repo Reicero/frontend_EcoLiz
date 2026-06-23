@@ -8,18 +8,24 @@ import type {
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
+  ArrowRight,
   BadgePercent,
   Briefcase,
+  CheckCircle2,
   ChevronDown,
   Filter,
   Grid3X3,
+  Headphones,
   Laptop,
+  Leaf,
   List,
   Network,
   RotateCcw,
   Search,
   Server,
+  ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
 } from "lucide-react";
 
 import type { Product } from "../types/product";
@@ -281,7 +287,6 @@ function getParentGroupTitle(category: WooCategory) {
   if (name === "reseau") return "Réseau";
   if (name === "service") return "Service";
 
-  // Compatibilité avec les anciennes catégories encore présentes dans WooCommerce
   if (
     name.includes("ordinateurs portables") ||
     name.includes("pc fixes") ||
@@ -314,6 +319,7 @@ function getParentGroupTitle(category: WooCategory) {
 
   return null;
 }
+
 function getCategoryGroups(categories: WooCategory[]) {
   const visibleCategories = categories.filter(
     (category) => (category.count ?? 0) > 0
@@ -480,6 +486,245 @@ function handleProductImageError(event: SyntheticEvent<HTMLImageElement>) {
   retryUrl.searchParams.set("ecoliz_image_retry", Date.now().toString());
   image.dataset.retryDone = "true";
   image.src = retryUrl.toString();
+}
+
+function getPromotionDiscountPercent(product: Product) {
+  const originalPrice = Number(
+    (product as Product & { originalPrice?: number }).originalPrice ?? 0
+  );
+  const salePrice = Number(product.price ?? 0);
+
+  if (!originalPrice || !salePrice || salePrice >= originalPrice) {
+    return null;
+  }
+
+  return Math.round(((originalPrice - salePrice) / originalPrice) * 100);
+}
+
+// PromotionSection avec le design du nouveau code
+function PromotionSection({
+  products,
+  loading,
+  mode,
+}: {
+  products: Product[];
+  loading: boolean;
+  mode: HighlightSectionMode;
+}) {
+  const [currentProductIndex, setCurrentProductIndex] = useState(0);
+  const activeProduct = products[currentProductIndex];
+  const hasMultiplePromotions = products.length > 1;
+  const isPromotionMode = mode === "promotions";
+
+  const eyebrow = isPromotionMode
+    ? "Promotions du moment"
+    : "Les derniers arrivages dans notre catalogue";
+
+  const badgeLabel = isPromotionMode ? "Offres à saisir" : "Nouveautés";
+
+  const productBadgeLabel = isPromotionMode
+    ? "En promotion"
+    : "Reconditionné";
+
+  const ctaLabel = isPromotionMode ? "Voir l’offre" : "Voir le produit";
+
+  useEffect(() => {
+    setCurrentProductIndex(0);
+  }, [products.length]);
+
+  function showPreviousPromotion() {
+    setCurrentProductIndex((currentIndex) =>
+      currentIndex === 0 ? products.length - 1 : currentIndex - 1
+    );
+  }
+
+  function showNextPromotion() {
+    setCurrentProductIndex((currentIndex) =>
+      currentIndex === products.length - 1 ? 0 : currentIndex + 1
+    );
+  }
+
+  return (
+    <section className="relative mb-8 overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/90 p-4 shadow-[0_18px_48px_rgba(3,105,161,0.14)] backdrop-blur">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(103,232,249,0.22),transparent_28%),radial-gradient(circle_at_85%_80%,rgba(14,165,233,0.16),transparent_30%)]" />
+
+      <div className="relative mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-teal-500 px-3 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-white shadow-[0_10px_24px_rgba(6,182,212,0.28)]">
+            <Sparkles className="h-3.5 w-3.5" />
+            {badgeLabel}
+          </span>
+
+          <p className="text-sm font-medium text-sky-900/55">{eyebrow}</p>
+        </div>
+
+        {hasMultiplePromotions && (
+          <div className="hidden items-center gap-2 sm:flex">
+            <button
+              type="button"
+              onClick={showPreviousPromotion}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-sky-100 bg-white text-xl text-sky-700 shadow-sm transition hover:border-cyan-300 hover:text-sky-950"
+              aria-label="Produit précédent"
+            >
+              ‹
+            </button>
+
+            <button
+              type="button"
+              onClick={showNextPromotion}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-sky-100 bg-white text-xl text-sky-700 shadow-sm transition hover:border-cyan-300 hover:text-sky-950"
+              aria-label="Produit suivant"
+            >
+              ›
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="relative">
+        {loading && (
+          <div className="rounded-[1.4rem] border border-sky-100 bg-white px-5 py-8 text-center text-sm text-sky-900/50">
+            Chargement des produits mis en avant…
+          </div>
+        )}
+
+        {!loading && products.length === 0 && (
+          <div className="rounded-[1.4rem] border border-sky-100 bg-white px-5 py-8 text-center text-sm text-sky-900/50">
+            Les prochains produits mis en avant apparaîtront bientôt ici.
+          </div>
+        )}
+
+        {!loading && activeProduct && (
+          <div>
+            <div className="relative mx-auto max-w-6xl px-0 sm:px-12">
+              {hasMultiplePromotions && (
+                <button
+                  type="button"
+                  onClick={showPreviousPromotion}
+                  className="absolute -left-1 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-sky-100 bg-white text-2xl text-sky-700 shadow-[0_12px_28px_rgba(8,47,73,0.14)] transition hover:border-cyan-300 hover:text-sky-950 sm:flex"
+                  aria-label="Produit précédent"
+                >
+                  ‹
+                </button>
+              )}
+
+              {hasMultiplePromotions && (
+                <button
+                  type="button"
+                  onClick={showNextPromotion}
+                  className="absolute -right-1 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-sky-100 bg-white text-2xl text-sky-700 shadow-[0_12px_28px_rgba(8,47,73,0.14)] transition hover:border-cyan-300 hover:text-sky-950 sm:flex"
+                  aria-label="Produit suivant"
+                >
+                  ›
+                </button>
+              )}
+
+              {(() => {
+                const product = activeProduct;
+                const productName = decodeHtmlEntities(product.name);
+                const discountPercent = getPromotionDiscountPercent(product);
+                const originalPrice = Number(
+                  (product as Product & { originalPrice?: number })
+                    .originalPrice ?? 0
+                );
+
+                return (
+                  <article className="grid overflow-hidden rounded-[1.4rem] border border-sky-100 bg-white shadow-[0_14px_40px_rgba(8,47,73,0.08)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(8,47,73,0.14)] md:grid-cols-[0.75fr_1.35fr]">
+                    <Link
+                      to={`/produit/${product.slug}`}
+                      className="relative flex min-h-[170px] items-center justify-center bg-gradient-to-br from-sky-50 to-white p-5"
+                    >
+                      {isPromotionMode && discountPercent && (
+                        <span className="absolute left-4 top-4 rounded-xl bg-cyan-300 px-2.5 py-1.5 text-lg font-black leading-none text-sky-950 shadow-[0_0_24px_rgba(103,232,249,0.42)]">
+                          -{discountPercent}%
+                        </span>
+                      )}
+
+                      <img
+                        src={product.image || "/placeholder-product.png"}
+                        alt={productName}
+                        loading="lazy"
+                        data-original-src={
+                          product.image || "/placeholder-product.png"
+                        }
+                        onError={handleProductImageError}
+                        className="h-full max-h-40 w-full object-contain mix-blend-multiply transition duration-300 hover:scale-105"
+                      />
+                    </Link>
+
+                    <div className="flex min-w-0 flex-col justify-center p-5 sm:p-7">
+                      <p className="mb-3 inline-flex w-fit rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1.5 text-xs font-bold text-cyan-700">
+                        {productBadgeLabel}
+                      </p>
+
+                      <h3 className="max-w-3xl break-words text-xl font-black leading-tight text-sky-950 [overflow-wrap:anywhere] sm:text-2xl">
+                        {productName}
+                      </h3>
+
+                      <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-sky-900/65">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-cyan-600" />
+                          Reconditionné
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-cyan-600" />
+                          Contrôlé & testé
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5">
+                          <ShieldCheck className="h-3.5 w-3.5 text-cyan-600" />
+                          Garantie 12 mois
+                        </span>
+                      </div>
+
+                      <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                          <p className="text-3xl font-black text-cyan-700">
+                            {formatPrice(product.price)} HT
+                          </p>
+
+                          {isPromotionMode && originalPrice > product.price && (
+                            <p className="mt-1 text-sm text-sky-900/45 line-through">
+                              {formatPrice(originalPrice)} HT
+                            </p>
+                          )}
+                        </div>
+
+                        <Link
+                          to={`/produit/${product.slug}`}
+                          className="inline-flex w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-[0_12px_26px_rgba(6,182,212,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(6,182,212,0.34)]"
+                        >
+                          {ctaLabel}
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })()}
+            </div>
+
+            {hasMultiplePromotions && (
+              <div className="mt-4 flex justify-center gap-2">
+                {products.map((product, index) => (
+                  <button
+                    key={product.id}
+                    type="button"
+                    onClick={() => setCurrentProductIndex(index)}
+                    aria-label={`Voir le produit mis en avant ${index + 1}`}
+                    className={`h-2.5 rounded-full transition-all ${
+                      index === currentProductIndex
+                        ? "w-8 bg-cyan-500"
+                        : "w-2.5 bg-sky-200 hover:bg-cyan-300"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }
 
 export function Shop() {
@@ -1014,46 +1259,14 @@ export function Shop() {
     (searchTerm ? 1 : 0);
 
   return (
-    <section className="min-h-screen bg-[radial-gradient(circle_at_top_left,#9fe8ff_0,#d8f5ff_34%,#eefbff_72%,#dff3ff_100%)] pb-24 pt-28">
+    <section className="min-h-screen bg-[radial-gradient(circle_at_top_left,#c7f5ff_0,#ecfbff_38%,#f8fdff_70%,#dff4ff_100%)] pb-24 pt-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <header className="relative mb-8 overflow-hidden rounded-[2rem] border border-cyan-200 bg-sky-950 text-white shadow-[0_24px_70px_rgba(12,74,110,0.28)]">
-          <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-cyan-400/25 blur-3xl" />
-          <div className="absolute -bottom-24 left-16 h-64 w-64 rounded-full bg-sky-400/20 blur-3xl" />
-          <div className="absolute right-10 top-8 h-3 w-3 rounded-full bg-cyan-300 shadow-[0_0_22px_rgba(103,232,249,0.95)] animate-pulse" />
-          <div className="absolute right-24 bottom-8 h-2 w-2 rounded-full bg-white/80 shadow-[0_0_18px_rgba(255,255,255,0.8)] animate-ping" />
-
-          <div className="relative flex flex-col gap-6 p-6 lg:flex-row lg:items-end lg:justify-between lg:p-8">
-            <div className="min-w-0 max-w-3xl">
-              <p className="mb-3 inline-flex rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100">
-                Boutique EcoLiz
-              </p>
-              <h1 className="text-4xl font-black tracking-tight text-white lg:text-6xl">
-                Trouve le bon matériel pro.
-                <span className="block text-cyan-200">
-                  Reconditionné, filtré, prêt à travailler.
-                </span>
-              </h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-sky-100/80">
-                Parcourez les catégories, repérez les offres du moment et filtrez
-                le catalogue selon vos besoins réels.
-              </p>
-            </div>
-
-            <form
-              onSubmit={submitSearch}
-              className="relative min-w-0 flex-1 lg:max-w-md"
-            >
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-sky-900/45" />
-
-              <input
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="Rechercher un produit, une marque, une référence…"
-                className="w-full rounded-2xl border border-white/40 bg-white py-4 pl-12 pr-4 text-sm text-sky-950 outline-none shadow-[0_14px_35px_rgba(8,47,73,0.22)] transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-300/30"
-              />
-            </form>
-          </div>
-        </header>
+        {/* HeroSection intégré avec la fonctionnalité de recherche */}
+        <HeroSection
+          searchInput={searchInput}
+          setSearchInput={setSearchInput}
+          submitSearch={submitSearch}
+        />
 
         {!shouldShowProductArea && (
           <>
@@ -1064,47 +1277,35 @@ export function Shop() {
             />
 
             <section className="mb-8">
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-sky-700">
-                Accès rapide
-              </p>
-              <h2 className="text-2xl font-bold text-sky-950">
-                Choisir votre univers matériel
-              </h2>
-            </div>
+              <div className="mb-5">
+                <p className="text-sm font-black uppercase tracking-[0.16em] text-cyan-700">
+                  Accès rapide
+                </p>
+                <h2 className="mt-1 text-3xl font-black text-sky-950">
+                  Choisir votre univers matériel
+                </h2>
+              </div>
 
-            {selectedMainCategory && (
-              <button
-                type="button"
-                onClick={returnToCategories}
-                className="hidden rounded-full border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-sky-700 shadow-sm transition hover:bg-sky-50 sm:inline-flex"
-              >
-                Voir toutes les catégories
-              </button>
-            )}
-          </div>
-
-          {categoriesLoading ? (
-            <div className="rounded-2xl border border-sky-100 bg-white py-10 text-center text-sky-900/50">
-              Chargement des catégories…
-            </div>
-          ) : categoryGroups.length === 0 ? (
-            <div className="rounded-2xl border border-sky-100 bg-white py-10 text-center text-sky-900/50">
-              Aucune catégorie disponible.
-            </div>
-          ) : (
-            <div className="flex flex-wrap justify-center gap-5">
-              {categoryGroups.map((group) => (
-                <CategorySelectionCard
-                  key={group.title}
-                  group={group}
-                  isSelected={selectedMainCategoryTitle === group.title}
-                  onSelect={() => selectMainCategory(group)}
-                />
-              ))}
-            </div>
-          )}
+              {categoriesLoading ? (
+                <div className="rounded-2xl border border-sky-100 bg-white py-10 text-center text-sky-900/50">
+                  Chargement des catégories…
+                </div>
+              ) : categoryGroups.length === 0 ? (
+                <div className="rounded-2xl border border-sky-100 bg-white py-10 text-center text-sky-900/50">
+                  Aucune catégorie disponible.
+                </div>
+              ) : (
+                <div className="flex flex-wrap justify-center gap-5">
+                  {categoryGroups.map((group) => (
+                    <CategorySelectionCard
+                      key={group.title}
+                      group={group}
+                      isSelected={selectedMainCategoryTitle === group.title}
+                      onSelect={() => selectMainCategory(group)}
+                    />
+                  ))}
+                </div>
+              )}
             </section>
           </>
         )}
@@ -1117,316 +1318,315 @@ export function Shop() {
               <span className="font-semibold text-sky-950">{pageTitle}</span>
             </div>
 
-            <div>
-              <main className="min-w-0 bg-white p-5 lg:p-7">
-                {!searchTerm && (
-                  <button
-                    type="button"
-                    onClick={returnToCategories}
-                    className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-sky-700 transition hover:text-sky-900"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    Retour aux catégories
-                  </button>
-                )}
+            <main className="min-w-0 bg-white p-5 lg:p-7">
+              {!searchTerm && (
+                <button
+                  type="button"
+                  onClick={returnToCategories}
+                  className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-sky-700 transition hover:text-sky-900"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Retour aux catégories
+                </button>
+              )}
 
-                {!searchTerm && selectedMainCategory ? (
-                  <div className="mb-6">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-sky-700">
-                      Sous-catégories
-                    </p>
-                    <div className="flex gap-4 overflow-x-auto pb-2">
-                      {selectedMainCategory.children.map((category) => {
-                        const checked = selectedCategoryIds.includes(
-                          category.id
-                        );
+              {!searchTerm && selectedMainCategory ? (
+                <div className="mb-6">
+                  <p className="mb-3 text-xs font-black uppercase tracking-[0.16em] text-sky-700">
+                    Sous-catégories
+                  </p>
+                  <div className="flex gap-4 overflow-x-auto pb-2">
+                    {selectedMainCategory.children.map((category) => {
+                      const checked = selectedCategoryIds.includes(
+                        category.id
+                      );
 
-                        return (
-                          <button
-                            key={category.id}
-                            type="button"
-                            onClick={() =>
-                              toggleNumberFilter(
-                                category.id,
-                                selectedCategoryIds,
-                                setSelectedCategoryIds
-                              )
-                            }
-                            className={`min-w-[150px] rounded-2xl border px-4 py-3 text-left text-sm transition ${
-                              checked
-                                ? "border-sky-700 bg-sky-950 text-white"
-                                : "border-sky-100 bg-sky-50 text-sky-950 hover:border-sky-300 hover:bg-white"
-                            }`}
-                          >
-                            <span className="block font-semibold">
-                              {getCategoryDisplayName(category.name)}
-                            </span>
-                            {typeof category.count === "number" && (
-                              <span
-                                className={`mt-1 block text-xs ${
-                                  checked ? "text-white/70" : "text-sky-900/45"
-                                }`}
-                              >
-                                {category.count} produits
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="mb-6 rounded-2xl border border-sky-100 bg-white p-4 shadow-[0_12px_30px_rgba(3,105,161,0.08)]">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <Filter className="h-4 w-4 text-sky-900/60" />
-                      <h2 className="font-semibold text-sky-950">Filtres</h2>
-                      {activeFilterCount > 0 && (
-                        <span className="rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-700">
-                          {activeFilterCount}
-                        </span>
-                      )}
-                    </div>
-
-                    {activeFilterCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={resetFilters}
-                        className="inline-flex items-center gap-2 text-sm text-sky-700 underline hover:text-sky-900"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        Réinitialiser
-                      </button>
-                    )}
-                  </div>
-
-                  {searchTerm ? (
-                    <p className="text-sm text-sky-900/60">
-                      La recherche parcourt toute la boutique.
-                    </p>
-                  ) : (
-                    <div className="flex flex-wrap items-start gap-3">
-                      <FilterGroup
-                        title="Disponibilité"
-                        options={["En stock", "Rupture de stock"]}
-                        selectedOptions={selectedStockStatuses.map((status) =>
-                          status === "instock" ? "En stock" : "Rupture de stock"
-                        )}
-                        isOpen={expandedFilterGroup === "availability"}
-                        onToggleGroup={() => toggleFilterGroup("availability")}
-                        onToggle={(option) =>
-                          toggleStockFilter(
-                            option === "En stock" ? "instock" : "outofstock"
-                          )
-                        }
-                      />
-
-                      {filterGroupsLoading ? (
-                        <p className="text-sm text-sky-900/50">
-                          Chargement des filtres…
-                        </p>
-                      ) : (
-                        visibleFilterGroups.map((group) => (
-                          <FilterGroup
-                            key={group.key}
-                            title={group.title}
-                            options={group.options}
-                            selectedOptions={selectedFilters[group.key] ?? []}
-                            isOpen={expandedFilterGroup === group.key}
-                            onToggleGroup={() => toggleFilterGroup(group.key)}
-                            onToggle={(optionSlug) =>
-                              toggleTextFilter(group.key, optionSlug)
-                            }
-                          />
-                        ))
-                      )}
-
-                      {contextualFiltersLoading && !filterGroupsLoading && (
-                        <span className="self-center rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">
-                          Filtres en cours d’affinage…
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                  <div className="min-w-0">
-                    <h2 className="text-3xl font-bold text-sky-950">
-                      {pageTitle}
-                    </h2>
-                    <p className="mt-1 text-sm text-sky-900/60">
-                      {loading
-                        ? "Chargement des produits…"
-                        : "Catalogue filtré selon votre sélection"}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <label className="flex items-center justify-between gap-2 text-sm text-sky-900/60 sm:justify-start">
-                      <span className="whitespace-nowrap">Trier par</span>
-
-                      <select
-                        value={sortOption}
-                        onChange={(event) => {
-                          setCurrentPage(1);
-                          setSortOption(event.target.value as SortOption);
-                        }}
-                        className="min-w-0 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
-                      >
-                        <option value="default">Défaut</option>
-                        <option value="price-asc">Prix croissant</option>
-                        <option value="price-desc">Prix décroissant</option>
-                        <option value="name-asc">Nom A-Z</option>
-                        <option value="name-desc">Nom Z-A</option>
-                      </select>
-                    </label>
-
-                    <label className="flex items-center justify-between gap-2 text-sm text-sky-900/60 sm:justify-start">
-                      <span className="whitespace-nowrap">Afficher</span>
-
-                      <select
-                        value={productsPerPage}
-                        onChange={(event) => {
-                          setCurrentPage(1);
-                          setProductsPerPage(Number(event.target.value));
-                        }}
-                        className="min-w-0 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
-                      >
-                        {PRODUCTS_PER_PAGE_OPTIONS.map((option) => (
-                          <option key={option} value={option}>
-                            {option} / page
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <div className="flex shrink-0 items-center gap-1 rounded-xl border border-sky-100 bg-sky-50 p-1">
-                      <button
-                        type="button"
-                        onClick={() => setViewMode("list")}
-                        className={`rounded-lg p-2 transition-colors ${
-                          viewMode === "list"
-                            ? "bg-white text-sky-700 shadow-sm"
-                            : "text-sky-900/40 hover:text-sky-900"
-                        }`}
-                        aria-label="Vue liste"
-                      >
-                        <List className="h-4 w-4" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setViewMode("grid")}
-                        className={`rounded-lg p-2 transition-colors ${
-                          viewMode === "grid"
-                            ? "bg-white text-sky-700 shadow-sm"
-                            : "text-sky-900/40 hover:text-sky-900"
-                        }`}
-                        aria-label="Vue grille"
-                      >
-                        <Grid3X3 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mb-6 flex min-w-0 items-center justify-between gap-3 border-b border-sky-100 pb-4 text-sm text-sky-900/60">
-                  <SlidersHorizontal className="h-4 w-4 shrink-0" />
-                  <span className="mr-auto truncate">
-                    Page {currentPage} / {totalPages}
-                  </span>
-                  <span className="shrink-0">
-                    {totalProducts} produit{totalProducts > 1 ? "s" : ""}
-                  </span>
-                </div>
-
-                {loading ? (
-                  <div className="rounded-2xl border border-sky-100 bg-white py-20 text-center text-sky-900/50">
-                    Chargement du catalogue…
-                  </div>
-                ) : products.length === 0 ? (
-                  <div className="rounded-2xl border border-sky-100 bg-white py-20 text-center text-sky-900/50">
-                    Aucun produit ne correspond aux filtres sélectionnés.
-                  </div>
-                ) : viewMode === "list" ? (
-                  <div className="space-y-3">
-                    {products.map((product) => (
-                      <ProductListItem
-                        key={product.id}
-                        product={product}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="grid min-w-0 gap-6 md:grid-cols-2 xl:grid-cols-3">
-                    {products.map((product) => (
-                      <ProductGridItem
-                        key={product.id}
-                        product={product}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {!loading && totalPages > 1 && (
-                  <nav
-                    className="mt-12 flex flex-wrap items-center justify-center gap-2"
-                    aria-label="Pagination du catalogue"
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCurrentPage((page) => Math.max(page - 1, 1))
-                      }
-                      disabled={currentPage === 1 || loading}
-                      className="rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-sky-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Précédent
-                    </button>
-
-                    {paginationPages.map((page, index) =>
-                      page === "..." ? (
-                        <span
-                          key={`ellipsis-${index}`}
-                          className="px-3 py-2 text-sky-900/50"
-                        >
-                          …
-                        </span>
-                      ) : (
+                      return (
                         <button
-                          key={page}
+                          key={category.id}
                           type="button"
-                          onClick={() => setCurrentPage(Number(page))}
-                          disabled={loading}
-                          aria-current={
-                            currentPage === Number(page) ? "page" : undefined
+                          onClick={() =>
+                            toggleNumberFilter(
+                              category.id,
+                              selectedCategoryIds,
+                              setSelectedCategoryIds
+                            )
                           }
-                          className={`h-11 w-11 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                            currentPage === page
-                              ? "border-sky-700 bg-sky-700 text-white"
-                              : "border-sky-200 bg-white/70 text-sky-900 hover:bg-sky-50"
+                          className={`min-w-[150px] rounded-2xl border px-4 py-3 text-left text-sm transition ${
+                            checked
+                              ? "border-sky-700 bg-sky-950 text-white"
+                              : "border-sky-100 bg-sky-50 text-sky-950 hover:border-sky-300 hover:bg-white"
                           }`}
                         >
-                          {page}
+                          <span className="block font-semibold">
+                            {getCategoryDisplayName(category.name)}
+                          </span>
+                          {typeof category.count === "number" && (
+                            <span
+                              className={`mt-1 block text-xs ${
+                                checked ? "text-white/70" : "text-sky-900/45"
+                              }`}
+                            >
+                              {category.count} produits
+                            </span>
+                          )}
                         </button>
-                      )
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mb-6 rounded-2xl border border-sky-100 bg-white p-4 shadow-[0_12px_30px_rgba(3,105,161,0.08)]">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-sky-900/60" />
+                    <h2 className="font-semibold text-sky-950">Filtres</h2>
+                    {activeFilterCount > 0 && (
+                      <span className="rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-700">
+                        {activeFilterCount}
+                      </span>
                     )}
+                  </div>
+
+                  {activeFilterCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="inline-flex items-center gap-2 text-sm text-sky-700 underline hover:text-sky-900"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Réinitialiser
+                    </button>
+                  )}
+                </div>
+
+                {searchTerm ? (
+                  <p className="text-sm text-sky-900/60">
+                    La recherche parcourt toute la boutique.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap items-start gap-3">
+                    <FilterGroup
+                      title="Disponibilité"
+                      options={["En stock", "Rupture de stock"]}
+                      selectedOptions={selectedStockStatuses.map((status) =>
+                        status === "instock" ? "En stock" : "Rupture de stock"
+                      )}
+                      isOpen={expandedFilterGroup === "availability"}
+                      onToggleGroup={() => toggleFilterGroup("availability")}
+                      onToggle={(option) =>
+                        toggleStockFilter(
+                          option === "En stock" ? "instock" : "outofstock"
+                        )
+                      }
+                    />
+
+                    {filterGroupsLoading ? (
+                      <p className="text-sm text-sky-900/50">
+                        Chargement des filtres…
+                      </p>
+                    ) : (
+                      visibleFilterGroups.map((group) => (
+                        <FilterGroup
+                          key={group.key}
+                          title={group.title}
+                          options={group.options}
+                          selectedOptions={selectedFilters[group.key] ?? []}
+                          isOpen={expandedFilterGroup === group.key}
+                          onToggleGroup={() => toggleFilterGroup(group.key)}
+                          onToggle={(optionSlug) =>
+                            toggleTextFilter(group.key, optionSlug)
+                          }
+                        />
+                      ))
+                    )}
+
+                    {contextualFiltersLoading && !filterGroupsLoading && (
+                      <span className="self-center rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">
+                        Filtres en cours d'affinage…
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="min-w-0">
+                  <h2 className="text-3xl font-black text-sky-950">
+                    {pageTitle}
+                  </h2>
+                  <p className="mt-1 text-sm text-sky-900/60">
+                    {loading
+                      ? "Chargement des produits…"
+                      : "Catalogue filtré selon votre sélection"}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <label className="flex items-center justify-between gap-2 text-sm text-sky-900/60 sm:justify-start">
+                    <span className="whitespace-nowrap">Trier par</span>
+
+                    <select
+                      value={sortOption}
+                      onChange={(event) => {
+                        setCurrentPage(1);
+                        setSortOption(event.target.value as SortOption);
+                      }}
+                      className="min-w-0 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                    >
+                      <option value="default">Défaut</option>
+                      <option value="price-asc">Prix croissant</option>
+                      <option value="price-desc">Prix décroissant</option>
+                      <option value="name-asc">Nom A-Z</option>
+                      <option value="name-desc">Nom Z-A</option>
+                    </select>
+                  </label>
+
+                  <label className="flex items-center justify-between gap-2 text-sm text-sky-900/60 sm:justify-start">
+                    <span className="whitespace-nowrap">Afficher</span>
+
+                    <select
+                      value={productsPerPage}
+                      onChange={(event) => {
+                        setCurrentPage(1);
+                        setProductsPerPage(Number(event.target.value));
+                      }}
+                      className="min-w-0 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                    >
+                      {PRODUCTS_PER_PAGE_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option} / page
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <div className="flex shrink-0 items-center gap-1 rounded-xl border border-sky-100 bg-sky-50 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("list")}
+                      className={`rounded-lg p-2 transition-colors ${
+                        viewMode === "list"
+                          ? "bg-white text-sky-700 shadow-sm"
+                          : "text-sky-900/40 hover:text-sky-900"
+                      }`}
+                      aria-label="Vue liste"
+                    >
+                      <List className="h-4 w-4" />
+                    </button>
 
                     <button
                       type="button"
-                      onClick={() =>
-                        setCurrentPage((page) => Math.min(page + 1, totalPages))
-                      }
-                      disabled={currentPage === totalPages || loading}
-                      className="rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-sky-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      onClick={() => setViewMode("grid")}
+                      className={`rounded-lg p-2 transition-colors ${
+                        viewMode === "grid"
+                          ? "bg-white text-sky-700 shadow-sm"
+                          : "text-sky-900/40 hover:text-sky-900"
+                      }`}
+                      aria-label="Vue grille"
                     >
-                      Suivant
+                      <Grid3X3 className="h-4 w-4" />
                     </button>
-                  </nav>
-                )}
-              </main>
-            </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-6 flex min-w-0 items-center justify-between gap-3 border-b border-sky-100 pb-4 text-sm text-sky-900/60">
+                <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                <span className="mr-auto truncate">
+                  Page {currentPage} / {totalPages}
+                </span>
+                <span className="shrink-0">
+                  {totalProducts} produit{totalProducts > 1 ? "s" : ""}
+                </span>
+              </div>
+
+              {loading ? (
+                <div className="rounded-2xl border border-sky-100 bg-white py-20 text-center text-sky-900/50">
+                  Chargement du catalogue…
+                </div>
+              ) : products.length === 0 ? (
+                <div className="rounded-2xl border border-sky-100 bg-white py-20 text-center text-sky-900/50">
+                  Aucun produit ne correspond aux filtres sélectionnés.
+                </div>
+              ) : viewMode === "list" ? (
+                <div className="space-y-3">
+                  {products.map((product) => (
+                    <ProductListItem
+                      key={product.id}
+                      product={product}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid min-w-0 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {products.map((product) => (
+                    <ProductGridItem
+                      key={product.id}
+                      product={product}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {!loading && totalPages > 1 && (
+                <nav
+                  className="mt-12 flex flex-wrap items-center justify-center gap-2"
+                  aria-label="Pagination du catalogue"
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((page) => Math.max(page - 1, 1))
+                    }
+                    disabled={currentPage === 1 || loading}
+                    className="rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-sky-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Précédent
+                  </button>
+
+                  {paginationPages.map((page, index) =>
+                    page === "..." ? (
+                      <span
+                        key={`ellipsis-${index}`}
+                        className="px-3 py-2 text-sky-900/50"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setCurrentPage(Number(page))}
+                        disabled={loading}
+                        aria-current={
+                          currentPage === Number(page) ? "page" : undefined
+                        }
+                        className={`h-11 w-11 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                          currentPage === page
+                            ? "border-sky-700 bg-sky-700 text-white"
+                            : "border-sky-200 bg-white/70 text-sky-900 hover:bg-sky-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((page) => Math.min(page + 1, totalPages))
+                    }
+                    disabled={currentPage === totalPages || loading}
+                    className="rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-sky-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Suivant
+                  </button>
+                </nav>
+              )}
+            </main>
           </div>
         )}
       </div>
@@ -1434,229 +1634,133 @@ export function Shop() {
   );
 }
 
-function getPromotionDiscountPercent(product: Product) {
-  const originalPrice = Number(
-    (product as Product & { originalPrice?: number }).originalPrice ?? 0
-  );
-  const salePrice = Number(product.price ?? 0);
-
-  if (!originalPrice || !salePrice || salePrice >= originalPrice) {
-    return null;
-  }
-
-  return Math.round(((originalPrice - salePrice) / originalPrice) * 100);
-}
-
-function PromotionSection({
-  products,
-  loading,
-  mode,
+function HeroSection({
+  searchInput,
+  setSearchInput,
+  submitSearch,
 }: {
-  products: Product[];
-  loading: boolean;
-  mode: HighlightSectionMode;
+  searchInput: string;
+  setSearchInput: (value: string) => void;
+  submitSearch: (event: FormEvent<HTMLFormElement>) => void;
 }) {
-  const [currentProductIndex, setCurrentProductIndex] = useState(0);
-  const activeProduct = products[currentProductIndex];
-  const hasMultiplePromotions = products.length > 1;
-  const isPromotionMode = mode === "promotions";
-
-  const eyebrow = isPromotionMode
-    ? "Promotions du moment"
-    : "Derniers arrivages";
-
-  const title = isPromotionMode
-    ? "Des prix qui bougent, du matériel qui tient."
-    : "Les nouveautés du catalogue EcoLiz.";
-
-  const badgeLabel = isPromotionMode ? "Offres à saisir" : "Nouveautés";
-
-  const productBadgeLabel = isPromotionMode
-    ? "En promotion"
-    : "Dernier arrivage";
-
-  const ctaLabel = isPromotionMode ? "Voir l’offre" : "Voir le produit";
-
-  const tagLabels = isPromotionMode
-    ? ["Stocks limités", "Sélection pro", "Prix réduits"]
-    : ["Nouveaux arrivages", "Sélection pro", "Stock disponible"];
-
-  useEffect(() => {
-    setCurrentProductIndex(0);
-  }, [products.length]);
-
-  function showPreviousPromotion() {
-    setCurrentProductIndex((currentIndex) =>
-      currentIndex === 0 ? products.length - 1 : currentIndex - 1
-    );
-  }
-
-  function showNextPromotion() {
-    setCurrentProductIndex((currentIndex) =>
-      currentIndex === products.length - 1 ? 0 : currentIndex + 1
-    );
-  }
-
   return (
-    <section className="relative mb-8 overflow-hidden rounded-[2rem] border border-cyan-300/40 bg-gradient-to-br from-sky-950 via-blue-950 to-cyan-800 p-5 text-white shadow-[0_28px_80px_rgba(8,47,73,0.34)]">
-      <div className="absolute -left-20 top-8 h-48 w-48 rounded-full bg-cyan-300/20 blur-3xl" />
-      <div className="absolute -right-16 -bottom-20 h-64 w-64 rounded-full bg-blue-400/20 blur-3xl" />
-      <div className="absolute left-8 top-8 h-2 w-2 rounded-full bg-cyan-200 shadow-[0_0_18px_rgba(165,243,252,0.9)] animate-ping" />
+    <header className="relative mb-6 overflow-hidden rounded-[1.75rem] border border-cyan-200/70 bg-sky-950 text-white shadow-[0_18px_50px_rgba(12,74,110,0.22)]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_28%,rgba(34,211,238,0.28),transparent_25%),radial-gradient(circle_at_12%_88%,rgba(14,165,233,0.16),transparent_28%),linear-gradient(135deg,#082f49_0%,#0f172a_48%,#0e7490_100%)]" />
+      <div className="absolute right-16 top-8 h-52 w-52 rounded-full border border-cyan-300/15" />
+      <div className="absolute right-28 top-14 h-40 w-40 rounded-full bg-cyan-300/18 blur-3xl" />
+      <div className="absolute right-8 top-8 h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_18px_rgba(103,232,249,0.9)]" />
 
-      <div className="relative mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-300/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-cyan-100 shadow-[0_0_24px_rgba(103,232,249,0.18)]">
-            <BadgePercent className="h-4 w-4" />
-            {badgeLabel}
-          </span>
+      <div className="relative grid gap-6 p-5 lg:grid-cols-[1fr_0.82fr] lg:items-center lg:p-7">
+        <div className="min-w-0">
+        <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-100">
+          <Leaf className="h-3.5 w-3.5" />
+          Boutique EcoLiz
+        </p>
+          <h1 className="max-w-2xl text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
+            Trouvez le bon matériel pro.
+            <span className="mt-1 block bg-gradient-to-r from-cyan-200 to-teal-300 bg-clip-text text-transparent">
+              Reconditionné, filtré, prêt à travailler.
+            </span>
+          </h1>
 
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">
-            {eyebrow}
+          <p className="mt-4 max-w-xl text-sm leading-6 text-sky-100/82">
+            Parcourez les catégories, repérez les offres du moment et filtrez le
+            catalogue selon vos besoins réels.
           </p>
 
-          <h2 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">
-            {title}
-          </h2>
-        </div>
+          <form onSubmit={submitSearch} className="relative mt-5 max-w-xl">
+            <Search className="absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-sky-900/45" />
 
-        <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100">
-          <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">
-            {tagLabels[0]}
-          </span>
-          <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">
-            {tagLabels[1]}
-          </span>
-          <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">
-            {tagLabels[2]}
-          </span>
-        </div>
-      </div>
+            <input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Rechercher un produit, une marque, une référence…"
+              className="w-full rounded-full border border-white/70 bg-white py-3 pl-12 pr-14 text-sm text-sky-950 outline-none shadow-[0_12px_30px_rgba(8,47,73,0.22)] transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-300/25"
+            />
 
-      <div className="relative grid gap-4 lg:grid-cols-3">
-        {loading && (
-          <div className="col-span-full rounded-[1.5rem] border border-white/15 bg-white/10 px-5 py-8 text-center text-sm text-sky-100/80">
-            Chargement des produits mis en avant…
-          </div>
-        )}
+            <button
+              type="submit"
+              className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-[0_10px_22px_rgba(6,182,212,0.3)] transition hover:scale-105"
+              aria-label="Rechercher"
+            >
+              <ArrowRight className="h-4.5 w-4.5" />
+            </button>
+          </form>
 
-        {!loading && products.length === 0 && (
-          <div className="col-span-full rounded-[1.5rem] border border-white/15 bg-white/10 px-5 py-8 text-center text-sm text-sky-100/80">
-            Les prochains produits mis en avant apparaîtront bientôt ici.
-          </div>
-        )}
-
-        {!loading && activeProduct && (
-          <div className="col-span-full">
-            <div className="relative mx-auto max-w-5xl px-10 sm:px-14">
-              {hasMultiplePromotions && (
-                <>
-                  <button
-                    type="button"
-                    onClick={showPreviousPromotion}
-                    className="absolute left-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-3xl leading-none text-white shadow-[0_14px_34px_rgba(0,0,0,0.24)] backdrop-blur transition hover:bg-cyan-300 hover:text-sky-950"
-                    aria-label="Promotion précédente"
-                  >
-                    ‹
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={showNextPromotion}
-                    className="absolute right-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-3xl leading-none text-white shadow-[0_14px_34px_rgba(0,0,0,0.24)] backdrop-blur transition hover:bg-cyan-300 hover:text-sky-950"
-                    aria-label="Promotion suivante"
-                  >
-                    ›
-                  </button>
-                </>
-              )}
-
-              {(() => {
-                const product = activeProduct;
-                const productName = decodeHtmlEntities(product.name);
-                const discountPercent = getPromotionDiscountPercent(product);
-                const originalPrice = Number(
-                  (product as Product & { originalPrice?: number })
-                    .originalPrice ?? 0
-                );
-
-                return (
-                  <article className="group grid min-h-[260px] overflow-hidden rounded-[1.75rem] border border-white/15 bg-white/10 shadow-[0_18px_48px_rgba(0,0,0,0.2)] backdrop-blur transition duration-300 hover:border-cyan-200/70 hover:bg-white/15 md:grid-cols-[0.95fr_1.25fr]">
-                    <Link
-                      to={`/produit/${product.slug}`}
-                      className="relative flex min-h-[200px] items-center justify-center bg-white/95 p-6"
-                    >
-                      {isPromotionMode && discountPercent && (
-                        <span className="absolute left-5 top-5 rounded-2xl bg-cyan-300 px-3 py-2 text-3xl font-black leading-none text-sky-950 shadow-[0_0_34px_rgba(103,232,249,0.5)]">
-                          -{discountPercent}%
-                        </span>
-                      )}
-
-                      <img
-                        src={product.image || "/placeholder-product.png"}
-                        alt={productName}
-                        loading="lazy"
-                        data-original-src={
-                          product.image || "/placeholder-product.png"
-                        }
-                        onError={handleProductImageError}
-                        className="h-full max-h-52 w-full object-contain mix-blend-multiply transition duration-300 group-hover:scale-105"
-                      />
-                    </Link>
-
-                    <div className="flex min-w-0 flex-col justify-center p-5 sm:p-6">
-                      <p className="mb-3 inline-flex w-fit rounded-full border border-cyan-200/40 bg-cyan-300 px-4 py-2 text-sm font-black uppercase tracking-[0.18em] text-sky-950 shadow-[0_0_28px_rgba(103,232,249,0.28)]">
-                        {productBadgeLabel}
-                      </p>
-
-                      <h3 className="max-w-2xl break-words text-xl font-black leading-tight text-white [overflow-wrap:anywhere] sm:text-3xl">
-                        {productName}
-                      </h3>
-
-                      <div className="mt-5">
-                        <p className="text-3xl font-black text-white">
-                          {formatPrice(product.price)} HT
-                        </p>
-
-                        {isPromotionMode && originalPrice > product.price && (
-                          <p className="mt-1 text-lg text-sky-100/65 line-through">
-                            {formatPrice(originalPrice)} HT
-                          </p>
-                        )}
-                      </div>
-
-                      <Link
-                        to={`/produit/${product.slug}`}
-                        className="mt-7 inline-flex w-fit rounded-xl bg-white px-5 py-3 text-sm font-bold text-sky-950 transition group-hover:bg-cyan-100 group-hover:shadow-[0_0_24px_rgba(103,232,249,0.28)]"
-                      >
-                        {ctaLabel}
-                      </Link>
-                    </div>
-                  </article>
-                );
-              })()}
+          <div className="mt-5 grid gap-2 text-xs text-sky-50/92 sm:grid-cols-3">
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 backdrop-blur">
+              <ShieldCheck className="h-5 w-5 shrink-0 text-cyan-200" />
+              <span>Matériel vérifié et garanti</span>
             </div>
 
-            {hasMultiplePromotions && (
-              <div className="mt-5 flex justify-center gap-2">
-                {products.map((product, index) => (
-                  <button
-                    key={product.id}
-                    type="button"
-                    onClick={() => setCurrentProductIndex(index)}
-                    aria-label={`Voir le produit mis en avant ${index + 1}`}
-                    className={`h-3 rounded-full transition-all ${
-                      index === currentProductIndex
-                        ? "w-8 bg-cyan-300"
-                        : "w-3 bg-white/45 hover:bg-white/80"
-                    }`}
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 backdrop-blur">
+              <Leaf className="h-5 w-5 shrink-0 text-teal-200" />
+              <span>Démarche éco-responsable</span>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 backdrop-blur">
+              <Headphones className="h-5 w-5 shrink-0 text-cyan-200" />
+              <span>Support pro dédié</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative hidden min-h-[245px] lg:block">
+          <div className="absolute right-10 top-3 h-44 w-44 rounded-full bg-cyan-300/18 blur-2xl" />
+          <div className="absolute right-16 top-8 h-40 w-40 rounded-full border border-cyan-200/18" />
+          <div className="absolute right-24 top-5 rotate-12 text-cyan-200/45">
+            <Leaf className="h-16 w-16" />
+          </div>
+
+          <div className="absolute bottom-12 right-28 h-10 w-48 rounded-[50%] bg-white/14 blur-sm" />
+
+          <div className="absolute bottom-14 right-28 w-56 rounded-2xl border border-white/18 bg-gradient-to-br from-slate-800 to-sky-950 p-2.5 shadow-[0_20px_48px_rgba(0,0,0,0.3)]">
+            <div className="aspect-[16/10] rounded-xl border border-cyan-200/20 bg-gradient-to-br from-slate-950 to-sky-800 p-6">
+              <Leaf className="mx-auto mt-5 h-12 w-12 text-teal-300" />
+            </div>
+            <div className="mx-auto h-3 w-20 rounded-b-xl bg-slate-700" />
+          </div>
+
+          <div className="absolute right-2 top-12 h-52 w-20 rounded-2xl border border-cyan-100/20 bg-gradient-to-b from-slate-700 to-slate-950 p-2.5 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={index}
+                className="mb-2.5 flex h-4.5 items-center gap-1 rounded-md bg-slate-950/80 px-1.5"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
+                <span className="h-1.5 flex-1 rounded-full bg-slate-600" />
+              </div>
+            ))}
+          </div>
+
+          <div className="absolute bottom-3 right-8 w-60 rounded-2xl border border-cyan-100/20 bg-slate-950 p-3 shadow-[0_18px_42px_rgba(0,0,0,0.32)]">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex gap-1">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <span
+                    key={index}
+                    className="h-3 w-3 rounded-sm bg-slate-700"
                   />
                 ))}
               </div>
-            )}
+
+              <span className="text-[10px] font-bold text-cyan-200">
+                EcoLiz
+              </span>
+            </div>
+
+            <div className="flex gap-1">
+              {Array.from({ length: 10 }).map((_, index) => (
+                <span
+                  key={index}
+                  className="h-1.5 flex-1 rounded-full bg-emerald-400/70"
+                />
+              ))}
+            </div>
           </div>
-        )}
+        </div>
       </div>
-    </section>
+    </header>
   );
 }
 
@@ -1685,32 +1789,35 @@ function CategorySelectionCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`group w-full overflow-hidden rounded-2xl border bg-white text-left shadow-[0_10px_28px_rgba(3,105,161,0.08)] transition-all duration-300 hover:-translate-y-1 hover:rotate-[0.25deg] hover:shadow-[0_18px_42px_rgba(3,105,161,0.22)] sm:w-[calc(50%-0.625rem)] xl:w-[calc(25%-0.9375rem)] ${
+      className={`group relative w-full overflow-hidden rounded-[1.35rem] border bg-white p-5 text-left shadow-[0_12px_32px_rgba(8,47,73,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300 hover:shadow-[0_20px_44px_rgba(8,47,73,0.14)] sm:w-[calc(50%-0.625rem)] xl:w-[calc(25%-0.9375rem)] ${
         isSelected
-          ? "border-sky-800 ring-2 ring-sky-300"
-          : "border-sky-100 hover:border-sky-300"
+          ? "border-cyan-400 ring-4 ring-cyan-100"
+          : "border-sky-100"
       }`}
     >
-      <span className={`block h-2 bg-gradient-to-r ${details.color}`} />
-      <span className="flex min-h-[178px] flex-col p-5">
-        <span className="mb-4 flex items-start justify-between gap-3">
-          <span
-            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ring-1 transition duration-300 group-hover:scale-110 group-hover:-rotate-3 ${details.icon}`}
-          >
-            <Icon className="h-7 w-7" />
-          </span>
-          <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
-            {productCount} produit{productCount > 1 ? "s" : ""}
-          </span>
+      <span className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${details.color}`} />
+      <span className="mb-5 flex items-start justify-between gap-3 pt-2">
+        <span
+          className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ring-1 transition duration-300 group-hover:scale-110 group-hover:-rotate-3 ${details.icon}`}
+        >
+          <Icon className="h-8 w-8" />
         </span>
 
-        <span className="text-lg font-bold text-sky-950">{group.title}</span>
-        <span className="mt-2 min-h-[42px] text-sm leading-5 text-sky-900/65">
-          {details.description}
+        <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700">
+          {productCount.toLocaleString("fr-FR")} produit
+          {productCount > 1 ? "s" : ""}
         </span>
-        <span className="mt-auto pt-4 text-sm font-semibold text-sky-700 transition group-hover:translate-x-1 group-hover:text-sky-950">
-          Explorer la catégorie →
-        </span>
+      </span>
+
+      <span className="block text-2xl font-black text-sky-950">
+        {group.title}
+      </span>
+      <span className="mt-3 block min-h-[50px] text-sm leading-6 text-sky-900/65">
+        {details.description}
+      </span>
+      <span className="mt-6 inline-flex items-center gap-2 text-sm font-black text-cyan-700 transition group-hover:translate-x-1 group-hover:text-sky-950">
+        Explorer la catégorie
+        <ArrowRight className="h-4 w-4" />
       </span>
     </button>
   );
@@ -1762,30 +1869,39 @@ function FilterGroup({
 
       {isOpen && (
         <div className="absolute left-0 top-full z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-sky-100 bg-white px-3 py-3 shadow-[0_18px_42px_rgba(3,105,161,0.18)]">
-          {options.map((option) => {
-            const optionValue =
-              typeof option === "string" ? option : option.slug;
-            const optionLabel =
-              typeof option === "string" ? option : option.name;
+          {options.length === 0 ? (
+            <p className="px-2 py-3 text-center text-xs text-sky-900/40">
+              Aucune option
+            </p>
+          ) : (
+            options.map((option) => {
+              const optionSlug =
+                typeof option === "string"
+                  ? normalizeFilterValue(option)
+                  : option.slug ?? normalizeFilterValue(option.name);
+              const optionName =
+                typeof option === "string" ? option : option.name;
+              const isSelected = selectedOptions.includes(optionSlug);
 
-            return (
-              <label
-                key={optionValue}
-                className="flex cursor-pointer items-center gap-2 text-sm text-sky-900/70"
-              >
-                <span className="flex min-w-0 items-center gap-2">
+              return (
+                <label
+                  key={optionSlug}
+                  className="flex cursor-pointer items-center gap-2 py-1 text-sm text-sky-900/70"
+                >
                   <input
                     type="checkbox"
-                    checked={selectedOptions.includes(optionValue)}
-                    onChange={() => onToggle(optionValue)}
+                    checked={isSelected}
+                    onChange={() => onToggle(optionSlug)}
                     className="rounded border-sky-300 text-sky-700 focus:ring-sky-700"
                   />
 
-                  <span className="break-words">{optionLabel}</span>
-                </span>
-              </label>
-            );
-          })}
+                  <span className="break-words">
+                    {decodeHtmlEntities(optionName)}
+                  </span>
+                </label>
+              );
+            })
+          )}
         </div>
       )}
     </div>
@@ -1795,6 +1911,9 @@ function FilterGroup({
 function ProductListItem({ product }: { product: Product }) {
   const productName = decodeHtmlEntities(product.name);
   const discountPercent = getPromotionDiscountPercent(product);
+  const originalPrice = Number(
+    (product as Product & { originalPrice?: number }).originalPrice ?? 0
+  );
 
   return (
     <article className="group flex min-w-0 flex-col gap-5 overflow-hidden rounded-2xl border border-sky-100 bg-white p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-[0_18px_42px_rgba(3,105,161,0.16)] sm:flex-row">
@@ -1869,18 +1988,11 @@ function ProductListItem({ product }: { product: Product }) {
             {formatPrice(product.price)} HT
           </p>
 
-          {discountPercent &&
-            (product as Product & { originalPrice?: number }).originalPrice && (
-              <p className="text-sm text-sky-900/45 line-through">
-                {formatPrice(
-                  Number(
-                    (product as Product & { originalPrice?: number })
-                      .originalPrice
-                  )
-                )}{" "}
-                HT
-              </p>
-            )}
+          {discountPercent && originalPrice > 0 && (
+            <p className="text-sm text-sky-900/45 line-through">
+              {formatPrice(originalPrice)} HT
+            </p>
+          )}
 
           {product.priceTTC && (
             <p className="text-sm text-sky-900/50">
@@ -1889,14 +2001,12 @@ function ProductListItem({ product }: { product: Product }) {
           )}
         </div>
 
-        <div className="flex flex-wrap justify-end gap-2">
-          <Link
-            to={`/produit/${product.slug}`}
-            className="inline-flex items-center rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 hover:shadow-[0_10px_24px_rgba(3,105,161,0.22)]"
-          >
-            Voir la fiche →
-          </Link>
-        </div>
+        <Link
+          to={`/produit/${product.slug}`}
+          className="inline-flex items-center rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 hover:shadow-[0_10px_24px_rgba(3,105,161,0.22)]"
+        >
+          Voir la fiche →
+        </Link>
       </div>
     </article>
   );
@@ -1905,6 +2015,9 @@ function ProductListItem({ product }: { product: Product }) {
 function ProductGridItem({ product }: { product: Product }) {
   const productName = decodeHtmlEntities(product.name);
   const discountPercent = getPromotionDiscountPercent(product);
+  const originalPrice = Number(
+    (product as Product & { originalPrice?: number }).originalPrice ?? 0
+  );
 
   return (
     <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-sky-100 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300 hover:shadow-[0_18px_42px_rgba(3,105,161,0.16)]">
@@ -1961,18 +2074,11 @@ function ProductGridItem({ product }: { product: Product }) {
             {formatPrice(product.price)} HT
           </p>
 
-          {discountPercent &&
-            (product as Product & { originalPrice?: number }).originalPrice && (
-              <p className="text-sm text-sky-900/45 line-through">
-                {formatPrice(
-                  Number(
-                    (product as Product & { originalPrice?: number })
-                      .originalPrice
-                  )
-                )}{" "}
-                HT
-              </p>
-            )}
+          {discountPercent && originalPrice > 0 && (
+            <p className="text-sm text-sky-900/45 line-through">
+              {formatPrice(originalPrice)} HT
+            </p>
+          )}
 
           {product.priceTTC && (
             <p className="text-sm text-sky-900/50">
@@ -2020,9 +2126,7 @@ function StatusPill({
       : "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium";
 
   return (
-    <span
-      className={`${baseClass} ${styles[variant]}`}
-    >
+    <span className={`${baseClass} ${styles[variant]}`}>
       {decodeHtmlEntities(label)}
     </span>
   );
