@@ -1461,17 +1461,17 @@ function PromotionSection({
   const hasMultiplePromotions = products.length > 1;
   const isPromotionMode = mode === "promotions";
 
-  const eyebrow = isPromotionMode ? "{eyebrow}" : "Derniers arrivages";
+  const eyebrow = isPromotionMode ? "Promotions du moment" : "Derniers arrivages";
   const title = isPromotionMode
-    ? "{title}"
+    ? "Des prix qui bougent, du mat?riel qui tient."
     : "Les nouveaut?s du catalogue EcoLiz.";
-  const badgeLabel = isPromotionMode ? "{badgeLabel}" : "Nouveaut?s";
+  const badgeLabel = isPromotionMode ? "Offres ? saisir" : "Nouveaut?s";
   const productBadgeLabel = isPromotionMode
-    ? "{productBadgeLabel}"
+    ? "En promotion"
     : "Dernier arrivage";
-  const ctaLabel = isPromotionMode ? "{ctaLabel}" : "Voir le produit";
+  const ctaLabel = isPromotionMode ? "Voir l’offre" : "Voir le produit";
   const tagLabels = isPromotionMode
-    ? ["{tagLabels[0]}", "{tagLabels[1]}", "{tagLabels[2]}"]
+    ? ["Stocks limit?s", "S?lection pro", "Prix r?duits"]
     : ["Nouveaux arrivages", "S?lection pro", "Stock disponible"];
 
   useEffect(() => {
