@@ -1461,18 +1461,25 @@ function PromotionSection({
   const hasMultiplePromotions = products.length > 1;
   const isPromotionMode = mode === "promotions";
 
-  const eyebrow = isPromotionMode ? "Promotions du moment" : "Derniers arrivages";
+  const eyebrow = isPromotionMode
+    ? "Promotions du moment"
+    : "Derniers arrivages";
+
   const title = isPromotionMode
-    ? "Des prix qui bougent, du mat?riel qui tient."
-    : "Les nouveaut?s du catalogue EcoLiz.";
-  const badgeLabel = isPromotionMode ? "Offres ? saisir" : "Nouveaut?s";
+    ? "Des prix qui bougent, du matériel qui tient."
+    : "Les nouveautés du catalogue EcoLiz.";
+
+  const badgeLabel = isPromotionMode ? "Offres à saisir" : "Nouveautés";
+
   const productBadgeLabel = isPromotionMode
     ? "En promotion"
     : "Dernier arrivage";
+
   const ctaLabel = isPromotionMode ? "Voir l’offre" : "Voir le produit";
+
   const tagLabels = isPromotionMode
-    ? ["Stocks limit?s", "S?lection pro", "Prix r?duits"]
-    : ["Nouveaux arrivages", "S?lection pro", "Stock disponible"];
+    ? ["Stocks limités", "Sélection pro", "Prix réduits"]
+    : ["Nouveaux arrivages", "Sélection pro", "Stock disponible"];
 
   useEffect(() => {
     setCurrentProductIndex(0);
@@ -1502,13 +1509,16 @@ function PromotionSection({
             <BadgePercent className="h-4 w-4" />
             {badgeLabel}
           </span>
+
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">
             {eyebrow}
           </p>
+
           <h2 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">
             {title}
           </h2>
         </div>
+
         <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100">
           <span className="rounded-full border border-white/15 bg-white/10 px-3 py-2">
             {tagLabels[0]}
@@ -1525,13 +1535,13 @@ function PromotionSection({
       <div className="relative grid gap-4 lg:grid-cols-3">
         {loading && (
           <div className="col-span-full rounded-[1.5rem] border border-white/15 bg-white/10 px-5 py-8 text-center text-sm text-sky-100/80">
-            Chargement des promotions…
+            Chargement des produits mis en avant…
           </div>
         )}
 
         {!loading && products.length === 0 && (
           <div className="col-span-full rounded-[1.5rem] border border-white/15 bg-white/10 px-5 py-8 text-center text-sm text-sky-100/80">
-            Les prochains produits mis en avant appara?tront bient?t ici.
+            Les prochains produits mis en avant apparaîtront bientôt ici.
           </div>
         )}
 
@@ -1575,7 +1585,7 @@ function PromotionSection({
                       to={`/produit/${product.slug}`}
                       className="relative flex min-h-[200px] items-center justify-center bg-white/95 p-6"
                     >
-                      {discountPercent && (
+                      {isPromotionMode && discountPercent && (
                         <span className="absolute left-5 top-5 rounded-2xl bg-cyan-300 px-3 py-2 text-3xl font-black leading-none text-sky-950 shadow-[0_0_34px_rgba(103,232,249,0.5)]">
                           -{discountPercent}%
                         </span>
@@ -1607,7 +1617,7 @@ function PromotionSection({
                           {formatPrice(product.price)} HT
                         </p>
 
-                        {originalPrice > product.price && (
+                        {isPromotionMode && originalPrice > product.price && (
                           <p className="mt-1 text-lg text-sky-100/65 line-through">
                             {formatPrice(originalPrice)} HT
                           </p>
@@ -1633,7 +1643,7 @@ function PromotionSection({
                     key={product.id}
                     type="button"
                     onClick={() => setCurrentProductIndex(index)}
-                    aria-label={`Voir la promotion ${index + 1}`}
+                    aria-label={`Voir le produit mis en avant ${index + 1}`}
                     className={`h-3 rounded-full transition-all ${
                       index === currentProductIndex
                         ? "w-8 bg-cyan-300"
