@@ -488,6 +488,48 @@ function handleProductImageError(event: SyntheticEvent<HTMLImageElement>) {
   image.src = retryUrl.toString();
 }
 
+
+function FloatingNeedHelpCTA() {
+  return (
+    <a
+      href="/contact"
+      className="group fixed bottom-6 left-4 right-4 z-[9999] overflow-hidden rounded-2xl border border-cyan-200/80 bg-sky-950 text-white shadow-[0_18px_55px_rgba(8,47,73,0.45)] transition hover:-translate-y-1 hover:shadow-[0_24px_75px_rgba(6,182,212,0.4)] sm:left-auto sm:right-6 sm:w-[370px]"
+    >
+      <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-cyan-300/30 blur-2xl transition group-hover:bg-cyan-300/45" />
+      <div className="absolute -bottom-10 left-8 h-24 w-24 rounded-full bg-teal-300/20 blur-2xl" />
+
+      <div className="relative flex items-center gap-4 p-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-cyan-300 text-2xl shadow-[0_0_30px_rgba(103,232,249,0.55)]">
+          💬
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="mb-1 inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
+            Besoin spécifique ?
+          </p>
+
+          <p className="text-sm font-black leading-snug text-white">
+            Vous ne trouvez pas votre matériel ?
+          </p>
+
+          <p className="mt-1 text-xs leading-5 text-sky-100/80">
+            EcoLiz peut le rechercher pour vous, même hors catalogue.
+          </p>
+
+          <span className="mt-3 inline-flex items-center rounded-full bg-white px-3 py-2 text-xs font-bold text-sky-950 transition group-hover:bg-cyan-100">
+            Parlez-nous de votre projet →
+          </span>
+        </div>
+
+        <span className="absolute right-3 top-3 flex h-3 w-3">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-300 opacity-75" />
+          <span className="relative inline-flex h-3 w-3 rounded-full bg-cyan-300" />
+        </span>
+      </div>
+    </a>
+  );
+}
+
 function getPromotionDiscountPercent(product: Product) {
   const originalPrice = Number(
     (product as Product & { originalPrice?: number }).originalPrice ?? 0
@@ -1260,6 +1302,7 @@ export function Shop() {
 
   return (
     <section className="min-h-screen bg-[radial-gradient(circle_at_top_left,#c7f5ff_0,#ecfbff_38%,#f8fdff_70%,#dff4ff_100%)] pb-24 pt-28">
+      <FloatingNeedHelpCTA />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* HeroSection intégré avec la fonctionnalité de recherche */}
         <HeroSection
