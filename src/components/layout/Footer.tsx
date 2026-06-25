@@ -10,11 +10,11 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           <div className="lg:col-span-1">
-            <div className="bg-white inline-flex p-2 rounded-xl mb-5">
+            <div className="inline-flex mb-5">
               <img
                 src="/logo.png"
                 alt="EcoLiz"
-                className="h-12 w-auto object-contain" />
+                className="h-16 w-auto object-contain bg-transparent drop-shadow-sm" />
               
             </div>
             <p className="text-brand-100/60 text-sm mb-6 leading-relaxed">

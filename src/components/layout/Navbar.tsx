@@ -97,7 +97,7 @@ export function Navbar() {
             <img
               src="/logo.png"
               alt="EcoLiz"
-              className="h-12 w-auto object-contain"
+              className="h-16 w-auto object-contain bg-transparent drop-shadow-sm"
             />
           </Link>
 
