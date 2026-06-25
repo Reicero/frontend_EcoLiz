@@ -214,7 +214,6 @@ export function Contact() {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => updateField("phone", e.target.value)}
-                    placeholder="Optionnel"
                     className="w-full px-4 py-3 rounded-xl border border-brand-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
                   />
                 </div>
