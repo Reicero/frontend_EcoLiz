@@ -43,6 +43,7 @@ export type ProductFilterKey =
   | "wifiStandard"
   | "wifiEquipmentType"
   | "licenseEditor"
+  | "keyboardLanguage"
   | "licenseType";
 
 export type SelectedProductFilters = Partial<
@@ -108,6 +109,7 @@ const FILTER_ATTRIBUTE_CONFIG: Array<{
   key: ProductFilterKey;
   title: string;
   attributeName: string;
+  attributeAliases?: string[];
 }> = [
   { key: "brand", title: "Marque", attributeName: "Marque" },
   { key: "condition", title: "État", attributeName: "État" },
@@ -116,17 +118,17 @@ const FILTER_ATTRIBUTE_CONFIG: Array<{
   { key: "cpu", title: "Processeur", attributeName: "Processeur" },
   {
     key: "cpuModel",
-    title: "Modèle processeur",
+    title: "Modèle CPU",
     attributeName: "Modèle processeur",
   },
   {
     key: "cpuGeneration",
-    title: "Génération processeur",
+    title: "Génération CPU",
     attributeName: "Génération processeur",
   },
   {
     key: "cpuCores",
-    title: "Nombre de cœurs",
+    title: "Cœurs",
     attributeName: "Nombre de cœurs",
   },
 
@@ -147,20 +149,20 @@ const FILTER_ATTRIBUTE_CONFIG: Array<{
 
   {
     key: "gpu",
-    title: "Carte graphique",
+    title: "GPU",
     attributeName: "Carte graphique",
   },
   {
     key: "gpuModel",
-    title: "Modèle carte graphique",
+    title: "Modèle GPU",
     attributeName: "Modèle carte graphique",
   },
 
-  { key: "screen", title: "Taille écran", attributeName: "Taille écran" },
+  { key: "screen", title: "Écran", attributeName: "Taille écran" },
   { key: "resolution", title: "Résolution", attributeName: "Résolution" },
   {
     key: "panelTechnology",
-    title: "Technologie de dalle",
+    title: "Dalle",
     attributeName: "Technologie de dalle",
   },
   {
@@ -173,10 +175,10 @@ const FILTER_ATTRIBUTE_CONFIG: Array<{
     title: "Connectique",
     attributeName: "Connectique",
   },
-  { key: "vesa", title: "Compatible VESA", attributeName: "Compatible VESA" },
+  { key: "vesa", title: "VESA", attributeName: "Compatible VESA" },
   {
     key: "webcam",
-    title: "Webcam intégrée",
+    title: "Webcam",
     attributeName: "Webcam intégrée",
   },
 
@@ -227,6 +229,21 @@ const FILTER_ATTRIBUTE_CONFIG: Array<{
     key: "wifiEquipmentType",
     title: "Type d’équipement Wi-Fi",
     attributeName: "Type d’équipement Wi-Fi",
+  },
+
+
+  {
+    key: "keyboardLanguage",
+    title: "Clavier",
+    attributeName: "Langue du clavier",
+    attributeAliases: [
+      "Langue clavier",
+      "Disposition clavier",
+      "Clavier",
+      "Keyboard",
+      "Keyboard layout",
+      "Keyboard language",
+    ],
   },
 
   {
@@ -619,10 +636,13 @@ async function loadProductFilterGroups(): Promise<WooFilterGroup[]> {
 
   const groups = await Promise.all(
     FILTER_ATTRIBUTE_CONFIG.map(async (configuration) => {
-      const expectedName = normalizeLookupValue(configuration.attributeName);
+      const expectedNames = [
+        configuration.attributeName,
+        ...(configuration.attributeAliases ?? []),
+      ].map(normalizeLookupValue);
 
-      const attribute = attributes.find(
-        (item) => normalizeLookupValue(item.name) === expectedName
+      const attribute = attributes.find((item) =>
+        expectedNames.includes(normalizeLookupValue(item.name))
       );
 
       if (!attribute) {

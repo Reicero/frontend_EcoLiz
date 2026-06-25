@@ -65,6 +65,10 @@ const FILTERS_BY_CATEGORY: Record<string, string[]> = {
   pc: [
     "marque",
     "etat",
+    "clavier",
+    "keyboard",
+    "langue-du-clavier",
+    "langue-du-clavier",
     "processeur",
     "cpu",
     "modele-processeur",
@@ -101,6 +105,9 @@ const FILTERS_BY_CATEGORY: Record<string, string[]> = {
   infra: [
     "marque",
     "etat",
+    "clavier",
+    "keyboard",
+    "langue-du-clavier",
     "type-serveur",
     "servertype",
     "processeur",
@@ -125,6 +132,9 @@ const FILTERS_BY_CATEGORY: Record<string, string[]> = {
   reseau: [
     "marque",
     "etat",
+    "clavier",
+    "keyboard",
+    "langue-du-clavier",
     "type-equipement",
     "equipmenttype",
     "administration-reseau",
@@ -146,6 +156,9 @@ const FILTERS_BY_CATEGORY: Record<string, string[]> = {
   service: [
     "marque",
     "etat",
+    "clavier",
+    "keyboard",
+    "langue-du-clavier",
     "editeur-licence",
     "licenseeditor",
     "type-licence",
@@ -851,11 +864,15 @@ export function Shop() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const selectedCategoryKey = selectedCategoryIds.join(",");
   const categoryGroups = getCategoryGroups(categories);
   const selectedMainCategory =
     categoryGroups.find((group) => group.title === selectedMainCategoryTitle) ??
     null;
+  const activeCategoryIds =
+    selectedCategoryIds.length > 0
+      ? selectedCategoryIds
+      : selectedMainCategory?.children.map((category) => category.id) ?? [];
+  const selectedCategoryKey = activeCategoryIds.join(",");
 
   function updateShopUrl(nextParams: Record<string, string>) {
     const params = new URLSearchParams();
@@ -995,7 +1012,7 @@ export function Shop() {
         setSearchInput("");
         setSearchTerm("");
         setSelectedMainCategoryTitle(group.title);
-        setSelectedCategoryIds(group.children.map((category) => category.id));
+        setSelectedCategoryIds([]);
         setSelectedStockStatuses([]);
         setSelectedFilters({});
         setExpandedCategoryGroup(group.title);
@@ -1025,7 +1042,7 @@ export function Shop() {
     if (
       searchTerm ||
       !selectedMainCategoryTitle ||
-      selectedCategoryIds.length === 0
+      activeCategoryIds.length === 0
     ) {
       setCategoryFilterProducts([]);
       setContextualFiltersLoading(false);
@@ -1047,7 +1064,7 @@ export function Shop() {
         const firstPage = await listProducts({
           page: 1,
           perPage: 100,
-          categoryIds: selectedCategoryIds,
+          categoryIds: activeCategoryIds,
         });
 
         const extraPages = Array.from(
@@ -1060,7 +1077,7 @@ export function Shop() {
             listProducts({
               page,
               perPage: 100,
-              categoryIds: selectedCategoryIds,
+              categoryIds: activeCategoryIds,
             })
           )
         );
@@ -1103,7 +1120,7 @@ export function Shop() {
 
     setLoading(true);
 
-    if (!isSearching && selectedCategoryIds.length === 0) {
+    if (!isSearching && activeCategoryIds.length === 0) {
       setProducts([]);
       setTotalProducts(0);
       setTotalPages(1);
@@ -1120,7 +1137,7 @@ export function Shop() {
       page: currentPage,
       perPage: productsPerPage,
       search: searchTerm || undefined,
-      categoryIds: isSearching ? undefined : selectedCategoryIds,
+      categoryIds: isSearching ? undefined : activeCategoryIds,
       stockStatus,
       attributeFilters: isSearching ? {} : selectedFilters,
       ...getSortParams(sortOption),
@@ -1152,7 +1169,7 @@ export function Shop() {
   }, [
     currentPage,
     searchTerm,
-    selectedCategoryIds,
+    selectedCategoryKey,
     selectedStockStatuses,
     selectedFilters,
     sortOption,
@@ -1229,7 +1246,7 @@ export function Shop() {
     setSearchInput("");
     setSearchTerm("");
     setSelectedMainCategoryTitle(group.title);
-    setSelectedCategoryIds(group.children.map((category) => category.id));
+    setSelectedCategoryIds([]);
     setSelectedStockStatuses([]);
     setSelectedFilters({});
     setExpandedCategoryGroup(group.title);
@@ -1508,7 +1525,7 @@ export function Shop() {
                       visibleFilterGroups.map((group) => (
                         <FilterGroup
                           key={group.key}
-                          title={group.title}
+                          title={getCompactFilterTitle(group.title)}
                           options={group.options}
                           selectedOptions={selectedFilters[group.key] ?? []}
                           isOpen={expandedFilterGroup === group.key}
@@ -1874,6 +1891,29 @@ function CategorySelectionCard({
   );
 }
 
+function getCompactFilterTitle(title: string) {
+  const normalizedTitle = normalizeText(title).replace(/\s+/g, "-");
+
+  const compactTitles: Record<string, string> = {
+    "modele-processeur": "Modèle CPU",
+    "generation-processeur": "Génération CPU",
+    "nombre-de-coeurs": "Cœurs",
+    "carte-graphique": "GPU",
+    "modele-carte-graphique": "Modèle GPU",
+    "taille-ecran": "Écran",
+    "technologie-de-dalle": "Dalle",
+    "compatible-vesa": "VESA",
+    "webcam-integree": "Webcam",
+    "langue-du-clavier": "Clavier",
+    "langue-clavier": "Clavier",
+    "disposition-clavier": "Clavier",
+    "keyboard-language": "Clavier",
+    "keyboard-layout": "Clavier",
+  };
+
+  return compactTitles[normalizedTitle] ?? title;
+}
+
 function FilterGroup({
   title,
   options,
@@ -1890,7 +1930,7 @@ function FilterGroup({
   onToggle: (optionSlug: string) => void;
 }) {
   return (
-    <div className="relative w-full self-start sm:w-[180px]">
+    <div className="relative w-full self-start sm:w-[188px]">
       <button
         type="button"
         onClick={onToggleGroup}
