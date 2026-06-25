@@ -489,44 +489,111 @@ function handleProductImageError(event: SyntheticEvent<HTMLImageElement>) {
 }
 
 
+
+
+
+
+
+
+
+
 function FloatingNeedHelpCTA() {
-  return (
-    <a
-      href="/contact"
-      className="group fixed bottom-6 left-4 right-4 z-[9999] overflow-hidden rounded-2xl border border-cyan-200/80 bg-sky-950 text-white shadow-[0_18px_55px_rgba(8,47,73,0.45)] transition hover:-translate-y-1 hover:shadow-[0_24px_75px_rgba(6,182,212,0.4)] sm:left-auto sm:right-6 sm:w-[370px]"
-    >
-      <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-cyan-300/30 blur-2xl transition group-hover:bg-cyan-300/45" />
-      <div className="absolute -bottom-10 left-8 h-24 w-24 rounded-full bg-teal-300/20 blur-2xl" />
+  const storageKey = "ecoliz_need_help_cta_minimized_v1";
 
-      <div className="relative flex items-center gap-4 p-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-cyan-300 text-2xl shadow-[0_0_30px_rgba(103,232,249,0.55)]">
-          💬
-        </div>
+  const [isMinimized, setIsMinimized] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
 
-        <div className="min-w-0 flex-1">
-          <p className="mb-1 inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
-            Besoin spécifique ?
-          </p>
+    return localStorage.getItem(storageKey) === "1";
+  });
 
-          <p className="text-sm font-black leading-snug text-white">
-            Vous ne trouvez pas votre matériel ?
-          </p>
+  if (isMinimized) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem(storageKey);
+          }
 
-          <p className="mt-1 text-xs leading-5 text-sky-100/80">
-            EcoLiz peut le rechercher pour vous, même hors catalogue.
-          </p>
-
-          <span className="mt-3 inline-flex items-center rounded-full bg-white px-3 py-2 text-xs font-bold text-sky-950 transition group-hover:bg-cyan-100">
-            Parlez-nous de votre projet →
-          </span>
-        </div>
-
-        <span className="absolute right-3 top-3 flex h-3 w-3">
+          setIsMinimized(false);
+        }}
+        className="group fixed bottom-5 right-5 z-[9999] flex h-16 w-16 items-center justify-center rounded-full border border-cyan-100/80 bg-gradient-to-br from-sky-950 via-cyan-900 to-teal-700 text-3xl text-white shadow-[0_0_35px_rgba(34,211,238,0.65)] transition hover:scale-110 hover:shadow-[0_0_45px_rgba(20,184,166,0.75)]"
+        aria-label="Afficher l’aide EcoLiz"
+        title="Besoin d’aide ?"
+      >
+        <span className="absolute -right-1 -top-1 flex h-5 w-5">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-300 opacity-75" />
-          <span className="relative inline-flex h-3 w-3 rounded-full bg-cyan-300" />
+          <span className="relative inline-flex h-5 w-5 rounded-full bg-cyan-300" />
         </span>
+
+        <span className="transition group-hover:rotate-6">💬</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="fixed bottom-5 left-4 right-4 z-[9999] sm:left-auto sm:right-6 sm:w-[440px]">
+      <div className="pointer-events-none absolute -inset-1 rounded-[1.4rem] bg-gradient-to-r from-cyan-300 via-teal-300 to-sky-400 opacity-85 blur-md" />
+
+      <div className="relative overflow-hidden rounded-[1.3rem] border border-cyan-100/80 bg-gradient-to-br from-sky-950 via-cyan-950 to-sky-900 text-white shadow-[0_22px_70px_rgba(8,47,73,0.52)]">
+        <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-cyan-300/30 blur-2xl" />
+        <div className="absolute -bottom-10 left-8 h-24 w-24 rounded-full bg-teal-300/25 blur-2xl" />
+
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (typeof window !== "undefined") {
+              localStorage.setItem(storageKey, "1");
+            }
+
+            setIsMinimized(true);
+          }}
+          className="absolute right-3 top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-white/25 bg-white/10 text-lg font-black leading-none text-white transition hover:bg-white hover:text-sky-950"
+          aria-label="Réduire le message"
+          title="Réduire"
+        >
+          −
+        </button>
+
+        <div className="relative p-4 pr-10">
+          <div className="flex items-start gap-4">
+            <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-200 to-teal-400 text-2xl shadow-[0_0_34px_rgba(103,232,249,0.65)]">
+              <span className="absolute -right-1 -top-1 flex h-4 w-4">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-200 opacity-75" />
+                <span className="relative inline-flex h-4 w-4 rounded-full bg-cyan-200" />
+              </span>
+              💬
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="mb-2 inline-flex rounded-full bg-cyan-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-sky-950">
+                Besoin spécifique ?
+              </p>
+
+              <p className="text-base font-black leading-snug text-white">
+                Votre projet a des exigences spécifiques ?
+              </p>
+
+              <p className="mt-1 text-sm leading-5 text-sky-100/85">
+                Nous vous accompagnons pour trouver le matériel le plus adapté à vos besoins, au-delà de notre catalogue.
+              </p>
+
+              <a
+                href="/contact"
+                className="mt-3 inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-black text-sky-950 shadow-[0_10px_26px_rgba(255,255,255,0.16)] transition hover:translate-x-1 hover:bg-cyan-100"
+              >
+                Contactez-nous !
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
-    </a>
+    </div>
   );
 }
 
@@ -1303,7 +1370,7 @@ export function Shop() {
   return (
     <section className="min-h-screen bg-[radial-gradient(circle_at_top_left,#c7f5ff_0,#ecfbff_38%,#f8fdff_70%,#dff4ff_100%)] pb-24 pt-28">
       <FloatingNeedHelpCTA />
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* HeroSection intégré avec la fonctionnalité de recherche */}
         <HeroSection
           searchInput={searchInput}
@@ -1688,30 +1755,28 @@ function HeroSection({
 }) {
   return (
     <header className="relative mb-6 overflow-hidden rounded-[1.75rem] border border-cyan-200/70 bg-sky-950 text-white shadow-[0_18px_50px_rgba(12,74,110,0.22)]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_28%,rgba(34,211,238,0.28),transparent_25%),radial-gradient(circle_at_12%_88%,rgba(14,165,233,0.16),transparent_28%),linear-gradient(135deg,#082f49_0%,#0f172a_48%,#0e7490_100%)]" />
-      <div className="absolute right-16 top-8 h-52 w-52 rounded-full border border-cyan-300/15" />
-      <div className="absolute right-28 top-14 h-40 w-40 rounded-full bg-cyan-300/18 blur-3xl" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_18%,rgba(34,211,238,0.26),transparent_24%),radial-gradient(circle_at_10%_88%,rgba(16,185,129,0.14),transparent_28%),linear-gradient(135deg,#082f49_0%,#0f172a_54%,#0e7490_100%)]" />
       <div className="absolute right-8 top-8 h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_18px_rgba(103,232,249,0.9)]" />
 
-      <div className="relative grid gap-6 p-5 lg:grid-cols-[1fr_0.82fr] lg:items-center lg:p-7">
-        <div className="min-w-0">
-        <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-100">
-          <Leaf className="h-3.5 w-3.5" />
-          Boutique EcoLiz
-        </p>
-          <h1 className="max-w-2xl text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
-            Trouvez le bon matériel pro.
-            <span className="mt-1 block bg-gradient-to-r from-cyan-200 to-teal-300 bg-clip-text text-transparent">
-              Reconditionné, filtré, prêt à travailler.
+      <div className="relative p-5 lg:p-7">
+        <div className="max-w-4xl">
+          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-100">
+            <Leaf className="h-3.5 w-3.5" />
+            Boutique EcoLiz
+          </p>
+
+          <h1 className="max-w-3xl text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-[2.7rem]">
+            Matériel informatique pro
+            <span className="mt-1 block text-cyan-200">
+              reconditionné et prêt à l’emploi.
             </span>
           </h1>
 
-          <p className="mt-4 max-w-xl text-sm leading-6 text-sky-100/82">
-            Parcourez les catégories, repérez les offres du moment et filtrez le
-            catalogue selon vos besoins réels.
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-sky-100/72">
+            Recherchez une référence, une marque ou une catégorie dans notre catalogue.
           </p>
 
-          <form onSubmit={submitSearch} className="relative mt-5 max-w-xl">
+          <form onSubmit={submitSearch} className="relative mt-5 max-w-2xl">
             <Search className="absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-sky-900/45" />
 
             <input
@@ -1730,82 +1795,57 @@ function HeroSection({
             </button>
           </form>
 
-          <div className="mt-5 grid gap-2 text-xs text-sky-50/92 sm:grid-cols-3">
-            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 backdrop-blur">
-              <ShieldCheck className="h-5 w-5 shrink-0 text-cyan-200" />
-              <span>Matériel vérifié et garanti</span>
-            </div>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs text-sky-50/82">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2">
+              <ShieldCheck className="h-4 w-4 text-cyan-200" />
+              Matériel vérifié
+            </span>
 
-            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 backdrop-blur">
-              <Leaf className="h-5 w-5 shrink-0 text-teal-200" />
-              <span>Démarche éco-responsable</span>
-            </div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2">
+              <Leaf className="h-4 w-4 text-teal-200" />
+              Éco-responsable
+            </span>
 
-            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 backdrop-blur">
-              <Headphones className="h-5 w-5 shrink-0 text-cyan-200" />
-              <span>Support pro dédié</span>
-            </div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2">
+              <Headphones className="h-4 w-4 text-cyan-200" />
+              Support pro
+            </span>
           </div>
         </div>
 
-        <div className="relative hidden min-h-[245px] lg:block">
-          <div className="absolute right-10 top-3 h-44 w-44 rounded-full bg-cyan-300/18 blur-2xl" />
-          <div className="absolute right-16 top-8 h-40 w-40 rounded-full border border-cyan-200/18" />
-          <div className="absolute right-24 top-5 rotate-12 text-cyan-200/45">
-            <Leaf className="h-16 w-16" />
-          </div>
+        <div className="mt-6 rounded-2xl border border-emerald-200/45 bg-white/10 p-4 shadow-[0_14px_36px_rgba(0,0,0,0.18)] ring-1 ring-emerald-200/15 backdrop-blur">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <p className="mb-2 inline-flex rounded-full bg-emerald-300 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-sky-950">
+                Try & Buy
+              </p>
 
-          <div className="absolute bottom-12 right-28 h-10 w-48 rounded-[50%] bg-white/14 blur-sm" />
+              <h2 className="text-xl font-black leading-snug text-white sm:text-2xl">
+                <span className="font-serif italic text-emerald-300 underline decoration-emerald-300/80 decoration-4 underline-offset-4">
+                  Testez gratuitement
+                </span>{" "}
+                un HP EliteBook 840.
+              </h2>
 
-          <div className="absolute bottom-14 right-28 w-56 rounded-2xl border border-white/18 bg-gradient-to-br from-slate-800 to-sky-950 p-2.5 shadow-[0_20px_48px_rgba(0,0,0,0.3)]">
-            <div className="aspect-[16/10] rounded-xl border border-cyan-200/20 bg-gradient-to-br from-slate-950 to-sky-800 p-6">
-              <Leaf className="mx-auto mt-5 h-12 w-12 text-teal-300" />
-            </div>
-            <div className="mx-auto h-3 w-20 rounded-b-xl bg-slate-700" />
-          </div>
-
-          <div className="absolute right-2 top-12 h-52 w-20 rounded-2xl border border-cyan-100/20 bg-gradient-to-b from-slate-700 to-slate-950 p-2.5 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div
-                key={index}
-                className="mb-2.5 flex h-4.5 items-center gap-1 rounded-md bg-slate-950/80 px-1.5"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
-                <span className="h-1.5 flex-1 rounded-full bg-slate-600" />
-              </div>
-            ))}
-          </div>
-
-          <div className="absolute bottom-3 right-8 w-60 rounded-2xl border border-cyan-100/20 bg-slate-950 p-3 shadow-[0_18px_42px_rgba(0,0,0,0.32)]">
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex gap-1">
-                {Array.from({ length: 8 }).map((_, index) => (
-                  <span
-                    key={index}
-                    className="h-3 w-3 rounded-sm bg-slate-700"
-                  />
-                ))}
-              </div>
-
-              <span className="text-[10px] font-bold text-cyan-200">
-                EcoLiz
-              </span>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-sky-100/78">
+                Validez le confort et les performances avant achat. Disponible sur HP EliteBook 840
+                ou modèle proche, selon disponibilité.
+              </p>
             </div>
 
-            <div className="flex gap-1">
-              {Array.from({ length: 10 }).map((_, index) => (
-                <span
-                  key={index}
-                  className="h-1.5 flex-1 rounded-full bg-emerald-400/70"
-                />
-              ))}
-            </div>
+            <a
+              href="/contact"
+              className="inline-flex shrink-0 items-center justify-center rounded-full bg-emerald-300 px-5 py-3 text-sm font-black text-sky-950 shadow-[0_14px_34px_rgba(16,185,129,0.28)] transition hover:-translate-y-0.5 hover:bg-emerald-200"
+            >
+              Demander un test gratuit →
+            </a>
           </div>
         </div>
       </div>
     </header>
   );
 }
+
 
 function CategorySelectionCard({
   group,
