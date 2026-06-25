@@ -499,7 +499,6 @@ function handleProductImageError(event: SyntheticEvent<HTMLImageElement>) {
 
 function FloatingNeedHelpCTA() {
   const storageKey = "ecoliz_need_help_cta_minimized_v1";
-
   const [isMinimized, setIsMinimized] = useState(() => {
     if (typeof window === "undefined") {
       return false;
@@ -508,94 +507,63 @@ function FloatingNeedHelpCTA() {
     return localStorage.getItem(storageKey) === "1";
   });
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    localStorage.setItem(storageKey, isMinimized ? "1" : "0");
+  }, [isMinimized]);
+
   if (isMinimized) {
     return (
       <button
         type="button"
-        onClick={() => {
-          if (typeof window !== "undefined") {
-            localStorage.removeItem(storageKey);
-          }
-
-          setIsMinimized(false);
-        }}
-        className="group fixed bottom-5 right-5 z-[9999] flex h-16 w-16 items-center justify-center rounded-full border border-cyan-100/80 bg-gradient-to-br from-sky-950 via-cyan-900 to-teal-700 text-3xl text-white shadow-[0_0_35px_rgba(34,211,238,0.65)] transition hover:scale-110 hover:shadow-[0_0_45px_rgba(20,184,166,0.75)]"
+        onClick={() => setIsMinimized(false)}
+        className="fixed bottom-4 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-cyan-200/70 bg-sky-950 text-xl text-white shadow-[0_14px_34px_rgba(8,47,73,0.28)] transition hover:-translate-y-0.5"
         aria-label="Afficher l’aide EcoLiz"
-        title="Besoin d’aide ?"
       >
-        <span className="absolute -right-1 -top-1 flex h-5 w-5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-300 opacity-75" />
-          <span className="relative inline-flex h-5 w-5 rounded-full bg-cyan-300" />
-        </span>
-
-        <span className="transition group-hover:rotate-6">💬</span>
+        💬
       </button>
     );
   }
 
   return (
-    <div className="fixed bottom-5 left-4 right-4 z-[9999] sm:left-auto sm:right-6 sm:w-[440px]">
-      <div className="pointer-events-none absolute -inset-1 rounded-[1.4rem] bg-gradient-to-r from-cyan-300 via-teal-300 to-sky-400 opacity-85 blur-md" />
+    <aside className="fixed bottom-4 left-4 right-4 z-40 rounded-2xl border border-cyan-200/70 bg-white/96 p-4 shadow-[0_18px_45px_rgba(8,47,73,0.22)] backdrop-blur sm:bottom-6 sm:left-auto sm:right-6 sm:w-[360px] sm:p-5">
+      <button
+        type="button"
+        onClick={() => setIsMinimized(true)}
+        className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-sm font-black text-slate-500 transition hover:bg-slate-200"
+        aria-label="Réduire l’encart"
+      >
+        −
+      </button>
 
-      <div className="relative overflow-hidden rounded-[1.3rem] border border-cyan-100/80 bg-gradient-to-br from-sky-950 via-cyan-950 to-sky-900 text-white shadow-[0_22px_70px_rgba(8,47,73,0.52)]">
-        <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-cyan-300/30 blur-2xl" />
-        <div className="absolute -bottom-10 left-8 h-24 w-24 rounded-full bg-teal-300/25 blur-2xl" />
+      <div className="pr-8">
+        <p className="mb-2 inline-flex rounded-full bg-cyan-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-800">
+          Besoin spécifique ?
+        </p>
 
-        <button
-          type="button"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
+        <h3 className="text-base font-black leading-snug text-sky-950 sm:text-lg">
+          Vous ne trouvez pas le matériel adapté ?
+        </h3>
 
-            if (typeof window !== "undefined") {
-              localStorage.setItem(storageKey, "1");
-            }
+        <p className="mt-2 text-xs leading-5 text-slate-600 sm:text-sm sm:leading-6">
+          EcoLiz peut vous accompagner pour trouver une solution adaptée à votre besoin,
+          même au-delà du catalogue.
+        </p>
 
-            setIsMinimized(true);
-          }}
-          className="absolute right-3 top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-white/25 bg-white/10 text-lg font-black leading-none text-white transition hover:bg-white hover:text-sky-950"
-          aria-label="Réduire le message"
-          title="Réduire"
+        <a
+          href="/contact"
+          className="mt-3 inline-flex w-full items-center justify-center rounded-full bg-cyan-600 px-4 py-2.5 text-xs font-black text-white shadow-[0_12px_24px_rgba(8,145,178,0.22)] transition hover:-translate-y-0.5 hover:bg-cyan-700 sm:text-sm"
         >
-          −
-        </button>
-
-        <div className="relative p-4 pr-10">
-          <div className="flex items-start gap-4">
-            <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-200 to-teal-400 text-2xl shadow-[0_0_34px_rgba(103,232,249,0.65)]">
-              <span className="absolute -right-1 -top-1 flex h-4 w-4">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-200 opacity-75" />
-                <span className="relative inline-flex h-4 w-4 rounded-full bg-cyan-200" />
-              </span>
-              💬
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <p className="mb-2 inline-flex rounded-full bg-cyan-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-sky-950">
-                Besoin spécifique ?
-              </p>
-
-              <p className="text-base font-black leading-snug text-white">
-                Votre projet a des exigences spécifiques ?
-              </p>
-
-              <p className="mt-1 text-sm leading-5 text-sky-100/85">
-                Nous vous accompagnons pour trouver le matériel le plus adapté à vos besoins, au-delà de notre catalogue.
-              </p>
-
-              <a
-                href="/contact"
-                className="mt-3 inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-black text-sky-950 shadow-[0_10px_26px_rgba(255,255,255,0.16)] transition hover:translate-x-1 hover:bg-cyan-100"
-              >
-                Contactez-nous !
-              </a>
-            </div>
-          </div>
-        </div>
+          Parler de mon projet →
+        </a>
       </div>
-    </div>
+    </aside>
   );
 }
+
 
 function getPromotionDiscountPercent(product: Product) {
   const originalPrice = Number(
