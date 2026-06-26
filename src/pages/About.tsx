@@ -1,498 +1,363 @@
-import { Link } from "react-router-dom";
-import { useEffect } from "react";
-
-const stats = [
-  { value: "B2B", label: "une plateforme pensée pour les professionnels" },
-  { value: "IT", label: "postes, PC portables, écrans, serveurs, stockage et réseau" },
-  { value: "Réemploi", label: "une démarche orientée sobriété numérique et seconde vie" },
-];
+import React, { useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  Leaf,
+  Users,
+  Award,
+  Target,
+  ArrowRight,
+  Star,
+  BookOpen,
+  Keyboard,
+  ShieldCheck,
+  Recycle,
+  Laptop,
+  Server,
+} from 'lucide-react'
+import { testimonials } from '../data/mockContent'
 
 const values = [
   {
-    title: "Un catalogue pensé pour les achats professionnels",
-    description:
-      "EcoLiz aide les entreprises à rechercher du matériel selon des critères concrets : catégorie, marque, état esthétique, configuration, stockage, système d'exploitation ou encore langue du clavier.",
+    icon: Leaf,
+    title: 'Réemploi informatique',
+    text: "Prolonger la durée de vie du matériel professionnel et limiter le renouvellement systématique par du neuf.",
   },
   {
-    title: "Une alternative au renouvellement systématique",
-    description:
-      "Le reconditionné permet de prolonger la durée de vie des équipements, de limiter les déchets électroniques et de mieux maîtriser les budgets IT.",
+    icon: Target,
+    title: 'Approche B2B',
+    text: 'Une plateforme pensée pour les entreprises, collectivités, associations et professionnels.',
   },
   {
-    title: "Une relation directe avec les entreprises",
-    description:
-      "L'objectif n'est pas seulement de vendre en ligne : EcoLiz permet aussi aux professionnels de demander un conseil, un devis ou une réponse adaptée à leur parc informatique.",
-  },
-];
-
-const reviews = [
-  {
-    initials: "RI",
-    role: "Responsable informatique",
-    company: "PME en Occitanie",
-    rating: "5.0",
-    tag: "Renouvellement de parc",
-    text:
-      "Une plateforme claire pour comparer les références, préparer une demande de devis et identifier rapidement le matériel adapté à nos équipes.",
+    icon: Users,
+    title: 'Accompagnement métier',
+    text: 'Aider les acheteurs à comparer les références, comprendre les grades et choisir une configuration adaptée.',
   },
   {
-    initials: "DA",
-    role: "Direction administrative",
-    company: "Association",
-    rating: "5.0",
-    tag: "Budget maîtrisé",
-    text:
-      "Le reconditionné nous permet d'équiper plusieurs postes avec du matériel professionnel tout en restant cohérents avec notre démarche responsable.",
+    icon: Award,
+    title: 'Qualité & traçabilité',
+    text: 'Mettre en avant des produits vérifiés, avec des informations claires sur l’état, les caractéristiques et les usages.',
   },
-  {
-    initials: "AI",
-    role: "Acheteur IT",
-    company: "Collectivité",
-    rating: "4.8",
-    tag: "Critères techniques",
-    text:
-      "Les informations sur l'état, la configuration et la langue du clavier sont indispensables pour éviter les erreurs de commande et sécuriser l'achat.",
-  },
-];
+]
 
 const articles = [
   {
-    title: "Pourquoi choisir du matériel informatique reconditionné en entreprise ?",
-    description:
-      "Réduire les coûts, prolonger la durée de vie du matériel et limiter les déchets électroniques : le reconditionné répond à des enjeux à la fois économiques et environnementaux.",
-    category: "Guide achat",
-    readingTime: "4 min",
+    icon: Laptop,
+    category: 'Guide achat',
+    title: 'Bien choisir un PC portable professionnel reconditionné',
+    text: "Processeur, RAM, stockage SSD, taille d'écran, système d'exploitation, autonomie : les critères essentiels à comparer avant d'équiper vos équipes.",
+    linkLabel: 'Lire le guide',
   },
   {
-    title: "Comment choisir un PC portable professionnel reconditionné ?",
-    description:
-      "Processeur, mémoire RAM, stockage SSD, taille d'écran, système d'exploitation, autonomie et état esthétique : les critères essentiels à comparer avant l'achat.",
-    category: "Ordinateurs portables",
-    readingTime: "5 min",
+    icon: Award,
+    category: 'Reconditionné',
+    title: 'Comprendre les grades A+, A et B',
+    text: "Le grade concerne surtout l'aspect visuel du produit. Les performances dépendent avant tout de la configuration technique choisie.",
+    linkLabel: 'Comprendre les grades',
   },
   {
-    title: "AZERTY, QWERTY, QWERTZ : pourquoi la langue du clavier compte ?",
-    description:
-      "Sur du matériel reconditionné, la disposition du clavier peut varier selon l'origine du produit. Ce détail doit être clairement vérifié avant une commande professionnelle.",
-    category: "Conseils pratiques",
-    readingTime: "3 min",
+    icon: Keyboard,
+    category: 'Conseil pratique',
+    title: 'AZERTY, QWERTY, QWERTZ : attention à la langue du clavier',
+    text: "Sur du matériel reconditionné, la disposition du clavier peut varier selon l'origine du produit. C'est un point important à vérifier avant commande.",
+    linkLabel: 'Voir les conseils',
   },
   {
-    title: "Grade A, Grade B : comprendre l'état visuel d'un produit",
-    description:
-      "Le grade concerne principalement l'aspect esthétique du produit. Il ne signifie pas qu'un équipement est moins performant, mais permet d'évaluer son état visuel.",
-    category: "Reconditionné",
-    readingTime: "4 min",
+    icon: Recycle,
+    category: 'Impact',
+    title: 'Reprise de parc IT : que deviennent les anciens équipements ?',
+    text: "Réemploi, tri, valorisation ou recyclage DEEE : la gestion de fin de vie du matériel est un vrai sujet pour les entreprises.",
+    linkLabel: 'Découvrir la reprise',
   },
   {
-    title: "Reprise de parc IT : que deviennent les anciens équipements ?",
-    description:
-      "La reprise de parc aide les entreprises à organiser le renouvellement de leurs équipements avec une logique de réemploi, de tri, de valorisation ou de recyclage certifié.",
-    category: "Parc informatique",
-    readingTime: "4 min",
+    icon: ShieldCheck,
+    category: 'Sécurité',
+    title: 'Effacement des données et RGPD : un enjeu clé',
+    text: "Avant la revente ou le recyclage, l'effacement sécurisé des données permet de protéger les informations sensibles de l'entreprise.",
+    linkLabel: 'En savoir plus',
   },
   {
-    title: "Effacement des données et RGPD : un point clé pour les entreprises",
-    description:
-      "Avant la revente, la réutilisation ou le recyclage d'un équipement, l'effacement sécurisé des données limite les risques liés aux informations sensibles.",
-    category: "Sécurité",
-    readingTime: "5 min",
+    icon: Server,
+    category: 'Infrastructure',
+    title: 'Serveurs, stockage, réseau : le reconditionné ne concerne pas que les PC',
+    text: "Switches, serveurs, stockage, écrans ou stations de travail : le réemploi peut aussi répondre à des besoins IT plus techniques.",
+    linkLabel: 'Explorer les usages',
   },
-];
+]
 
 const faq = [
   {
     question: "EcoLiz s'adresse à qui ?",
     answer:
-      "EcoLiz s'adresse aux entreprises, collectivités, associations et professionnels qui souhaitent s'équiper en matériel informatique reconditionné ou demander un accompagnement sur leur parc IT.",
+      "EcoLiz s'adresse aux professionnels : entreprises, collectivités, associations, établissements et structures qui souhaitent s'équiper en matériel informatique reconditionné.",
   },
   {
-    question: "Pourquoi passer par EcoLiz plutôt que par une simple fiche produit ?",
+    question: "Le grade influence-t-il les performances ?",
     answer:
-      "EcoLiz met l'accent sur les critères importants pour un achat professionnel : usage, configuration, état esthétique, disponibilité, langue du clavier, garantie à confirmer et besoin éventuel de devis.",
+      "Non, le grade décrit principalement l'état esthétique du produit. Les performances dépendent de la configuration : processeur, mémoire RAM, stockage, carte graphique et génération du matériel.",
   },
   {
-    question: "Le grade d'un produit change-t-il ses performances ?",
+    question: 'Pourquoi faire une demande de devis ?',
     answer:
-      "Non. Le grade sert surtout à décrire l'état visuel du matériel. Un produit avec un grade différent peut conserver les mêmes performances techniques si sa configuration est identique.",
+      "Une demande de devis permet de préciser votre besoin, les quantités, la langue des claviers, les contraintes de livraison, le niveau de garantie attendu et les références adaptées à votre parc.",
   },
-  {
-    question: "Puis-je demander un conseil avant de commander ?",
-    answer:
-      "Oui. La stratégie d'EcoLiz est d'encourager les professionnels à prendre contact afin de comprendre leur besoin réel, leur parc existant et les contraintes de leur projet.",
-  },
-];
+]
 
 export function About() {
   useEffect(() => {
     document.title =
-      "À propos d'EcoLiz | Matériel informatique reconditionné B2B";
+      "À propos d'EcoLiz | Matériel informatique reconditionné pour professionnels"
 
     const description =
-      "Découvrez EcoLiz, une plateforme B2B dédiée au matériel informatique professionnel reconditionné, au réemploi, à la reprise de parc IT et à la sobriété numérique.";
+      "Découvrez EcoLiz, une plateforme B2B dédiée au matériel informatique professionnel reconditionné, au réemploi, à la reprise de parc IT et à la sobriété numérique."
 
-    let meta = document.querySelector('meta[name="description"]');
+    let meta = document.querySelector('meta[name="description"]')
 
     if (!meta) {
-      meta = document.createElement("meta");
-      meta.setAttribute("name", "description");
-      document.head.appendChild(meta);
+      meta = document.createElement('meta')
+      meta.setAttribute('name', 'description')
+      document.head.appendChild(meta)
     }
 
-    meta.setAttribute("content", description);
-
-    const jsonLd = {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      name: "EcoLiz",
-      description,
-      areaServed: "France",
-      audience: {
-        "@type": "BusinessAudience",
-        audienceType: "Professionnels, entreprises, collectivités et associations",
-      },
-      knowsAbout: [
-        "matériel informatique reconditionné",
-        "informatique professionnelle",
-        "réemploi informatique",
-        "reprise de parc informatique",
-        "sobriété numérique",
-        "équipements IT B2B",
-      ],
-    };
-
-    let script = document.querySelector<HTMLScriptElement>(
-      'script[data-seo="about-ecoliz"]',
-    );
-
-    if (!script) {
-      script = document.createElement("script");
-      script.type = "application/ld+json";
-      script.dataset.seo = "about-ecoliz";
-      document.head.appendChild(script);
-    }
-
-    script.textContent = JSON.stringify(jsonLd);
-  }, []);
+    meta.setAttribute('content', description)
+  }, [])
 
   return (
-    <main className="bg-slate-50 text-slate-900">
-      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-950 text-white">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute left-10 top-20 h-40 w-40 rounded-full bg-emerald-400 blur-3xl" />
-          <div className="absolute bottom-10 right-10 h-56 w-56 rounded-full bg-lime-300 blur-3xl" />
+    <>
+      <section className="pt-28 pb-16 lg:pt-32 lg:pb-20 bg-brand-50 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[700px] h-[700px] bg-brand-200/50 blur-3xl rounded-full pointer-events-none" />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <p className="text-brand-700 font-semibold tracking-wide uppercase text-sm mb-4">
+            À propos d&apos;EcoLiz
+          </p>
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-brand-950 tracking-tight mb-6 leading-[1.05]">
+            Réinventer l&apos;
+            <span className="font-display italic text-accent-500">
+              informatique d&apos;entreprise
+            </span>
+            , durablement.
+          </h1>
+          <p className="text-xl text-brand-900/70 leading-relaxed">
+            EcoLiz accompagne les professionnels dans l&apos;achat de matériel
+            informatique reconditionné : ordinateurs portables, postes de
+            travail, écrans, serveurs, stockage et équipements réseau. Notre
+            objectif est simple : rendre le réemploi informatique plus clair,
+            plus accessible et plus adapté aux besoins B2B.
+          </p>
         </div>
+      </section>
 
-        <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-28 sm:px-6 sm:pb-16 sm:pt-32 lg:px-8 lg:pb-20 lg:pt-32">
-          <div className="max-w-4xl">
-            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-emerald-200">
-              À propos d'EcoLiz
+      <section className="py-20 lg:py-28 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="prose prose-lg text-brand-900/80 max-w-none leading-relaxed">
+            <p className="mb-6">
+              Notre mission est de prouver qu&apos;il est possible d&apos;allier
+              performance économique, exigence professionnelle et responsabilité
+              environnementale. Le matériel reconditionné permet de prolonger la
+              durée de vie des équipements et de limiter le renouvellement
+              systématique par du matériel neuf.
             </p>
-
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              Mieux équiper les professionnels avec du matériel informatique reconditionné
-            </h1>
-
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-emerald-50">
-              EcoLiz est une plateforme e-commerce B2B dédiée au matériel informatique
-              professionnel reconditionné. Elle aide les entreprises à trouver des
-              ordinateurs portables, postes de travail, écrans, serveurs, solutions de
-              stockage et équipements réseau adaptés à leurs usages.
+            <p className="mb-6">
+              Cette page permet de mieux comprendre l&apos;approche EcoLiz, au-delà
+              de la boutique : notre vision du réemploi, les critères importants
+              avant un achat, les sujets à surveiller comme les grades, la langue
+              des claviers, la reprise de parc IT ou encore l&apos;effacement des
+              données.
             </p>
-
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              <Link
-                to="/contact"
-                className="rounded-full bg-white px-6 py-3 text-center text-sm font-semibold text-emerald-950 shadow-sm transition hover:bg-emerald-50"
-              >
-                Demander un devis
-              </Link>
-
-              <Link
-                to="/boutique"
-                className="rounded-full border border-white/40 px-6 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10"
-              >
-                Découvrir la boutique
-              </Link>
-            </div>
           </div>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {stats.map((stat) => (
+          <div className="grid sm:grid-cols-2 gap-6 mt-16">
+            {values.map((v) => (
               <div
-                key={stat.value}
-                className="rounded-3xl border border-white/15 bg-white/10 p-5 backdrop-blur"
+                key={v.title}
+                className="bg-brand-50 rounded-2xl border border-brand-100 p-6"
               >
-                <p className="text-3xl font-bold text-emerald-200">{stat.value}</p>
-                <p className="mt-2 text-sm leading-6 text-emerald-50">{stat.label}</p>
+                <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center mb-4 text-brand-700">
+                  <v.icon className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-bold text-brand-950 mb-2">
+                  {v.title}
+                </h3>
+                <p className="text-brand-900/70">{v.text}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-          <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
-              Qui sommes-nous ?
+      {/* Testimonials */}
+      <section className="py-24 lg:py-32 bg-brand-50 border-y border-brand-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <p className="text-brand-700 font-semibold tracking-wide uppercase text-sm mb-3">
+              Témoignages
             </p>
-
-            <h2 className="mt-3 text-3xl font-bold text-slate-900">
-              Une solution pensée pour les besoins informatiques des entreprises
+            <h2 className="text-4xl sm:text-5xl font-bold text-brand-950 tracking-tight leading-tight">
+              Ils nous font{' '}
+              <span className="font-display italic text-accent-500">
+                confiance
+              </span>
+              .
             </h2>
-
-            <div className="mt-6 space-y-5 text-base leading-8 text-slate-700">
-              <p>
-                EcoLiz a été conçu pour proposer une expérience plus claire autour de
-                l'achat de matériel informatique reconditionné. L'objectif est de rendre
-                le catalogue plus lisible, les filtres plus utiles et les informations
-                produits plus simples à comparer.
-              </p>
-
-              <p>
-                La plateforme s'inscrit dans une démarche B2B : comprendre le besoin du
-                client, l'aider à identifier les bons équipements et faciliter la demande
-                de devis lorsque le projet nécessite un accompagnement.
-              </p>
-
-              <p>
-                Cette page complète la page d'accueil : elle explique davantage la vision
-                d'EcoLiz, la logique du reconditionné, les critères de choix importants et
-                les sujets utiles pour les entreprises.
-              </p>
-            </div>
+            <p className="mt-5 text-brand-900/70 leading-relaxed">
+              Des retours clients permettent de rassurer les entreprises avant
+              une demande de devis ou une commande de matériel reconditionné.
+            </p>
           </div>
-
-          <div className="grid gap-5">
-            {values.map((value) => (
-              <article
-                key={value.title}
-                className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+          <div className="grid md:grid-cols-3 gap-8">
+            {testimonials.map((t) => (
+              <div
+                key={t.id}
+                className="group bg-white p-8 rounded-[2rem] shadow-sm border border-brand-100 hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-900/10 transition-all relative overflow-hidden"
               >
-                <h3 className="text-xl font-bold text-slate-900">{value.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-slate-700">
-                  {value.description}
-                </p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-y border-slate-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-            <div className="max-w-3xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
-                Avis clients
-              </p>
-
-              <h2 className="mt-3 text-3xl font-bold text-slate-900">
-                Des retours concrets pour rassurer les acheteurs professionnels
-              </h2>
-
-              <p className="mt-5 text-base leading-8 text-slate-700">
-                Les témoignages permettent de montrer les usages réels : renouvellement de
-                parc, achat ponctuel, recherche d'un meilleur budget ou choix d'un matériel
-                plus responsable.
-              </p>
-            </div>
-
-            <Link
-              to="/contact"
-              className="inline-flex w-fit rounded-full bg-emerald-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800"
-            >
-              Parler de mon besoin
-            </Link>
-          </div>
-
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {reviews.map((review) => (
-              <article
-                key={`${review.role}-${review.company}`}
-                className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-emerald-50 p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-              >
-                <div className="absolute right-5 top-4 text-7xl font-black leading-none text-emerald-100">
-                  ”
-                </div>
-
-                <div className="relative flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-800 text-sm font-bold text-white">
-                      {review.initials}
+                <div className="absolute top-0 right-0 w-28 h-28 bg-brand-100/60 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between gap-4 mb-6">
+                    <div className="flex gap-1 text-amber-400">
+                      {[...Array(5)].map((_, j) => (
+                        <Star key={j} className="w-4 h-4 fill-current" />
+                      ))}
                     </div>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-brand-700 bg-brand-50 border border-brand-100 rounded-full px-3 py-1">
+                      Avis client
+                    </span>
+                  </div>
+
+                  <p className="text-brand-900 mb-8 italic leading-relaxed">
+                    “{t.quote}”
+                  </p>
+
+                  <div className="flex items-center gap-4 pt-6 border-t border-brand-100">
+                    <img
+                      src={t.avatar}
+                      alt={t.author}
+                      className="w-12 h-12 rounded-full object-cover ring-4 ring-brand-50"
+                    />
                     <div>
-                      <p className="font-semibold text-slate-900">{review.role}</p>
-                      <p className="text-sm text-slate-500">{review.company}</p>
+                      <div className="font-bold text-brand-950 text-sm">
+                        {t.author}
+                      </div>
+                      <div className="text-brand-900/60 text-xs">{t.role}</div>
                     </div>
                   </div>
-
-                  <div className="rounded-full bg-white px-3 py-1 text-sm font-bold text-emerald-800 shadow-sm">
-                    ★ {review.rating}
-                  </div>
                 </div>
-
-                <p className="relative mt-5 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
-                  {review.tag}
-                </p>
-
-                <blockquote className="relative mt-5 text-sm leading-7 text-slate-700">
-                  “{review.text}”
-                </blockquote>
-              </article>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-          <div className="max-w-3xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
+      {/* Articles */}
+      <section className="py-24 lg:py-32 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mb-16">
+            <p className="text-brand-700 font-semibold tracking-wide uppercase text-sm mb-3">
               Ressources & conseils
             </p>
-
-            <h2 className="mt-3 text-3xl font-bold text-slate-900">
-              Des contenus utiles pour mieux comprendre l'informatique reconditionnée
+            <h2 className="text-4xl sm:text-5xl font-bold text-brand-950 tracking-tight leading-tight">
+              Des articles pour mieux comprendre{' '}
+              <span className="font-display italic text-accent-500">
+                le reconditionné
+              </span>
+              .
             </h2>
-
-            <p className="mt-5 text-base leading-8 text-slate-700">
-              Ces contenus enrichissent la page pour le SEO tout en répondant aux questions
-              que peuvent se poser les professionnels avant de demander un devis.
+            <p className="mt-5 text-lg text-brand-900/70 leading-relaxed">
+              Ces contenus donnent de la valeur à la page et améliorent son SEO
+              en répondant aux questions que se posent les professionnels avant
+              d&apos;acheter ou de renouveler leur parc informatique.
             </p>
           </div>
-        </div>
 
-        <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {articles.map((article) => (
-            <article
-              key={article.title}
-              className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <p className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                  {article.category}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {articles.map((article) => (
+              <article
+                key={article.title}
+                className="group bg-brand-50 rounded-3xl border border-brand-100 p-7 hover:bg-white hover:shadow-xl hover:shadow-brand-900/10 hover:-translate-y-1 transition-all"
+              >
+                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 text-brand-700 border border-brand-100 group-hover:bg-brand-700 group-hover:text-white transition-colors">
+                  <article.icon className="w-6 h-6" />
+                </div>
+
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-brand-700 bg-white border border-brand-100 rounded-full px-3 py-1">
+                    {article.category}
+                  </span>
+                  <BookOpen className="w-4 h-4 text-brand-900/40" />
+                </div>
+
+                <h3 className="text-xl font-bold text-brand-950 mb-3 leading-snug group-hover:text-brand-700 transition-colors">
+                  {article.title}
+                </h3>
+                <p className="text-brand-900/70 leading-relaxed mb-6">
+                  {article.text}
                 </p>
-                <p className="text-xs text-slate-500">{article.readingTime}</p>
-              </div>
 
-              <h3 className="mt-5 text-lg font-bold leading-7 text-slate-900 group-hover:text-emerald-800">
-                {article.title}
-              </h3>
-
-              <p className="mt-3 text-sm leading-7 text-slate-700">
-                {article.description}
-              </p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="bg-emerald-950 text-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-200">
-              Impact & réemploi
-            </p>
-
-            <h2 className="mt-3 text-3xl font-bold">
-              Une démarche tournée vers la seconde vie du matériel IT
-            </h2>
-
-            <p className="mt-5 text-base leading-8 text-emerald-50">
-              EcoLiz valorise une consommation IT plus raisonnée : mieux choisir le matériel,
-              prolonger sa durée d'usage, organiser la reprise de parc et orienter les
-              équipements non réutilisables vers des filières adaptées.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-3xl bg-white/10 p-6 ring-1 ring-white/10">
-              <h3 className="font-bold">Sobriété numérique</h3>
-              <p className="mt-3 text-sm leading-7 text-emerald-50">
-                Accompagner les professionnels vers des achats IT plus raisonnés.
-              </p>
-            </div>
-
-            <div className="rounded-3xl bg-white/10 p-6 ring-1 ring-white/10">
-              <h3 className="font-bold">Reprise de parc</h3>
-              <p className="mt-3 text-sm leading-7 text-emerald-50">
-                Donner une seconde vie aux équipements lorsque leur état le permet.
-              </p>
-            </div>
-
-            <div className="rounded-3xl bg-white/10 p-6 ring-1 ring-white/10">
-              <h3 className="font-bold">Recyclage DEEE</h3>
-              <p className="mt-3 text-sm leading-7 text-emerald-50">
-                Orienter les matériels en fin de vie vers des circuits de traitement adaptés.
-              </p>
-            </div>
-
-            <div className="rounded-3xl bg-white/10 p-6 ring-1 ring-white/10">
-              <h3 className="font-bold">Données & RGPD</h3>
-              <p className="mt-3 text-sm leading-7 text-emerald-50">
-                Mettre en avant l'importance de l'effacement sécurisé avant réemploi ou recyclage.
-              </p>
-            </div>
+                <Link
+                  to="/contact"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-brand-700 group-hover:text-brand-900"
+                >
+                  {article.linkLabel}
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </article>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
-          <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
+      {/* FAQ */}
+      <section className="py-24 lg:py-32 bg-brand-50 border-y border-brand-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <p className="text-brand-700 font-semibold tracking-wide uppercase text-sm mb-3">
               Questions fréquentes
             </p>
-
-            <h2 className="mt-3 text-3xl font-bold text-slate-900">
-              Comprendre EcoLiz en quelques questions
+            <h2 className="text-4xl sm:text-5xl font-bold text-brand-950 tracking-tight leading-tight">
+              Mieux connaître{' '}
+              <span className="font-display italic text-accent-500">EcoLiz</span>
+              .
             </h2>
-
-            <div className="mt-8 space-y-5">
-              {faq.map((item) => (
-                <article key={item.question} className="border-t border-slate-200 pt-5">
-                  <h3 className="font-bold text-slate-900">{item.question}</h3>
-                  <p className="mt-2 text-sm leading-7 text-slate-700">{item.answer}</p>
-                </article>
-              ))}
-            </div>
           </div>
 
-          <div className="rounded-3xl bg-emerald-900 p-8 text-white shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-200">
-              Une autre question ?
-            </p>
-
-            <h2 className="mt-3 text-3xl font-bold">
-              Nous serons ravis d'y répondre
-            </h2>
-
-            <p className="mt-5 text-base leading-8 text-emerald-50">
-              Pour une recherche de matériel, une reprise de parc, une question sur un
-              produit ou une demande professionnelle, contactez EcoLiz afin d'obtenir une
-              réponse adaptée à votre besoin.
-            </p>
-
-            <div className="mt-8 flex flex-col gap-4">
-              <Link
-                to="/contact"
-                className="rounded-full bg-white px-6 py-3 text-center text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+          <div className="space-y-5">
+            {faq.map((item) => (
+              <article
+                key={item.question}
+                className="bg-white rounded-2xl border border-brand-100 p-6 shadow-sm"
               >
-                Contactez-nous
-              </Link>
-
-              <Link
-                to="/boutique"
-                className="rounded-full border border-white/30 px-6 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10"
-              >
-                Voir les produits disponibles
-              </Link>
-            </div>
+                <h3 className="text-lg font-bold text-brand-950">
+                  {item.question}
+                </h3>
+                <p className="mt-3 text-brand-900/70 leading-relaxed">
+                  {item.answer}
+                </p>
+              </article>
+            ))}
           </div>
         </div>
       </section>
-    </main>
-  );
+
+      {/* CTA */}
+      <section className="py-24 lg:py-32 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl sm:text-5xl font-bold text-brand-950 mb-6 tracking-tight">
+            Un besoin informatique{' '}
+            <span className="font-display italic text-accent-500">professionnel</span>
+            ?
+          </h2>
+          <p className="text-lg text-brand-900/70 mb-10">
+            Parlez-nous de votre parc, de vos contraintes et des équipements que
+            vous recherchez. EcoLiz peut vous aider à identifier les références
+            les plus adaptées.
+          </p>
+          <Link
+            to="/contact"
+            className="inline-flex items-center gap-2 bg-brand-700 hover:bg-brand-800 text-white px-7 py-4 rounded-xl font-medium transition-all shadow-lg shadow-brand-900/20 group"
+          >
+            Demander un devis
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
+        </div>
+      </section>
+    </>
+  )
 }
