@@ -10,6 +10,10 @@ const navLinks = [
     to: "/",
   },
   {
+    label: "À propos",
+    to: "/a-propos",
+  },
+  {
     label: "Impact",
     to: "/impact",
   },
@@ -20,10 +24,6 @@ const navLinks = [
   {
     label: "Services",
     to: "/services",
-  },
-  {
-    label: "À propos",
-    to: "/about",
   },
   {
     label: "FAQ",
