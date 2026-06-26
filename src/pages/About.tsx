@@ -260,11 +260,6 @@ export function About() {
               </span>
               .
             </h2>
-            <p className="mt-5 text-lg text-brand-900/70 leading-relaxed">
-              Ces contenus donnent de la valeur à la page et améliorent son SEO
-              en répondant aux questions que se posent les professionnels avant
-              d&apos;acheter ou de renouveler leur parc informatique.
-            </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
