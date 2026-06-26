@@ -22,6 +22,10 @@ const navLinks = [
     to: "/services",
   },
   {
+    label: "À propos",
+    to: "/about",
+  },
+  {
     label: "FAQ",
     to: "/faq",
   },

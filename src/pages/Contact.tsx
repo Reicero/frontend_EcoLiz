@@ -248,6 +248,7 @@ export function Contact() {
                   <option value="Projet d’équipement informatique">Projet d’équipement informatique</option>
                   <option value="SAV / suivi de commande">SAV / suivi de commande</option>
                   <option value="Compte client / espace client">Compte client / espace client</option>
+                  <option value="Autre">Autre</option>
 
                 </select>
                 </div>
