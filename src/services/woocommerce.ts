@@ -112,6 +112,19 @@ const FILTER_ATTRIBUTE_CONFIG: Array<{
   attributeAliases?: string[];
 }> = [
   { key: "brand", title: "Marque", attributeName: "Marque" },
+  {
+    key: "keyboardLanguage",
+    title: "Clavier",
+    attributeName: "Langue du clavier",
+    attributeAliases: [
+      "Langue clavier",
+      "Disposition clavier",
+      "Clavier",
+      "Keyboard",
+      "Keyboard layout",
+      "Keyboard language",
+    ],
+  },
   { key: "condition", title: "État", attributeName: "État" },
   { key: "os", title: "OS", attributeName: "OS" },
 
@@ -231,20 +244,6 @@ const FILTER_ATTRIBUTE_CONFIG: Array<{
     attributeName: "Type d’équipement Wi-Fi",
   },
 
-
-  {
-    key: "keyboardLanguage",
-    title: "Clavier",
-    attributeName: "Langue du clavier",
-    attributeAliases: [
-      "Langue clavier",
-      "Disposition clavier",
-      "Clavier",
-      "Keyboard",
-      "Keyboard layout",
-      "Keyboard language",
-    ],
-  },
 
   {
     key: "licenseEditor",
