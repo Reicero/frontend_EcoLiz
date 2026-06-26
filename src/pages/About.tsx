@@ -3,46 +3,55 @@ import { useEffect } from "react";
 
 const stats = [
   { value: "B2B", label: "une plateforme pensée pour les professionnels" },
-  { value: "IT", label: "ordinateurs, écrans, serveurs et équipements réseau" },
-  { value: "Réemploi", label: "une démarche orientée sobriété numérique" },
+  { value: "IT", label: "postes, PC portables, écrans, serveurs, stockage et réseau" },
+  { value: "Réemploi", label: "une démarche orientée sobriété numérique et seconde vie" },
 ];
 
 const values = [
   {
-    title: "Du matériel professionnel sélectionné",
+    title: "Un catalogue pensé pour les achats professionnels",
     description:
-      "EcoLiz met en avant du matériel informatique reconditionné adapté aux usages des entreprises : postes de travail, ordinateurs portables, écrans, serveurs, stockage et réseau.",
+      "EcoLiz aide les entreprises à rechercher du matériel selon des critères concrets : catégorie, marque, état esthétique, configuration, stockage, système d'exploitation ou encore langue du clavier.",
   },
   {
-    title: "Une approche plus responsable",
+    title: "Une alternative au renouvellement systématique",
     description:
-      "Le reconditionné permet de prolonger la durée de vie des équipements, de limiter le gaspillage électronique et de réduire le renouvellement systématique du matériel neuf.",
+      "Le reconditionné permet de prolonger la durée de vie des équipements, de limiter les déchets électroniques et de mieux maîtriser les budgets IT.",
   },
   {
-    title: "Un accompagnement B2B",
+    title: "Une relation directe avec les entreprises",
     description:
-      "La plateforme aide les professionnels à comparer les caractéristiques, comprendre les grades, choisir les bonnes références et préparer leurs demandes selon leur parc informatique.",
+      "L'objectif n'est pas seulement de vendre en ligne : EcoLiz permet aussi aux professionnels de demander un conseil, un devis ou une réponse adaptée à leur parc informatique.",
   },
 ];
 
 const reviews = [
   {
-    name: "Responsable informatique",
-    company: "PME région Occitanie",
-    rating: "★★★★★",
-    text: "La plateforme permet d'identifier rapidement le matériel adapté à nos besoins. Les informations produits sont claires et utiles pour comparer les références.",
+    initials: "RI",
+    role: "Responsable informatique",
+    company: "PME en Occitanie",
+    rating: "5.0",
+    tag: "Renouvellement de parc",
+    text:
+      "Une plateforme claire pour comparer les références, préparer une demande de devis et identifier rapidement le matériel adapté à nos équipes.",
   },
   {
-    name: "Chargée administrative",
+    initials: "DA",
+    role: "Direction administrative",
     company: "Association",
-    rating: "★★★★★",
-    text: "Le reconditionné nous permet d'équiper nos équipes avec du matériel professionnel tout en respectant notre budget et notre démarche responsable.",
+    rating: "5.0",
+    tag: "Budget maîtrisé",
+    text:
+      "Le reconditionné nous permet d'équiper plusieurs postes avec du matériel professionnel tout en restant cohérents avec notre démarche responsable.",
   },
   {
-    name: "Acheteur IT",
+    initials: "AI",
+    role: "Acheteur IT",
     company: "Collectivité",
-    rating: "★★★★☆",
-    text: "Les critères comme l'état du produit, la marque, la configuration et la langue du clavier sont essentiels pour sécuriser nos commandes.",
+    rating: "4.8",
+    tag: "Critères techniques",
+    text:
+      "Les informations sur l'état, la configuration et la langue du clavier sont indispensables pour éviter les erreurs de commande et sécuriser l'achat.",
   },
 ];
 
@@ -50,42 +59,42 @@ const articles = [
   {
     title: "Pourquoi choisir du matériel informatique reconditionné en entreprise ?",
     description:
-      "Réduction des coûts, limitation des déchets électroniques, prolongation de la durée de vie du matériel : le reconditionné répond aux enjeux économiques et environnementaux des professionnels.",
+      "Réduire les coûts, prolonger la durée de vie du matériel et limiter les déchets électroniques : le reconditionné répond à des enjeux à la fois économiques et environnementaux.",
     category: "Guide achat",
     readingTime: "4 min",
   },
   {
     title: "Comment choisir un PC portable professionnel reconditionné ?",
     description:
-      "Processeur, mémoire RAM, stockage SSD, taille d'écran, autonomie, système d'exploitation et état esthétique : les critères à vérifier avant de commander.",
+      "Processeur, mémoire RAM, stockage SSD, taille d'écran, système d'exploitation, autonomie et état esthétique : les critères essentiels à comparer avant l'achat.",
     category: "Ordinateurs portables",
     readingTime: "5 min",
   },
   {
-    title: "AZERTY, QWERTY, QWERTZ : pourquoi la langue du clavier est importante ?",
+    title: "AZERTY, QWERTY, QWERTZ : pourquoi la langue du clavier compte ?",
     description:
-      "Sur un ordinateur portable reconditionné, la disposition clavier peut varier selon l'origine du produit. Ce critère doit être vérifié pour éviter les erreurs de commande.",
+      "Sur du matériel reconditionné, la disposition du clavier peut varier selon l'origine du produit. Ce détail doit être clairement vérifié avant une commande professionnelle.",
     category: "Conseils pratiques",
     readingTime: "3 min",
   },
   {
-    title: "Grade A, Grade B : comprendre l'état d'un produit reconditionné",
+    title: "Grade A, Grade B : comprendre l'état visuel d'un produit",
     description:
-      "Le grade indique l'état esthétique d'un produit. Il aide à choisir entre un matériel en excellent état visuel ou une solution plus économique avec de légères traces d'usage.",
+      "Le grade concerne principalement l'aspect esthétique du produit. Il ne signifie pas qu'un équipement est moins performant, mais permet d'évaluer son état visuel.",
     category: "Reconditionné",
     readingTime: "4 min",
   },
   {
-    title: "Reprise de parc informatique : que deviennent les anciens équipements ?",
+    title: "Reprise de parc IT : que deviennent les anciens équipements ?",
     description:
-      "La reprise de parc IT permet aux entreprises de mieux gérer le renouvellement de leurs équipements, avec une logique de réemploi, de tri et de valorisation.",
+      "La reprise de parc aide les entreprises à organiser le renouvellement de leurs équipements avec une logique de réemploi, de tri, de valorisation ou de recyclage certifié.",
     category: "Parc informatique",
     readingTime: "4 min",
   },
   {
-    title: "Effacement des données et RGPD : un enjeu important pour les entreprises",
+    title: "Effacement des données et RGPD : un point clé pour les entreprises",
     description:
-      "Avant la revente ou le recyclage d'un équipement, l'effacement sécurisé des données protège les informations sensibles et limite les risques liés au RGPD.",
+      "Avant la revente, la réutilisation ou le recyclage d'un équipement, l'effacement sécurisé des données limite les risques liés aux informations sensibles.",
     category: "Sécurité",
     readingTime: "5 min",
   },
@@ -95,24 +104,29 @@ const faq = [
   {
     question: "EcoLiz s'adresse à qui ?",
     answer:
-      "EcoLiz s'adresse principalement aux entreprises, collectivités, associations et professionnels qui souhaitent acheter du matériel informatique reconditionné.",
+      "EcoLiz s'adresse aux entreprises, collectivités, associations et professionnels qui souhaitent s'équiper en matériel informatique reconditionné ou demander un accompagnement sur leur parc IT.",
   },
   {
-    question: "Quelle est la différence avec la page d'accueil ?",
+    question: "Pourquoi passer par EcoLiz plutôt que par une simple fiche produit ?",
     answer:
-      "La page d'accueil présente rapidement l'offre et les accès principaux. Cette page explique davantage l'entreprise, sa mission, ses valeurs, les avis clients et les conseils utiles pour le référencement SEO.",
+      "EcoLiz met l'accent sur les critères importants pour un achat professionnel : usage, configuration, état esthétique, disponibilité, langue du clavier, garantie à confirmer et besoin éventuel de devis.",
   },
   {
-    question: "Pourquoi ajouter des articles sur cette page ?",
+    question: "Le grade d'un produit change-t-il ses performances ?",
     answer:
-      "Les articles permettent de répondre aux recherches des visiteurs sur Google et d'améliorer la visibilité du site sur des mots-clés comme matériel informatique reconditionné, PC portable professionnel ou reprise de parc IT.",
+      "Non. Le grade sert surtout à décrire l'état visuel du matériel. Un produit avec un grade différent peut conserver les mêmes performances techniques si sa configuration est identique.",
+  },
+  {
+    question: "Puis-je demander un conseil avant de commander ?",
+    answer:
+      "Oui. La stratégie d'EcoLiz est d'encourager les professionnels à prendre contact afin de comprendre leur besoin réel, leur parc existant et les contraintes de leur projet.",
   },
 ];
 
 export function About() {
   useEffect(() => {
     document.title =
-      "À propos d'EcoLiz | Matériel informatique reconditionné professionnel";
+      "À propos d'EcoLiz | Matériel informatique reconditionné B2B";
 
     const description =
       "Découvrez EcoLiz, une plateforme B2B dédiée au matériel informatique professionnel reconditionné, au réemploi, à la reprise de parc IT et à la sobriété numérique.";
@@ -133,12 +147,17 @@ export function About() {
       name: "EcoLiz",
       description,
       areaServed: "France",
+      audience: {
+        "@type": "BusinessAudience",
+        audienceType: "Professionnels, entreprises, collectivités et associations",
+      },
       knowsAbout: [
         "matériel informatique reconditionné",
         "informatique professionnelle",
         "réemploi informatique",
         "reprise de parc informatique",
         "sobriété numérique",
+        "équipements IT B2B",
       ],
     };
 
@@ -160,11 +179,11 @@ export function About() {
     <main className="bg-slate-50 text-slate-900">
       <section className="relative overflow-hidden bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-950 text-white">
         <div className="absolute inset-0 opacity-20">
-          <div className="absolute left-10 top-20 h-48 w-48 rounded-full bg-emerald-400 blur-3xl" />
-          <div className="absolute bottom-10 right-10 h-64 w-64 rounded-full bg-lime-300 blur-3xl" />
+          <div className="absolute left-10 top-20 h-40 w-40 rounded-full bg-emerald-400 blur-3xl" />
+          <div className="absolute bottom-10 right-10 h-56 w-56 rounded-full bg-lime-300 blur-3xl" />
         </div>
 
-        <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+        <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-28 sm:px-6 sm:pb-16 sm:pt-32 lg:px-8 lg:pb-20 lg:pt-32">
           <div className="max-w-4xl">
             <p className="mb-4 text-sm font-semibold uppercase tracking-[0.3em] text-emerald-200">
               À propos d'EcoLiz
@@ -178,31 +197,31 @@ export function About() {
               EcoLiz est une plateforme e-commerce B2B dédiée au matériel informatique
               professionnel reconditionné. Elle aide les entreprises à trouver des
               ordinateurs portables, postes de travail, écrans, serveurs, solutions de
-              stockage et équipements réseau adaptés à leurs besoins.
+              stockage et équipements réseau adaptés à leurs usages.
             </p>
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
               <Link
-                to="/boutique"
+                to="/contact"
                 className="rounded-full bg-white px-6 py-3 text-center text-sm font-semibold text-emerald-950 shadow-sm transition hover:bg-emerald-50"
               >
-                Découvrir la boutique
+                Demander un devis
               </Link>
 
               <Link
-                to="/contact"
+                to="/boutique"
                 className="rounded-full border border-white/40 px-6 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10"
               >
-                Demander un conseil
+                Découvrir la boutique
               </Link>
             </div>
           </div>
 
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
             {stats.map((stat) => (
               <div
                 key={stat.value}
-                className="rounded-3xl border border-white/15 bg-white/10 p-6 backdrop-blur"
+                className="rounded-3xl border border-white/15 bg-white/10 p-5 backdrop-blur"
               >
                 <p className="text-3xl font-bold text-emerald-200">{stat.value}</p>
                 <p className="mt-2 text-sm leading-6 text-emerald-50">{stat.label}</p>
@@ -216,7 +235,7 @@ export function About() {
         <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
           <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
-              Notre histoire
+              Qui sommes-nous ?
             </p>
 
             <h2 className="mt-3 text-3xl font-bold text-slate-900">
@@ -225,22 +244,22 @@ export function About() {
 
             <div className="mt-6 space-y-5 text-base leading-8 text-slate-700">
               <p>
-                EcoLiz a été conçu pour proposer une expérience plus claire et plus moderne
-                autour de l'achat de matériel informatique reconditionné. L'objectif est de
-                rendre le catalogue plus lisible, les filtres plus utiles et les informations
+                EcoLiz a été conçu pour proposer une expérience plus claire autour de
+                l'achat de matériel informatique reconditionné. L'objectif est de rendre
+                le catalogue plus lisible, les filtres plus utiles et les informations
                 produits plus simples à comparer.
               </p>
 
               <p>
-                La plateforme s'inscrit dans un environnement professionnel lié aux services
-                numériques, aux infrastructures informatiques, à la connectivité réseau, à la
-                cybersécurité, à la virtualisation et à l'hébergement.
+                La plateforme s'inscrit dans une démarche B2B : comprendre le besoin du
+                client, l'aider à identifier les bons équipements et faciliter la demande
+                de devis lorsque le projet nécessite un accompagnement.
               </p>
 
               <p>
-                Contrairement à la page d'accueil, cette page sert à expliquer qui se trouve
-                derrière EcoLiz, pourquoi le projet existe et comment il peut aider les
-                professionnels à acheter plus efficacement leur matériel informatique.
+                Cette page complète la page d'accueil : elle explique davantage la vision
+                d'EcoLiz, la logique du reconditionné, les critères de choix importants et
+                les sujets utiles pour les entreprises.
               </p>
             </div>
           </div>
@@ -263,43 +282,67 @@ export function About() {
 
       <section className="border-y border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="max-w-3xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
-              Avis clients
-            </p>
+          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+            <div className="max-w-3xl">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
+                Avis clients
+              </p>
 
-            <h2 className="mt-3 text-3xl font-bold text-slate-900">
-              Des retours pour rassurer les professionnels avant leur achat
-            </h2>
+              <h2 className="mt-3 text-3xl font-bold text-slate-900">
+                Des retours concrets pour rassurer les acheteurs professionnels
+              </h2>
 
-            <p className="mt-5 text-base leading-8 text-slate-700">
-              Cette section permet d'ajouter de vrais témoignages clients une fois validés
-              par l'entreprise. Les avis renforcent la confiance, montrent les cas d'usage
-              concrets et différencient cette page d'une simple présentation commerciale.
-            </p>
+              <p className="mt-5 text-base leading-8 text-slate-700">
+                Les témoignages permettent de montrer les usages réels : renouvellement de
+                parc, achat ponctuel, recherche d'un meilleur budget ou choix d'un matériel
+                plus responsable.
+              </p>
+            </div>
+
+            <Link
+              to="/contact"
+              className="inline-flex w-fit rounded-full bg-emerald-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800"
+            >
+              Parler de mon besoin
+            </Link>
           </div>
 
           <div className="mt-10 grid gap-6 md:grid-cols-3">
             {reviews.map((review) => (
               <article
-                key={`${review.name}-${review.company}`}
-                className="rounded-3xl border border-slate-200 bg-slate-50 p-6"
+                key={`${review.role}-${review.company}`}
+                className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-emerald-50 p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
               >
-                <p className="text-sm tracking-widest text-amber-500">{review.rating}</p>
-                <blockquote className="mt-4 text-sm leading-7 text-slate-700">
+                <div className="absolute right-5 top-4 text-7xl font-black leading-none text-emerald-100">
+                  ”
+                </div>
+
+                <div className="relative flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-800 text-sm font-bold text-white">
+                      {review.initials}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-900">{review.role}</p>
+                      <p className="text-sm text-slate-500">{review.company}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-full bg-white px-3 py-1 text-sm font-bold text-emerald-800 shadow-sm">
+                    ★ {review.rating}
+                  </div>
+                </div>
+
+                <p className="relative mt-5 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
+                  {review.tag}
+                </p>
+
+                <blockquote className="relative mt-5 text-sm leading-7 text-slate-700">
                   “{review.text}”
                 </blockquote>
-                <div className="mt-6 border-t border-slate-200 pt-4">
-                  <p className="font-semibold text-slate-900">{review.name}</p>
-                  <p className="text-sm text-slate-500">{review.company}</p>
-                </div>
               </article>
             ))}
           </div>
-
-          <p className="mt-6 text-sm text-slate-500">
-            À remplacer par des avis réels dès que les témoignages clients seront validés.
-          </p>
         </div>
       </section>
 
@@ -307,7 +350,7 @@ export function About() {
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
-              Articles & conseils
+              Ressources & conseils
             </p>
 
             <h2 className="mt-3 text-3xl font-bold text-slate-900">
@@ -315,9 +358,8 @@ export function About() {
             </h2>
 
             <p className="mt-5 text-base leading-8 text-slate-700">
-              Ces articles courts apportent du contenu SEO à la page tout en aidant les
-              visiteurs à comprendre les critères importants : grade, configuration, clavier,
-              sécurité, reprise de parc et choix du matériel.
+              Ces contenus enrichissent la page pour le SEO tout en répondant aux questions
+              que peuvent se poser les professionnels avant de demander un devis.
             </p>
           </div>
         </div>
@@ -351,48 +393,46 @@ export function About() {
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-200">
-              Pourquoi nous choisir ?
+              Impact & réemploi
             </p>
 
             <h2 className="mt-3 text-3xl font-bold">
-              Une page à la fois informative, rassurante et optimisée SEO
+              Une démarche tournée vers la seconde vie du matériel IT
             </h2>
 
             <p className="mt-5 text-base leading-8 text-emerald-50">
-              L'objectif est de montrer qu'EcoLiz ne vend pas uniquement des produits : la
-              plateforme accompagne aussi les entreprises dans une meilleure compréhension
-              du reconditionné, de la gestion de parc et des critères techniques.
+              EcoLiz valorise une consommation IT plus raisonnée : mieux choisir le matériel,
+              prolonger sa durée d'usage, organiser la reprise de parc et orienter les
+              équipements non réutilisables vers des filières adaptées.
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-3xl bg-white/10 p-6 ring-1 ring-white/10">
-              <h3 className="font-bold">Clarté du catalogue</h3>
+              <h3 className="font-bold">Sobriété numérique</h3>
               <p className="mt-3 text-sm leading-7 text-emerald-50">
-                Des informations utiles pour comparer les produits, les marques, les états
-                et les configurations.
+                Accompagner les professionnels vers des achats IT plus raisonnés.
               </p>
             </div>
 
             <div className="rounded-3xl bg-white/10 p-6 ring-1 ring-white/10">
-              <h3 className="font-bold">Démarche responsable</h3>
+              <h3 className="font-bold">Reprise de parc</h3>
               <p className="mt-3 text-sm leading-7 text-emerald-50">
-                Une mise en avant du réemploi, de la sobriété numérique et de la réduction
-                des déchets électroniques.
+                Donner une seconde vie aux équipements lorsque leur état le permet.
               </p>
             </div>
 
             <div className="rounded-3xl bg-white/10 p-6 ring-1 ring-white/10">
-              <h3 className="font-bold">Conseils professionnels</h3>
+              <h3 className="font-bold">Recyclage DEEE</h3>
               <p className="mt-3 text-sm leading-7 text-emerald-50">
-                Des contenus pédagogiques pour aider les acheteurs à choisir le bon matériel.
+                Orienter les matériels en fin de vie vers des circuits de traitement adaptés.
               </p>
             </div>
 
             <div className="rounded-3xl bg-white/10 p-6 ring-1 ring-white/10">
-              <h3 className="font-bold">Confiance client</h3>
+              <h3 className="font-bold">Données & RGPD</h3>
               <p className="mt-3 text-sm leading-7 text-emerald-50">
-                Une zone d'avis pour afficher des témoignages réels dès qu'ils seront validés.
+                Mettre en avant l'importance de l'effacement sécurisé avant réemploi ou recyclage.
               </p>
             </div>
           </div>
@@ -422,17 +462,17 @@ export function About() {
 
           <div className="rounded-3xl bg-emerald-900 p-8 text-white shadow-sm">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-200">
-              Besoin d'un conseil ?
+              Une autre question ?
             </p>
 
             <h2 className="mt-3 text-3xl font-bold">
-              Parlez-nous de votre besoin informatique
+              Nous serons ravis d'y répondre
             </h2>
 
             <p className="mt-5 text-base leading-8 text-emerald-50">
               Pour une recherche de matériel, une reprise de parc, une question sur un
-              produit ou une demande professionnelle, l'équipe peut vous orienter vers les
-              solutions les plus adaptées.
+              produit ou une demande professionnelle, contactez EcoLiz afin d'obtenir une
+              réponse adaptée à votre besoin.
             </p>
 
             <div className="mt-8 flex flex-col gap-4">
@@ -440,7 +480,7 @@ export function About() {
                 to="/contact"
                 className="rounded-full bg-white px-6 py-3 text-center text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
               >
-                Contacter EcoLiz
+                Contactez-nous
               </Link>
 
               <Link
