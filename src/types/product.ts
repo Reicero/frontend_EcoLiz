@@ -52,6 +52,7 @@ export interface Product {
   conditionLabel?: string;
   productGroup?: string;
   os?: string;
+  keyboardLanguage?: string;
 
   warranty: string;
   description?: string;

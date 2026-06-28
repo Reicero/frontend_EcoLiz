@@ -16,6 +16,8 @@ import { getProductBySlug } from "../services/woocommerce";
 import { addToCart } from "../services/cart";
 import { formatPrice } from "../utils/formatPrice";
 
+const CART_PRODUCT_METADATA_STORAGE_KEY = "ecoliz_cart_product_metadata_v1";
+
 type SpecificationGroup =
   | "Général"
   | "Performances"
@@ -45,6 +47,7 @@ const SUMMARY_ATTRIBUTE_NAMES = [
   "Stockage",
   "Carte graphique",
   "Taille écran",
+  "Clavier",
   "Résolution",
   "Nombre de ports",
   "Débit réseau",
@@ -307,6 +310,7 @@ export function ProductPage() {
   const [addingToCart, setAddingToCart] = useState(false);
   const [cartSuccess, setCartSuccess] = useState(false);
   const [cartError, setCartError] = useState("");
+  const [thermocollageRequested, setThermocollageRequested] = useState(false);
 
   useEffect(() => {
     if (!slug) {
@@ -347,11 +351,56 @@ export function ProductPage() {
     return SUMMARY_ATTRIBUTE_NAMES.flatMap((attributeName) => {
       const values = getAttributeValues(attributes, [attributeName]);
 
-      return values.length > 0
-        ? [{ name: attributeName, value: values.join(", ") }]
-        : [];
-    }).slice(0, 5);
-  }, [attributes]);
+      if (values.length > 0) {
+        return [{ name: attributeName, value: values.join(", ") }];
+      }
+
+      if (attributeName === "Clavier" && product?.keyboardLanguage) {
+        return [{ name: "Clavier", value: product.keyboardLanguage }];
+      }
+
+      return [];
+    }).slice(0, 6);
+  }, [attributes, product?.keyboardLanguage]);
+
+  const keyboardLayout = useMemo(() => {
+    const keyboardFromSummary = summarySpecifications.find(
+      (item) => item.name === "Clavier"
+    )?.value;
+
+    return keyboardFromSummary || product?.keyboardLanguage || "";
+  }, [summarySpecifications, product?.keyboardLanguage]);
+
+  const showThermocollageOption = useMemo(() => {
+    if (!product || !keyboardLayout) {
+      return false;
+    }
+
+    const keyboard = keyboardLayout.toUpperCase();
+
+    if (keyboard === "AZERTY") {
+      return false;
+    }
+
+    const productText = [
+      product.category,
+      product.productGroup,
+      product.name,
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      productText.includes("pc") ||
+      productText.includes("notebook") ||
+      productText.includes("laptop") ||
+      productText.includes("portable") ||
+      productText.includes("ordinateur") ||
+      productText.includes("workstation") ||
+      productText.includes("workstations") ||
+      productText.includes("station de travail")
+    );
+  }, [product, keyboardLayout]);
 
   const specificationGroups = useMemo(() => {
     const rows: SpecificationRow[] = attributes
@@ -396,6 +445,28 @@ export function ProductPage() {
       .filter((item) => Boolean(item.value));
   }, [product]);
 
+  function saveProductMetadataForCart() {
+    if (!product) {
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem(CART_PRODUCT_METADATA_STORAGE_KEY);
+      const data = raw ? JSON.parse(raw) : {};
+
+      data[String(product.id)] = {
+        tags: summarySpecifications,
+        keyboardLayout,
+        thermocollageEligible: showThermocollageOption,
+        thermocollageRequested: showThermocollageOption ? thermocollageRequested : false,
+      };
+
+      localStorage.setItem(CART_PRODUCT_METADATA_STORAGE_KEY, JSON.stringify(data));
+    } catch (storageError) {
+      console.warn("Impossible d'enregistrer les informations du panier :", storageError);
+    }
+  }
+
   async function handleAddToCart() {
     if (!product || !product.stock) {
       return;
@@ -406,6 +477,7 @@ export function ProductPage() {
       setCartSuccess(false);
       setCartError("");
 
+      saveProductMetadataForCart();
       await addToCart(product.id, 1);
       setCartSuccess(true);
     } catch (requestError) {
@@ -626,6 +698,24 @@ export function ProductPage() {
                 <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 font-medium text-red-700">
                   {cartError}
                 </div>
+              )}
+
+
+              {showThermocollageOption && (
+                <label className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <input
+                    type="checkbox"
+                    checked={thermocollageRequested}
+                    onChange={(event) => setThermocollageRequested(event.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-amber-300 text-amber-700 focus:ring-amber-600"
+                  />
+                  <span>
+                    <span className="font-semibold">Ajouter un thermocollage AZERTY</span>
+                    <span className="mt-1 block text-amber-800">
+                      Ce produit possède un clavier {keyboardLayout}. Le thermocollage permet d’adapter le clavier pour un usage AZERTY.
+                    </span>
+                  </span>
+                </label>
               )}
 
               <div className="mt-7 grid gap-3 sm:grid-cols-2">

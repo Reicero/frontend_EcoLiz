@@ -35,6 +35,32 @@ type WooCart = {
   }
 }
 
+const CART_PRODUCT_METADATA_STORAGE_KEY = "ecoliz_cart_product_metadata_v1"
+
+type CartProductTag = {
+  name: string
+  value: string
+}
+
+type CartProductMetadata = {
+  tags?: CartProductTag[]
+  keyboardLayout?: string
+  thermocollageEligible?: boolean
+  thermocollageRequested?: boolean
+}
+
+function getCartProductMetadata(productId: number): CartProductMetadata | null {
+  try {
+    const raw = localStorage.getItem(CART_PRODUCT_METADATA_STORAGE_KEY)
+    if (!raw) return null
+
+    const data = JSON.parse(raw)
+    return data[String(productId)] ?? null
+  } catch {
+    return null
+  }
+}
+
 function formatWooPrice(value?: string, minorUnit = 2): string {
   if (!value) return '0,00 €'
   const num = Number(value) / Math.pow(10, minorUnit)
@@ -183,6 +209,8 @@ export function Cart() {
                 const image = normalizeWooImageUrl(item.images?.[0]?.src || item.images?.[0]?.thumbnail)
                 const lineTotal = item.totals?.line_total
                 const isUpdating = updatingKey === item.key
+                const metadata = getCartProductMetadata(item.id)
+                const productTags = metadata?.tags ?? []
 
                 return (
                   <div key={item.key} className="bg-white rounded-3xl border border-brand-100 p-5 shadow-sm flex flex-col sm:flex-row gap-5">
@@ -198,7 +226,31 @@ export function Cart() {
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div>
                           <h2 className="text-lg font-semibold text-brand-950 mb-2">{item.name}</h2>
-                          <p className="text-brand-900/60">{formatWooPrice(item.totals?.line_total, minorUnit)}</p>
+
+                          {productTags.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {productTags.map((tag) => (
+                                <span
+                                  key={`${item.key}-${tag.name}`}
+                                  className="rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-800"
+                                >
+                                  {tag.name} : {tag.value}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {metadata?.thermocollageEligible && (
+                            <p className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                              metadata.thermocollageRequested
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-amber-50 text-amber-700"
+                            }`}>
+                              Thermocollage AZERTY : {metadata.thermocollageRequested ? "demandé" : "non demandé"}
+                            </p>
+                          )}
+
+                          <p className="mt-3 text-brand-900/60">{formatWooPrice(item.totals?.line_total, minorUnit)}</p>
                         </div>
 
                         <button

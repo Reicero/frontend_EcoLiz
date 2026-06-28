@@ -454,6 +454,117 @@ function mapConditionLabel(status?: string): string {
   return labels[decodedStatus.toUpperCase()] ?? decodedStatus;
 }
 
+
+function normalizeKeyboardLayout(value: unknown): string {
+  const text = normalizeLookupValue(decodeHtmlEntities(value));
+
+  if (!text) return "";
+
+  if (
+    text.includes("no keyboard") ||
+    text.includes("without keyboard") ||
+    text.includes("sans clavier")
+  ) {
+    return "";
+  }
+
+  if (
+    text.includes("azerty") ||
+    text.includes("french") ||
+    text.includes("francais") ||
+    text.includes("français") ||
+    text.includes("belgian") ||
+    text.includes("belge") ||
+    text.includes("belgique")
+  ) {
+    return "AZERTY";
+  }
+
+  if (
+    text.includes("qwertz") ||
+    text.includes("german") ||
+    text.includes("deutsch") ||
+    text.includes("swiss") ||
+    text.includes("suisse") ||
+    text.includes("schweiz") ||
+    text.includes("czech") ||
+    text.includes("slovak") ||
+    text.includes("slovenian") ||
+    text.includes("hungarian")
+  ) {
+    return "QWERTZ";
+  }
+
+  if (
+    text.includes("qwerty") ||
+    text.includes("us") ||
+    text.includes("uk") ||
+    text.includes("english") ||
+    text.includes("international") ||
+    text.includes("spanish") ||
+    text.includes("italian") ||
+    text.includes("portuguese") ||
+    text.includes("nordic") ||
+    text.includes("danish") ||
+    text.includes("swedish") ||
+    text.includes("norwegian") ||
+    text.includes("finnish") ||
+    text.includes("polish") ||
+    text.includes("turkish") ||
+    text.includes("hebrew") ||
+    text.includes("arabic") ||
+    text.includes("greek") ||
+    text.includes("south african")
+  ) {
+    return "QWERTY";
+  }
+
+  return "";
+}
+
+function isKeyboardAttributeName(name: string): boolean {
+  const normalizedName = normalizeLookupValue(name);
+
+  return (
+    normalizedName.includes("langue du clavier") ||
+    normalizedName.includes("langue clavier") ||
+    normalizedName.includes("disposition clavier") ||
+    normalizedName === "clavier" ||
+    normalizedName.includes("keyboard")
+  );
+}
+
+function hasWooProductImage(product: any): boolean {
+  return Array.isArray(product.images) && product.images.some((image: any) =>
+    Boolean(normalizeWooImageUrl(image?.src))
+  );
+}
+
+function isComputerCategoryProduct(product: any): boolean {
+  const categoryText = Array.isArray(product.categories)
+    ? product.categories
+        .map((category: any) => `${category?.name ?? ""} ${category?.slug ?? ""}`)
+        .join(" ")
+    : "";
+
+  const productText = [
+    categoryText,
+    product.name,
+    getAttributeValue(product, ["Type d’équipement", "Type d'equipement", "Product group", "Groupe produit"]),
+    getMetaValue(product, "product_group"),
+  ]
+    .map((value) => normalizeLookupValue(value))
+    .join(" ");
+
+  return (
+    productText.includes("pc") ||
+    productText.includes("notebook") ||
+    productText.includes("laptop") ||
+    productText.includes("portable") ||
+    productText.includes("ordinateur")
+  );
+}
+
 function extractProductAttributes(product: any): ProductAttribute[] {
   if (!Array.isArray(product.attributes)) {
     return [];
@@ -480,10 +591,13 @@ function extractProductAttributes(product: any): ProductAttribute[] {
         : [];
 
       const values = termValues.length > 0 ? termValues : optionValues;
+      const normalizedValues = isKeyboardAttributeName(name)
+        ? values.map(normalizeKeyboardLayout).filter(Boolean)
+        : values;
 
       return {
-        name,
-        values: Array.from(new Set(values)),
+        name: isKeyboardAttributeName(name) ? "Clavier" : name,
+        values: Array.from(new Set(normalizedValues)),
       };
     })
     .filter(
@@ -542,6 +656,18 @@ function mapWooProduct(product: any): Product {
     getAttributeValue(product, ["état", "etat", "status", "condition"]) ||
     getMetaValue(product, "condition_status");
 
+  const keyboardLanguage = normalizeKeyboardLayout(
+    getAttributeValue(product, [
+      "Langue du clavier",
+      "Langue clavier",
+      "Disposition clavier",
+      "Clavier",
+      "Keyboard",
+      "Keyboard layout",
+      "Keyboard language",
+    ])
+  );
+
   return {
     id: Number(product.id),
     name: cleanProductDisplayName(product.name),
@@ -579,6 +705,7 @@ function mapWooProduct(product: any): Product {
     os:
       getAttributeValue(product, ["os", "operating system"]) ||
       getMetaValue(product, "os"),
+    keyboardLanguage,
     productGroup:
       getAttributeValue(product, ["product group", "groupe produit"]) ||
       getMetaValue(product, "product_group"),
@@ -783,7 +910,11 @@ export async function listProducts({
       `${WOO_API_URL}/products?${params}`
     );
 
-    const products = Array.isArray(data) ? data.map(mapWooProduct) : [];
+    const products = Array.isArray(data)
+      ? data
+          .filter((item) => !(isComputerCategoryProduct(item) && !hasWooProductImage(item)))
+          .map(mapWooProduct)
+      : [];
     const total = Number(
       response.headers.get("X-WP-Total") ?? products.length
     );
