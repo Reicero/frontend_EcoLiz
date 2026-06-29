@@ -1736,9 +1736,6 @@ function HeroSection({
             </span>
           </h1>
 
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-sky-100/72">
-            Recherchez une référence, une marque ou une catégorie dans notre catalogue.
-          </p>
 
           <form onSubmit={submitSearch} className="relative mt-7 max-w-2xl">
             <Search className="absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-sky-900/45" />

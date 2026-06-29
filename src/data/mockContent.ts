@@ -2,46 +2,46 @@ import type { FAQItem } from '../types/page';
 
 const FAQ_ITEMS: FAQItem[] = [
   {
-    id: 'q1',
-    category: 'Reconditionnement',
     question: "Qu'est-ce qu'un produit reconditionné par EcoLiz ?",
     answer:
-      "Chaque équipement passe par 50 points de contrôle techniques et esthétiques. Nous remplaçons les pièces usées, nettoyons l'appareil en profondeur et réinstallons un système d'exploitation à jour.",
+      "Un produit reconditionné est un équipement informatique professionnel qui a été **contrôlé, nettoyé, testé et remis en état** avant sa remise en vente. Chaque équipement passe par un processus de vérification technique et esthétique afin de proposer du matériel fiable, fonctionnel et adapté aux usages professionnels.\n\nLe reconditionnement permet aussi de favoriser le **réemploi** et de réduire l’impact environnemental lié au renouvellement du matériel informatique.",
+    category: "Reconditionnement",
   },
   {
-    id: 'q2',
-    category: 'Reconditionnement',
-    question: 'Quelle est la différence entre les grades A+, A et B ?',
+    question: "Quelle différence y a-t-il entre les grades A+, A et B ?",
     answer:
-      'Le Grade A+ correspond à un état proche du neuf. Le Grade A présente des micro-traces invisibles à 30 cm. Le Grade B peut présenter des marques d\'usage légères sans impact sur la performance.',
+      "Les grades de reconditionnement reflètent **uniquement l’aspect esthétique** du matériel. Ils ne remettent pas en cause les performances de l’équipement.\n\nEn termes de performance, tous nos appareils sont équivalents : chaque machine est contrôlée selon un processus de vérification technique.\n\nNous proposons 3 grades :\nA+ : état impeccable, très proche du neuf.\nA : légères traces d’usure, sans impact sur l’utilisation.\nB : marques visibles, sans impact sur le bon fonctionnement.",
+    category: "Grades",
   },
   {
-    id: 'q3',
-    category: 'Garantie',
-    question: 'Quelle garantie est offerte sur vos produits ?',
+    question: "Quelle est la durée des garanties ?",
     answer:
-      "Tous nos produits bénéficient d'une garantie standard de 24 mois pièces et main d'œuvre. Les serveurs sont garantis 12 mois. La garantie inclut le remplacement à J+1 en cas de panne majeure.",
+      "Notre matériel bénéficie d’une **garantie standard de 12 mois**.\n\nLes ordinateurs portables peuvent être prolongés **jusqu’à 36 mois sur demande**, selon les conditions commerciales validées avec EcoLiz.\n\nLes conditions exactes de garantie sont précisées sur la fiche produit, le devis ou la facture.",
+    category: "Garantie",
   },
   {
-    id: 'q4',
-    category: 'Livraison',
-    question: 'Quels sont les délais de livraison ?',
+    question: "Qu'est-ce que le thermocollage ?",
     answer:
-      'Livraison standard en 48h ouvrées partout en France métropolitaine. Livraison express disponible en 24h sur demande. Pour l\'Europe, comptez 3 à 5 jours ouvrés.',
+      "Le thermocollage est une technique qui permet de modifier visuellement un clavier **QWERTY ou QWERTZ en AZERTY**, sans changer le matériel.\n\nIl s’agit d’une solution propre et durable pour adapter l’affichage des touches au clavier français. Lorsqu’un ordinateur portable possède un clavier QWERTY ou QWERTZ, une **option de thermocollage AZERTY offerte** peut être proposée afin de faciliter son utilisation.",
+    category: "Clavier",
   },
   {
-    id: 'q5',
-    category: 'SAV',
-    question: 'Comment fonctionne le SAV EcoLiz ?',
+    question: "Quels sont les délais de livraison ?",
     answer:
-      'Notre SAV est basé en France. Vous pouvez déclarer un incident depuis votre espace client. Un technicien vous contacte sous 4h ouvrées. La prise en charge inclut la collecte, la réparation et le retour.',
+      "Les délais de livraison dépendent de la **disponibilité des produits**, du volume commandé, de la préparation du matériel et du transporteur.\n\nLes délais exacts sont confirmés au moment de la commande ou dans les échanges commerciaux avec EcoLiz.",
+    category: "Livraison",
   },
   {
-    id: 'q6',
-    category: 'Entreprise',
-    question: 'Proposez-vous des contrats de gestion de parc IT ?',
+    question: "Comment fonctionne le SAV EcoLiz ?",
     answer:
-      "Oui. Nous accompagnons les entreprises de 10 à 5000 collaborateurs avec des contrats sur-mesure : achat, maintenance, SAV, reprise et recyclage de l'ancien parc.",
+      "En cas de problème avec un produit ou une commande, le client peut contacter EcoLiz afin qu’une **analyse** soit réalisée.\n\nSelon la situation, la garantie applicable et les conditions commerciales validées, EcoLiz pourra proposer une prise en charge, une réparation, un remplacement, un retour ou une autre solution adaptée.",
+    category: "SAV",
+  },
+  {
+    question: "Proposez-vous des services de gestion de parc informatique ?",
+    answer:
+      "Oui. EcoLiz accompagne les professionnels dans leurs besoins liés au matériel informatique : **achat de matériel reconditionné**, renouvellement de parc, reprise d’équipements, réemploi, recyclage et accompagnement vers une consommation IT plus responsable.\n\nPour un besoin spécifique, il est recommandé de contacter EcoLiz afin d’étudier une solution adaptée.",
+    category: "Services",
   },
 ];
 

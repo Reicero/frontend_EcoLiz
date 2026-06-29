@@ -710,9 +710,9 @@ export function ProductPage() {
                     className="mt-1 h-4 w-4 rounded border-amber-300 text-amber-700 focus:ring-amber-600"
                   />
                   <span>
-                    <span className="font-semibold">Ajouter un thermocollage AZERTY</span>
+                    <span className="font-semibold">Ajouter un thermocollage AZERTY offert</span>
                     <span className="mt-1 block text-amber-800">
-                      Ce produit possède un clavier {keyboardLayout}. Le thermocollage permet d’adapter le clavier pour un usage AZERTY.
+                      Ce produit possède un clavier {keyboardLayout}. Le thermocollage offert permet d’adapter le clavier pour un usage AZERTY.
                     </span>
                   </span>
                 </label>

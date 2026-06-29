@@ -38,7 +38,7 @@ export function Footer() {
                 <Instagram className="w-5 h-5" />
               </a>
               <a
-                href="#"
+                href="mailto:contact@ecoliz.fr"
                 className="text-brand-200/60 hover:text-accent-400 transition-colors"
                 aria-label="Email">
                 
@@ -152,7 +152,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  to="/a-propos"
+                  to="/impact"
                   className="hover:text-accent-400 transition-colors">
                   
                   Notre impact écologique
