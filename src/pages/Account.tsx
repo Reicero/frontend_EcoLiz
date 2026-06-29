@@ -33,7 +33,16 @@ type AccountTab =
   | "infos"
   | "addresses"
   | "commandes"
+  | "documents"
   | "security";
+
+type ClientDocument = {
+  title: string;
+  type: string;
+  file_url: string;
+  original_file_url?: string;
+  note?: string;
+};
 
 type OrderProduct = {
   name: string;
@@ -132,6 +141,7 @@ const navItems: Array<{
   { key: "infos", label: "Mes informations", icon: Building2 },
   { key: "addresses", label: "Mes adresses", icon: MapPin },
   { key: "commandes", label: "Commandes & devis", icon: FileText },
+  { key: "documents", label: "Mes documents", icon: FileText },
   { key: "security", label: "Sécurité", icon: Settings },
 ];
 
@@ -190,6 +200,10 @@ export function Account() {
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [ordersError, setOrdersError] = useState<string | null>(null);
 
+  const [clientDocuments, setClientDocuments] = useState<ClientDocument[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [documentsError, setDocumentsError] = useState<string | null>(null);
+
   useEffect(() => {
     const storedUser = localStorage.getItem("ecoliz_user");
 
@@ -235,6 +249,44 @@ export function Account() {
       })
       .finally(() => {
         setOrdersLoading(false);
+      });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const customerId =
+      (user as any).id ?? (user as any).user_id ?? (user as any).ID;
+
+    if (!customerId) {
+      setDocumentsError("Impossible d’identifier le compte client.");
+      setClientDocuments([]);
+      return;
+    }
+
+    setDocumentsLoading(true);
+
+    fetch(`/wp-api/ecoliz/v1/client-documents?customer_id=${customerId}`, {
+      credentials: "include",
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Impossible de charger les documents.");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        setClientDocuments(Array.isArray(data.documents) ? data.documents : []);
+        setDocumentsError(null);
+      })
+      .catch((error) => {
+        console.error("Erreur récupération documents client :", error);
+        setDocumentsError("Impossible de charger les documents pour le moment.");
+        setClientDocuments([]);
+      })
+      .finally(() => {
+        setDocumentsLoading(false);
       });
   }, [user]);
 
@@ -850,6 +902,87 @@ export function Account() {
                 />
               </div>
             )}
+
+              {active === "documents" && (
+                <div className="bg-white rounded-2xl border border-brand-100 overflow-hidden shadow-sm">
+                  <div className="px-6 py-4 border-b border-brand-100">
+                    <h2 className="font-bold text-brand-950">Mes documents</h2>
+                    <p className="text-sm text-brand-900/60 mt-1">
+                      Retrouvez ici les documents ajoutés à votre compte client EcoLiz.
+                    </p>
+                  </div>
+
+                  <div className="p-6">
+                    {documentsLoading && (
+                      <p className="text-sm text-brand-900/60">
+                        Chargement des documents…
+                      </p>
+                    )}
+
+                    {!documentsLoading && documentsError && (
+                      <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 mt-0.5" />
+                        <span>{documentsError}</span>
+                      </div>
+                    )}
+
+                    {!documentsLoading && !documentsError && clientDocuments.length === 0 && (
+                      <p className="text-sm text-brand-900/60">
+                        Aucun document disponible pour le moment.
+                      </p>
+                    )}
+
+                    {!documentsLoading && !documentsError && clientDocuments.length > 0 && (
+                      <div className="space-y-4">
+                        {clientDocuments.map((doc, index) => (
+                          <div
+                            key={`${doc.title}-${index}`}
+                            className="rounded-2xl border border-brand-100 bg-brand-50 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                          >
+                            <div>
+                              <h3 className="font-bold text-brand-950">
+                                {doc.title || "Document"}
+                              </h3>
+
+                              <p className="text-sm text-brand-900/60 mt-1">
+                                Type : {doc.type || "Autre"}
+                              </p>
+
+                              {doc.note && (
+                                <p className="text-sm text-brand-900/70 mt-2">
+                                  {doc.note}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {(doc.original_file_url || doc.file_url) && (
+                                <a
+                                  href={doc.original_file_url || doc.file_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center justify-center rounded-full border border-brand-200 bg-white px-5 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-50 transition-colors"
+                                >
+                                  Voir
+                                </a>
+                              )}
+
+                              {doc.file_url && (
+                                <a
+                                  href={doc.file_url}
+                                  className="inline-flex items-center justify-center rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 transition-colors"
+                                >
+                                  Télécharger
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
             {active === "security" && (
               <InfoPanel title="Sécurité du compte">
