@@ -648,27 +648,6 @@ function PromotionSection({
           <p className="text-sm font-medium text-sky-900/55">{eyebrow}</p>
         </div>
 
-        {hasMultiplePromotions && (
-          <div className="hidden items-center gap-2 sm:flex">
-            <button
-              type="button"
-              onClick={showPreviousPromotion}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-sky-100 bg-white text-xl text-sky-700 shadow-sm transition hover:border-cyan-300 hover:text-sky-950"
-              aria-label="Produit précédent"
-            >
-              ‹
-            </button>
-
-            <button
-              type="button"
-              onClick={showNextPromotion}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-sky-100 bg-white text-xl text-sky-700 shadow-sm transition hover:border-cyan-300 hover:text-sky-950"
-              aria-label="Produit suivant"
-            >
-              ›
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="relative">
