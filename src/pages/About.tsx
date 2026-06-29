@@ -125,12 +125,13 @@ export function About() {
 
   return (
     <main className="bg-brand-50">
-      <section className="relative overflow-hidden bg-brand-950 pt-32 pb-20 text-white lg:pt-40 lg:pb-28">
-        <div className="absolute right-0 top-0 h-[600px] w-[600px] rounded-full bg-brand-700/30 blur-3xl" />
+      <section className="relative overflow-hidden bg-gradient-to-br from-white via-brand-50 to-emerald-50 pt-32 pb-20 text-brand-950 lg:pt-40 lg:pb-28">
+        <div className="absolute right-0 top-0 h-[600px] w-[600px] rounded-full bg-brand-200/40 blur-3xl" />
+        <div className="absolute left-0 bottom-0 h-[420px] w-[420px] rounded-full bg-emerald-100/50 blur-3xl" />
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl">
-            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.25em] text-brand-200">
+            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
               À propos d’EcoLiz
             </p>
 
@@ -138,7 +139,7 @@ export function About() {
               Une plateforme dédiée à l’informatique professionnelle reconditionnée
             </h1>
 
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-brand-100">
+            <p className="mt-6 max-w-3xl text-lg leading-8 text-brand-900/75">
               EcoLiz accompagne les professionnels dans le choix de matériel informatique
               reconditionné. L’objectif est de proposer une alternative fiable, plus responsable
               et adaptée aux besoins des entreprises.
@@ -147,14 +148,14 @@ export function About() {
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
               <Link
                 to="/boutique"
-                className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-950 transition hover:bg-brand-100"
+                className="inline-flex items-center justify-center rounded-full bg-brand-700 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-800"
               >
                 Voir la boutique
               </Link>
 
               <Link
                 to="/contact"
-                className="inline-flex items-center justify-center rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                className="inline-flex items-center justify-center rounded-full border border-brand-200 bg-white px-6 py-3 text-sm font-semibold text-brand-900 shadow-sm transition hover:bg-brand-50"
               >
                 Contacter EcoLiz
               </Link>
