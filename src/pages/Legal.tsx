@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 const legalContent: Record<
   string,
   {
@@ -15,7 +15,7 @@ const legalContent: Record<
     sections: [
     {
       heading: 'Éditeur du site',
-      body: 'EcoLiz SAS, société par actions simplifiée au capital de 300 €, immatriculée au RCS de Montpoellier sous le numéro 912 267 580, dont le siège social est situé au 15 avenue d\'Unterschleissheim, 34920 LE CRES.'
+      body: 'EcoLiz SAS, société par actions simplifiée au capital de 300 €, immatriculée au RCS de Montpellier sous le numéro 912 267 580, dont le siège social est situé au 15 avenue d\'Unterschleissheim, 34920 LE CRES.'
     },
     {
       heading: 'Directeur de la publication',
@@ -40,7 +40,7 @@ const legalContent: Record<
     },
     {
       heading: 'Article 3 – Garantie',
-      body: "L'ensemble du matériel reconditionné est garanti 24 mois pièces et main d'œuvre. Les serveurs sont garantis 12 mois."
+      body: "Les conditions de garantie sont précisées sur la fiche produit, le devis ou la facture. Elles peuvent varier selon le type de matériel, son état, sa catégorie et les conditions commerciales validées par EcoLiz."
     }]
 
   },
@@ -53,11 +53,11 @@ const legalContent: Record<
     },
     {
       heading: 'Vos droits',
-      body: "Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement et de portabilité de vos données. Pour exercer ces droits, contactez dpo@ecoliz.fr."
+      body: "Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement, d'opposition et de portabilité de vos données. Pour exercer ces droits, utilisez l'adresse de contact indiquée sur la page Contact."
     },
     {
       heading: 'Conservation',
-      body: 'Vos données sont conservées pendant la durée nécessaire à la finalité du traitement, et au maximum 5 ans après la fin de la relation commerciale.'
+      body: 'Vos données sont conservées pendant la durée nécessaire à la gestion de la relation commerciale, des commandes et des obligations légales applicables.'
     }]
 
   },
@@ -70,7 +70,7 @@ const legalContent: Record<
     },
     {
       heading: 'Cookies utilisés',
-      body: "EcoLiz utilise uniquement des cookies essentiels au fonctionnement du site et, avec votre consentement, des cookies de mesure d'audience anonymisés."
+      body: "EcoLiz utilise des cookies nécessaires au fonctionnement du site. Les éventuels cookies de mesure d'audience ou de suivi ne sont activés qu'après consentement lorsque ces services sont mis en place."
     },
     {
       heading: 'Gérer vos préférences',
@@ -80,9 +80,17 @@ const legalContent: Record<
   }
 };
 export function Legal() {
-  const { slug = 'mentions-legales' } = useParams<{
+  const { slug: routeSlug } = useParams<{
     slug: string;
   }>();
+
+  const location = useLocation();
+
+  const slug =
+    routeSlug ||
+    location.pathname.replace(/^\//, '') ||
+    'mentions-legales';
+
   const content = legalContent[slug] ?? legalContent['mentions-legales'];
   return (
     <section className="pt-32 pb-24 bg-brand-50 min-h-screen">
