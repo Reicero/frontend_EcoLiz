@@ -9,6 +9,7 @@ import { Account } from './pages/Account'
 import { Contact } from './pages/Contact'
 import { FAQ } from './pages/FAQ'
 import { About } from './pages/About'
+import { ArticlePage } from './pages/Article'
 import { Legal } from './pages/Legal'
 import { Services } from './pages/Services'
 import { Impact } from './pages/Impact'
@@ -37,6 +38,8 @@ function AppLayout() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/a-propos" element={<About />} />
+          <Route path="/articles/:slug" element={<ArticlePage />} />
+          <Route path="/about" element={<About />} />
           <Route path="/panier" element={<Cart />} />
           <Route path="/mentions-legales" element={<Legal />} />
           <Route path="/cgv" element={<Legal />} />
