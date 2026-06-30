@@ -162,12 +162,12 @@ const FILTER_ATTRIBUTE_CONFIG: Array<{
 
   {
     key: "gpu",
-    title: "GPU",
+    title: "Carte graphique",
     attributeName: "Carte graphique",
   },
   {
     key: "gpuModel",
-    title: "Modèle GPU",
+    title: "Modèle carte graphique",
     attributeName: "Modèle carte graphique",
   },
 
