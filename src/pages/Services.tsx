@@ -39,7 +39,7 @@ const process = [
 {
   step: '03',
   title: 'Intervention',
-  text: 'Réparation, maintenance ou déploiement par nos techniciens.'
+  text: 'Masterisation, maintenance ou déploiement par nos techniciens.'
 },
 {
   step: '04',
@@ -212,7 +212,7 @@ export function Services() {
           <div className="relative">
             <img
               src="/service.png"
-              alt="Atelier de réparation EcoLiz"
+              alt="Atelier de masterisation EcoLiz"
               className="rounded-2xl shadow-2xl shadow-brand-900/10 border border-brand-100 w-full" />
             
           </div>

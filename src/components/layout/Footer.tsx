@@ -19,7 +19,7 @@ export function Footer() {
             </div>
             <p className="text-brand-100/60 text-sm mb-6 leading-relaxed">
               Le partenaire IT durable des entreprises. Matériel reconditionné
-              premium, services de réparation et gestion de parc
+              premium, services de masterisation et gestion de parc
               éco-responsable.
             </p>
             <div className="flex gap-4">
@@ -101,7 +101,7 @@ export function Footer() {
                   to="/services"
                   className="hover:text-accent-400 transition-colors">
                   
-                  Réparation en atelier
+                  Masterisation
                 </Link>
               </li>
               <li>

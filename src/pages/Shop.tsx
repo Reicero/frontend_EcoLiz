@@ -88,8 +88,6 @@ const FILTERS_BY_CATEGORY: Record<string, string[]> = {
     "resolution",
     "technologie-dalle",
     "paneltechnology",
-    "carte-graphique",
-    "gpu",
     "modele-carte-graphique",
     "gpumodel",
     "ecran-tactile",
@@ -121,8 +119,6 @@ const FILTERS_BY_CATEGORY: Record<string, string[]> = {
     "stockage",
     "type-stockage",
     "storagetype",
-    "carte-graphique",
-    "gpu",
     "modele-carte-graphique",
     "gpumodel",
     "format-disque",
@@ -421,6 +417,16 @@ function getVisibleFilterGroups(
     const normalizedKey = normalizeText(group.key).replace(/_/g, "-");
     const normalizedTitle = normalizeText(group.title).replace(/\s+/g, "-");
 
+    const isGenericGraphicFilter =
+      normalizedKey === "gpu" ||
+      normalizedKey === "carte-graphique" ||
+      normalizedTitle === "gpu" ||
+      normalizedTitle === "carte-graphique";
+
+    if ((categorySlug === "pc" || categorySlug === "infra") && isGenericGraphicFilter) {
+      return false;
+    }
+
     return allowedFilterKeys.some((key) => {
       const normalizedAllowedKey = normalizeText(key);
       return (
@@ -450,6 +456,31 @@ function getProductAttributeValues(product: Product, group: WooFilterGroup) {
 
     return matchesGroup ? attribute.values : [];
   });
+}
+
+
+function isGraphicCardFilterGroup(group: WooFilterGroup) {
+  const normalizedKey = normalizeText(group.key).replace(/_/g, "-");
+  const normalizedTitle = normalizeText(group.title).replace(/\s+/g, "-");
+
+  return (
+    normalizedKey === "gpu" ||
+    normalizedKey === "carte-graphique" ||
+    normalizedTitle === "gpu" ||
+    normalizedTitle === "carte-graphique"
+  );
+}
+
+function isGraphicCardModelFilterGroup(group: WooFilterGroup) {
+  const normalizedKey = normalizeText(group.key).replace(/_/g, "-");
+  const normalizedTitle = normalizeText(group.title).replace(/\s+/g, "-");
+
+  return (
+    normalizedKey.includes("gpumodel") ||
+    normalizedKey.includes("modele-carte-graphique") ||
+    normalizedTitle.includes("modele-carte-graphique") ||
+    normalizedTitle.includes("modele-gpu")
+  );
 }
 
 function buildContextualFilterGroups(
@@ -1507,7 +1538,7 @@ export function Shop() {
                       visibleFilterGroups.map((group) => (
                         <FilterGroup
                           key={group.key}
-                          title={getCompactFilterTitle(group.title)}
+                          title={getCompactFilterTitle(group.title, selectedMainCategoryTitle)}
                           options={group.options}
                           selectedOptions={selectedFilters[group.key] ?? []}
                           isOpen={expandedFilterGroup === group.key}
@@ -1870,28 +1901,47 @@ function CategorySelectionCard({
   );
 }
 
-function getCompactFilterTitle(title: string) {
+function getCompactFilterTitle(
+  title: string,
+  selectedMainCategoryTitle?: string | null
+) {
   const normalizedTitle = normalizeText(title).replace(/\s+/g, "-");
+  const normalizedCategory = normalizeText(selectedMainCategoryTitle ?? "");
+
+  if (
+    normalizedTitle === "modele-carte-graphique" ||
+    normalizedTitle === "modele-gpu" ||
+    normalizedTitle === "gpumodel"
+  ) {
+    return normalizedCategory === "infra" ? "GPU" : "Carte graphique";
+  }
 
   const compactTitles: Record<string, string> = {
     "modele-processeur": "Modèle CPU",
     "generation-processeur": "Génération CPU",
-    "nombre-de-coeurs": "Cœurs",
-    "carte-graphique": "Carte graphique",
-    "modele-carte-graphique": "Modèle carte graphique",
+    "nombre-coeurs": "Cœurs",
+    "type-ram": "Type de RAM",
+    "type-stockage": "Type de stockage",
+    "format-disque": "Format de disque",
+    "controleur-raid": "Contrôleur RAID",
+    "type-serveur": "Type de serveur",
+    "type-equipement": "Type d’équipement",
+    "nombre-de-ports": "Nombre de ports",
+    "type-de-port-reseau": "Type de port réseau",
+    "debit-reseau": "Débit réseau",
+    "administration-reseau": "Administration réseau",
+    "norme-wi-fi": "Norme Wi-Fi",
+    "technologie-dalle": "Dalle",
     "taille-ecran": "Écran",
-    "technologie-de-dalle": "Dalle",
-    "compatible-vesa": "VESA",
+    "ecran-tactile": "Écran tactile",
     "webcam-integree": "Webcam",
+    "compatible-vesa": "VESA",
     "langue-du-clavier": "Clavier",
-    "langue-clavier": "Clavier",
-    "disposition-clavier": "Clavier",
-    "keyboard-language": "Clavier",
-    "keyboard-layout": "Clavier",
   };
 
   return compactTitles[normalizedTitle] ?? title;
 }
+
 
 function FilterGroup({
   title,

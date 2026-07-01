@@ -17,7 +17,7 @@ const highlights = [
 {
   icon: Wrench,
   title: 'Services IT durables',
-  text: 'Maintenance, réparation, gestion de parc, recyclage DEEE.'
+  text: 'Masterisation, maintenance, gestion de parc, recyclage DEEE.'
 },
 {
   icon: Users,
@@ -102,7 +102,7 @@ export function Home() {
             {
               to: '/services',
               eyebrow: 'Services',
-              title: 'Réparation, maintenance, SAV',
+              title: 'Masterisation, maintenance, SAV',
               text: 'Une gamme complète de services IT pour prolonger la durée de vie de votre parc.',
               cta: 'Découvrir nos services',
               image:

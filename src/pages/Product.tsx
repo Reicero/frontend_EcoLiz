@@ -349,6 +349,25 @@ export function ProductPage() {
 
   const summarySpecifications = useMemo(() => {
     return SUMMARY_ATTRIBUTE_NAMES.flatMap((attributeName) => {
+      if (attributeName === "Carte graphique") {
+        const graphicCardModel = getAttributeValues(attributes, [
+          "Modèle carte graphique",
+        ]);
+
+        const graphicCardFamily = getAttributeValues(attributes, [
+          "Carte graphique",
+        ]);
+
+        const graphicCardValues =
+          graphicCardModel.length > 0 ? graphicCardModel : graphicCardFamily;
+
+        if (graphicCardValues.length > 0) {
+          return [{ name: attributeName, value: graphicCardValues.join(", ") }];
+        }
+
+        return [];
+      }
+
       const values = getAttributeValues(attributes, [attributeName]);
 
       if (values.length > 0) {
@@ -370,6 +389,45 @@ export function ProductPage() {
 
     return keyboardFromSummary || product?.keyboardLanguage || "";
   }, [summarySpecifications, product?.keyboardLanguage]);
+
+  const graphicCardLabel = useMemo(() => {
+    const graphicCardModel = getAttributeValues(attributes, [
+      "Modèle carte graphique",
+    ]).join(", ");
+
+    const graphicCardFamily = getAttributeValues(attributes, [
+      "Carte graphique",
+    ]).join(", ");
+
+    return graphicCardModel || graphicCardFamily;
+  }, [attributes]);
+
+  const shouldShowGraphicCardTag = useMemo(() => {
+    if (!product || !graphicCardLabel) {
+      return false;
+    }
+
+    const productText = [
+      product.category,
+      product.productGroup,
+      product.name,
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      productText.includes("pc") ||
+      productText.includes("notebook") ||
+      productText.includes("laptop") ||
+      productText.includes("portable") ||
+      productText.includes("ordinateur") ||
+      productText.includes("workstation") ||
+      productText.includes("workstations") ||
+      productText.includes("station de travail") ||
+      productText.includes("chromebook") ||
+      productText.includes("all-in-one")
+    );
+  }, [product, graphicCardLabel]);
 
   const showThermocollageOption = useMemo(() => {
     if (!product || !keyboardLayout) {
@@ -613,6 +671,13 @@ export function ProductPage() {
                   <StatusPill
                     label={`Promotion -${discountPercent}%`}
                     variant="promo"
+                  />
+                )}
+
+                {shouldShowGraphicCardTag && (
+                  <StatusPill
+                    label={`Carte graphique : ${graphicCardLabel}`}
+                    variant="info"
                   />
                 )}
 

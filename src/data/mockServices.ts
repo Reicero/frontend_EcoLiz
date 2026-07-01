@@ -3,8 +3,8 @@ import type { ServiceItem } from '../types/page';
 const SERVICES_DATA: ServiceItem[] = [
   {
     id: '1',
-    slug: 'reparation-ordinateur',
-    title: 'Réparation ordinateur',
+    slug: 'masterisation-postes',
+    title: 'Masterisation de postes',
     description:
       'Intervention rapide sur site ou en atelier pour tous vos équipements défectueux.',
     icon: 'Wrench',
