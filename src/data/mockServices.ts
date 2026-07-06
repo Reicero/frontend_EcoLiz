@@ -6,7 +6,7 @@ const SERVICES_DATA: ServiceItem[] = [
     slug: 'masterisation-postes',
     title: 'Masterisation de postes',
     description:
-      'Intervention rapide sur site ou en atelier pour tous vos équipements défectueux.',
+      'Préparation, configuration et déploiement de vos postes selon vos besoins.',
     icon: 'Wrench',
   },
   {
