@@ -291,6 +291,33 @@ function getCategoryDisplayName(name: string) {
   return labels[decodedName] ?? decodedName;
 }
 
+
+const CATEGORY_CHILD_ORDER_BY_ID: Record<string, number[]> = {
+  PC: [449, 107, 455, 104, 457, 451],
+};
+
+function sortCategoryChildren(group: CategoryGroup) {
+  const orderedIds = CATEGORY_CHILD_ORDER_BY_ID[group.title] ?? [];
+
+  group.children.sort((a, b) => {
+    const indexA = orderedIds.indexOf(a.id);
+    const indexB = orderedIds.indexOf(b.id);
+
+    const orderA = indexA === -1 ? 999 : indexA;
+    const orderB = indexB === -1 ? 999 : indexB;
+
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+
+    return getCategoryDisplayName(a.name).localeCompare(
+      getCategoryDisplayName(b.name),
+      "fr",
+      { sensitivity: "base" }
+    );
+  });
+}
+
 function getParentGroupTitle(category: WooCategory) {
   const name = normalizeText(decodeHtmlEntities(category.name));
 
@@ -396,6 +423,10 @@ function getCategoryGroups(categories: WooCategory[]) {
     if (!parentTitle) return;
 
     addChild(parentTitle, category);
+  });
+
+  groups.forEach((group) => {
+    sortCategoryChildren(group);
   });
 
   return CATEGORY_ORDER.map((title) => groups.get(title)).filter(
