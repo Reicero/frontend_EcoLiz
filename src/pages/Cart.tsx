@@ -6,6 +6,7 @@ import { getCart, updateCartItem, removeCartItem } from '../services/cart'
 type WooCartItem = {
   key: string
   id: number
+  sku?: string
   name: string
   quantity: number
   images?: {
@@ -36,6 +37,55 @@ type WooCart = {
 }
 
 const CART_PRODUCT_METADATA_STORAGE_KEY = "ecoliz_cart_product_metadata_v1"
+
+const QUOTE_ONLY_SERVICE_PRODUCT_IDS = new Set([
+  16878,
+  16879,
+  16880,
+  16881,
+  16882,
+  16883,
+  16884,
+  16885,
+  16886,
+  16887,
+  16888,
+  16889,
+])
+
+const QUOTE_ONLY_SERVICE_NAMES = new Set([
+  "mco wi-fi / waas",
+  "mco lan / wlan",
+  "firewall as a service",
+  "mco server / iaas",
+  "stockage objet s3 & sauvegarde",
+  "cybersecurite bitdefender edr / xdr / mdr",
+  "conseil en licences microsoft",
+  "operateur lan to lan / fibre xdsl",
+  "helpdesk / assistance utilisateur",
+  "design et conseil infrastructure si",
+  "audit et conseil wi-fi",
+  "integration et support",
+])
+
+function normalizeCartText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+}
+
+function isQuoteOnlyCartItem(item: WooCartItem) {
+  const sku = item.sku?.toUpperCase() ?? ""
+
+  return (
+    sku.startsWith("HABEUM-SVC-") ||
+    QUOTE_ONLY_SERVICE_PRODUCT_IDS.has(item.id) ||
+    QUOTE_ONLY_SERVICE_NAMES.has(normalizeCartText(item.name))
+  )
+}
 
 type CartProductTag = {
   name: string
@@ -173,11 +223,20 @@ export function Cart() {
   const items = cart?.items ?? []
   const minorUnit = cart?.totals?.currency_minor_unit ?? 2
 
+  const quoteItems = items.filter(isQuoteOnlyCartItem)
+  const paidItems = items.filter((item) => !isQuoteOnlyCartItem(item))
+  const quoteItemsCount = quoteItems.reduce((sum, item) => sum + item.quantity, 0)
+  const paidItemsCount = paidItems.reduce((sum, item) => sum + item.quantity, 0)
+  const hasQuoteItems = quoteItems.length > 0
+  const hasPaidItems = paidItems.length > 0
+
   const totalHT =
-    items.reduce((sum, item) => {
+    paidItems.reduce((sum, item) => {
       const lineTotal = item.totals?.line_total
       return sum + (lineTotal ? Number(lineTotal) : 0)
     }, 0) / Math.pow(10, minorUnit)
+
+  const checkoutLabel = "Valider mon panier"
 
   return (
     <section className="py-16 lg:py-24 bg-white">
@@ -211,6 +270,7 @@ export function Cart() {
                 const isUpdating = updatingKey === item.key
                 const metadata = getCartProductMetadata(item.id)
                 const productTags = metadata?.tags ?? []
+                const isQuoteOnly = isQuoteOnlyCartItem(item)
 
                 return (
                   <div key={item.key} className="bg-white rounded-3xl border border-brand-100 p-5 shadow-sm flex flex-col sm:flex-row gap-5">
@@ -250,7 +310,18 @@ export function Cart() {
                             </p>
                           )}
 
-                          <p className="mt-3 text-brand-900/60">{formatWooPrice(item.totals?.line_total, minorUnit)}</p>
+                          {isQuoteOnly ? (
+                            <div className="mt-3 rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm">
+                              <p className="font-bold text-brand-950">Sur devis</p>
+                              <p className="mt-1 text-brand-900/60">
+                                Ce service fera l’objet d’un devis personnalisé.
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="mt-3 text-brand-900/60">
+                              {formatWooPrice(item.totals?.line_total, minorUnit)}
+                            </p>
+                          )}
                         </div>
 
                         <button
@@ -264,38 +335,45 @@ export function Cart() {
                         </button>
                       </div>
 
-                      <div className="mt-4 flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => void handleUpdateQuantity(item, item.quantity - 1)}
-                          disabled={isUpdating || item.quantity <= 1}
-                          className="inline-flex items-center justify-center rounded-lg border border-brand-200 p-2 hover:bg-brand-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          aria-label="Diminuer la quantité"
-                        >
-                          <Minus className="h-4 w-4" />
-                        </button>
+                      {isQuoteOnly ? (
+                        <div className="mt-4 inline-flex rounded-full bg-brand-50 px-4 py-2 text-sm font-medium text-brand-800">
+                          Demande de devis
+                          {item.quantity > 1 ? ` · quantité : ${item.quantity}` : ""}
+                        </div>
+                      ) : (
+                        <div className="mt-4 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleUpdateQuantity(item, item.quantity - 1)}
+                            disabled={isUpdating || item.quantity <= 1}
+                            className="inline-flex items-center justify-center rounded-lg border border-brand-200 p-2 hover:bg-brand-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            aria-label="Diminuer la quantité"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
 
-                        <input
-                          type="number"
-                          min="1"
-                          value={quantityInputs[item.key] || ''}
-                          onChange={(e) => handleQuantityInputChange(item, e.target.value)}
-                          onBlur={() => handleQuantityInputValidate(item)}
-                          disabled={isUpdating}
-                          className="w-16 rounded-lg border border-brand-200 px-2 py-2 text-center text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                          aria-label="Quantité"
-                        />
+                          <input
+                            type="number"
+                            min="1"
+                            value={quantityInputs[item.key] || ''}
+                            onChange={(e) => handleQuantityInputChange(item, e.target.value)}
+                            onBlur={() => handleQuantityInputValidate(item)}
+                            disabled={isUpdating}
+                            className="w-16 rounded-lg border border-brand-200 px-2 py-2 text-center text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            aria-label="Quantité"
+                          />
 
-                        <button
-                          type="button"
-                          onClick={() => void handleUpdateQuantity(item, item.quantity + 1)}
-                          disabled={isUpdating}
-                          className="inline-flex items-center justify-center rounded-lg border border-brand-200 p-2 hover:bg-brand-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          aria-label="Augmenter la quantité"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      </div>
+                          <button
+                            type="button"
+                            onClick={() => void handleUpdateQuantity(item, item.quantity + 1)}
+                            disabled={isUpdating}
+                            className="inline-flex items-center justify-center rounded-lg border border-brand-200 p-2 hover:bg-brand-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            aria-label="Augmenter la quantité"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
@@ -307,19 +385,38 @@ export function Cart() {
                 <h2 className="text-xl font-bold text-brand-950 mb-6">Récapitulatif</h2>
 
                 <div className="space-y-4 mb-6 pb-6 border-b border-brand-200">
-                  <div className="flex items-center justify-between text-brand-900/70">
-                    <span>Articles</span>
-                    <span>{cart?.items_count ?? items.length}</span>
-                  </div>
+                  {paidItemsCount > 0 && (
+                    <div className="flex items-center justify-between text-brand-900/70">
+                      <span>Articles payants</span>
+                      <span>{paidItemsCount}</span>
+                    </div>
+                  )}
+
+                  {quoteItemsCount > 0 && (
+                    <div className="flex items-center justify-between text-brand-900/70">
+                      <span>Demandes sur devis</span>
+                      <span>{quoteItemsCount}</span>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between text-brand-950 font-bold text-xl">
                     <span>Total HT</span>
-                    <span>{formatWooPrice(String(totalHT * Math.pow(10, minorUnit)), minorUnit)}</span>
+                    <span>
+                      {hasPaidItems
+                        ? formatWooPrice(String(totalHT * Math.pow(10, minorUnit)), minorUnit)
+                        : "Sur devis"}
+                    </span>
                   </div>
                 </div>
 
+                {hasQuoteItems && (
+                  <div className="mb-5 rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-brand-900/70">
+                    Les services sélectionnés seront traités comme une demande de devis personnalisée.
+                  </div>
+                )}
+
                 <Link to="/checkout" className="mt-6 w-full inline-flex items-center justify-center rounded-full bg-brand-700 px-6 py-3 text-white font-semibold hover:bg-brand-800 transition-colors">
-                  Passer commande
+                  {checkoutLabel}
                 </Link>
 
                 <Link to="/boutique" className="mt-3 w-full inline-flex items-center justify-center rounded-full border border-brand-200 bg-white px-6 py-3 text-brand-900 font-semibold hover:bg-brand-50 transition-colors">

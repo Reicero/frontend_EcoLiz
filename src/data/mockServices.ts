@@ -6,7 +6,7 @@ const SERVICES_DATA: ServiceItem[] = [
     slug: 'masterisation-postes',
     title: 'Masterisation de postes',
     description:
-      'Préparation, configuration et déploiement de vos postes selon vos besoins.',
+      'Préparation, configuration et déploiement de vos postes selon vos besoins, afin de faciliter leur mise en service.',
     icon: 'Wrench',
   },
   {
@@ -14,38 +14,38 @@ const SERVICES_DATA: ServiceItem[] = [
     slug: 'maintenance-preventive',
     title: 'Maintenance préventive',
     description:
-      'Contrats de maintenance pour anticiper les pannes et prolonger la durée de vie.',
+      'Contrôle et suivi de vos équipements pour anticiper les pannes, prolonger leur durée de vie et mieux planifier leur renouvellement.',
     icon: 'Activity',
   },
   {
     id: '3',
     slug: 'diagnostic-de-parc',
-    title: 'Diagnostic de parc',
+    title: 'Diagnostic de parc matériel',
     description:
-      "Audit complet de votre infrastructure matérielle et recommandations d'optimisation.",
+      "Analyse de votre parc informatique pour identifier les équipements à conserver, remplacer ou compléter avec du matériel reconditionné adapté.",
     icon: 'Search',
   },
   {
     id: '4',
     slug: 'sav-support',
-    title: 'SAV & Support',
-    description: 'Assistance technique dédiée avec SLA garantis pour les professionnels.',
+    title: 'SAV',
+    description: 'Prise en charge des demandes après achat : garantie, retour, remplacement ou suivi de commande.',
     icon: 'HeadphonesIcon',
   },
   {
     id: '5',
     slug: 'reconditionnement',
-    title: 'Reconditionnement',
+    title: 'Support utilisateur',
     description:
-      "Remise à neuf de votre flotte existante pour un second cycle d'utilisation.",
+      "Accompagnement à la prise en main, aux premières configurations et aux questions d’utilisation de votre matériel.",
     icon: 'Package',
   },
   {
     id: '6',
     slug: 'recyclage-informatique',
-    title: 'Recyclage informatique',
+    title: 'Reconditionnement & recyclage informatique',
     description:
-      'Collecte et traitement certifié DEEE de vos équipements en fin de vie avec certificat.',
+      'Valorisation du matériel informatique par le réemploi, le contrôle, la préparation et le traitement responsable des équipements en fin de vie.',
     icon: 'Recycle',
   },
 ];
