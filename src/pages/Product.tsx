@@ -300,6 +300,10 @@ function handleProductImageError(event: SyntheticEvent<HTMLImageElement>) {
   image.src = retryUrl.toString();
 }
 
+function isQuoteOnlyProduct(product: Product) {
+  return product.sku?.toUpperCase().startsWith("HABEUM-SVC-") ?? false;
+}
+
 export function ProductPage() {
   const { slug } = useParams<{ slug: string }>();
 
@@ -491,7 +495,7 @@ export function ProductPage() {
     return [
       { label: "Fabricant", value: product.manufacturer },
       { label: "Référence constructeur", value: product.manufacturerPartNumber },
-      { label: "Référence EcoLiz", value: product.sku },
+      { label: isQuoteOnlyProduct(product) ? "Référence service" : "Référence EcoLiz", value: product.sku },
       { label: "EAN", value: product.ean },
       { label: "Catégorie", value: product.category },
       { label: "Famille produit", value: product.productGroup },
@@ -584,6 +588,7 @@ export function ProductPage() {
   }
 
   const productName = decodeHtmlEntities(product.name);
+  const isQuoteOnly = isQuoteOnlyProduct(product);
   const productDescription = decodeHtmlEntities(product.description);
   const originalPrice = Number(
     (product as Product & { originalPrice?: number }).originalPrice ?? 0
@@ -655,7 +660,13 @@ export function ProductPage() {
             <div className="min-w-0 p-5 sm:p-7 lg:p-9">
               <div className="mb-4 flex flex-wrap gap-2">
                 <StatusPill
-                  label={product.stock ? "En stock" : "Rupture de stock"}
+                  label={
+                    isQuoteOnly
+                      ? "Disponible sur demande"
+                      : product.stock
+                        ? "En stock"
+                        : "Rupture de stock"
+                  }
                   variant={product.stock ? "success" : "warning"}
                 />
 
@@ -681,7 +692,10 @@ export function ProductPage() {
                   />
                 )}
 
-                <StatusPill label="Garantie sur devis" variant="info" />
+                <StatusPill
+                  label={isQuoteOnly ? "Service sur devis" : "Garantie sur devis"}
+                  variant="info"
+                />
               </div>
 
               <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-sky-700">
@@ -694,7 +708,26 @@ export function ProductPage() {
 
               {summarySpecifications.length > 0 && (
                 <div className="mt-5 flex flex-wrap gap-2">
-                  {summarySpecifications.map((item) => (
+                  {summarySpecifications
+                    .filter((item) => {
+                      const normalizedName = normalizeText(item.name).replace(/[-_]+/g, " ");
+                      const normalizedValue = normalizeText(item.value).replace(/[-_]+/g, " ");
+
+                      if (
+                        normalizedValue === "non renseigne" ||
+                        normalizedValue.includes("non renseigne") ||
+                        normalizedValue === "non-renseigne"
+                      ) {
+                        return false;
+                      }
+
+                      if (isQuoteOnly && normalizedName === "etat") {
+                        return false;
+                      }
+
+                      return true;
+                    })
+                    .map((item) => (
                     <span
                       key={`${item.name}-${item.value}`}
                       className="max-w-full rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5 text-sm text-sky-900/75"
@@ -710,7 +743,17 @@ export function ProductPage() {
 
               {identityRows.length > 0 && (
                 <dl className="mt-7 grid min-w-0 gap-x-8 gap-y-3 border-y border-sky-100 py-5 sm:grid-cols-2">
-                  {identityRows.map((item) => (
+                  {identityRows
+                    .filter((item) => {
+                      const normalizedValue = normalizeText(item.value).replace(/[-_]+/g, " ");
+
+                      return !(
+                        normalizedValue === "non renseigne" ||
+                        normalizedValue.includes("non renseigne") ||
+                        normalizedValue === "non-renseigne"
+                      );
+                    })
+                    .map((item) => (
                     <div
                       key={item.label}
                       className="grid min-w-0 grid-cols-[120px_minmax(0,1fr)] gap-3 text-sm"
@@ -725,18 +768,35 @@ export function ProductPage() {
               )}
 
               <div className="mt-7">
-                <p className="text-4xl font-bold tracking-tight text-sky-950">
-                  {formatPrice(product.price)} HT
-                </p>
-                {discountPercent && (
-                  <p className="mt-1 text-lg text-sky-900/45 line-through">
-                    {formatPrice(originalPrice)} HT
-                  </p>
-                )}
-                {product.priceTTC && (
-                  <p className="mt-1 text-lg text-sky-900/55">
-                    {formatPrice(product.priceTTC)} TTC
-                  </p>
+                {isQuoteOnly ? (
+                  <div className="rounded-3xl border border-cyan-100 bg-cyan-50/70 p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">
+                      Service IT
+                    </p>
+                    <p className="mt-2 text-4xl font-bold tracking-tight text-sky-950">
+                      Sur devis
+                    </p>
+                    <p className="mt-3 text-sm leading-6 text-sky-900/65">
+                      Ce service est étudié selon votre environnement, votre volumétrie et le niveau d’accompagnement souhaité.
+                      Ajoutez-le à votre demande pour être recontacté avec une proposition adaptée.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-4xl font-bold tracking-tight text-sky-950">
+                      {formatPrice(product.price)} HT
+                    </p>
+                    {discountPercent && (
+                      <p className="mt-1 text-lg text-sky-900/45 line-through">
+                        {formatPrice(originalPrice)} HT
+                      </p>
+                    )}
+                    {product.priceTTC && (
+                      <p className="mt-1 text-lg text-sky-900/55">
+                        {formatPrice(product.priceTTC)} TTC
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -744,10 +804,10 @@ export function ProductPage() {
                 <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-semibold text-sky-950">
-                      Produit ajouté au panier.
+                      {isQuoteOnly ? "Service ajouté à votre demande." : "Produit ajouté au panier."}
                     </p>
                     <p className="text-sm text-sky-900/60">
-                      Vous pouvez continuer vos achats ou consulter votre panier.
+                      {isQuoteOnly ? "Vous pouvez ajouter d’autres services ou consulter votre demande." : "Vous pouvez continuer vos achats ou consulter votre panier."}
                     </p>
                   </div>
                   <Link
@@ -794,7 +854,9 @@ export function ProductPage() {
                   {addingToCart
                     ? "Ajout en cours…"
                     : product.stock
-                      ? "Ajouter au panier"
+                      ? isQuoteOnly
+                        ? "Ajouter à ma demande"
+                        : "Ajouter au panier"
                       : "Produit indisponible"}
                 </button>
 
@@ -807,9 +869,18 @@ export function ProductPage() {
               </div>
 
               <div className="mt-7 grid gap-4 border-t border-sky-100 pt-6 sm:grid-cols-3">
-                <TrustItem icon={ShieldCheck} text="Garantie sur devis" />
-                <TrustItem icon={Truck} text="Livraison professionnelle" />
-                <TrustItem icon={Leaf} text="Matériel professionnel" />
+                <TrustItem
+                  icon={ShieldCheck}
+                  text={isQuoteOnly ? "Devis personnalisé" : "Garantie sur devis"}
+                />
+                <TrustItem
+                  icon={Truck}
+                  text={isQuoteOnly ? "Accompagnement professionnel" : "Livraison professionnelle"}
+                />
+                <TrustItem
+                  icon={Leaf}
+                  text={isQuoteOnly ? "Expertise IT" : "Matériel professionnel"}
+                />
               </div>
             </div>
           </div>
@@ -823,7 +894,7 @@ export function ProductPage() {
                   Informations
                 </p>
                 <h2 className="mt-1 text-2xl font-bold text-sky-950">
-                  Description du produit
+                  {isQuoteOnly ? "Description du service" : "Description du produit"}
                 </h2>
               </div>
               <ChevronDown className="h-5 w-5 shrink-0 text-sky-900/50 transition-transform group-open:rotate-180" />
@@ -832,7 +903,9 @@ export function ProductPage() {
             <div className="border-t border-sky-100 px-6 py-6 sm:px-8">
               <p className="max-w-5xl whitespace-pre-line break-words leading-7 text-sky-900/70 [overflow-wrap:anywhere]">
                 {productDescription ||
-                  "Aucune description détaillée n’est disponible pour ce produit."}
+                  (isQuoteOnly
+                    ? "Aucune description détaillée n’est disponible pour ce service."
+                    : "Aucune description détaillée n’est disponible pour ce produit.")}
               </p>
             </div>
           </details>
@@ -843,10 +916,10 @@ export function ProductPage() {
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 sm:px-8">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-wide text-sky-700">
-                  Données fournisseur
+                  {isQuoteOnly ? "Informations service" : "Données fournisseur"}
                 </p>
                 <h2 className="mt-1 text-2xl font-bold text-sky-950">
-                  Spécifications techniques
+                  {isQuoteOnly ? "Détails de la prestation" : "Spécifications techniques"}
                 </h2>
               </div>
               <ChevronDown className="h-5 w-5 shrink-0 text-sky-900/50 transition-transform group-open:rotate-180" />
@@ -858,7 +931,9 @@ export function ProductPage() {
                   {specificationGroups.map((section) => (
                     <div key={section.group}>
                       <h3 className="mb-3 text-lg font-bold text-sky-950">
-                        {section.group}
+                        {isQuoteOnly && section.group === "Autres spécifications"
+                          ? "Détails du service"
+                          : section.group}
                       </h3>
 
                       <div className="overflow-hidden rounded-xl border border-sky-100">
@@ -885,7 +960,9 @@ export function ProductPage() {
                 </div>
               ) : (
                 <div className="rounded-xl bg-sky-50 px-5 py-8 text-center text-sky-900/55">
-                  Les caractéristiques techniques seront complétées prochainement.
+                  {isQuoteOnly
+                    ? "Les détails de cette prestation seront complétés prochainement."
+                    : "Les caractéristiques techniques seront complétées prochainement."}
                 </div>
               )}
             </div>

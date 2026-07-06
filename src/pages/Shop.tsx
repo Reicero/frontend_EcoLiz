@@ -59,7 +59,7 @@ type CategoryGroup = {
   children: WooCategory[];
 };
 
-const CATEGORY_ORDER = ["PC", "Infra", "Réseau", "Service"] as const;
+const CATEGORY_ORDER = ["PC", "Infra", "Réseau", "Services IT"] as const;
 
 const FILTERS_BY_CATEGORY: Record<string, string[]> = {
   pc: [
@@ -152,7 +152,7 @@ const FILTERS_BY_CATEGORY: Record<string, string[]> = {
     "connectique",
     "connectivity",
   ],
-  service: [
+  licences: [
     "marque",
     "etat",
     "clavier",
@@ -170,7 +170,8 @@ const CATEGORY_ICONS = {
   PC: Laptop,
   Infra: Server,
   Réseau: Network,
-  Service: Briefcase,
+  Licences: Briefcase,
+  "Services IT": Briefcase,
 } as const;
 
 const CATEGORY_DETAILS: Record<
@@ -196,8 +197,13 @@ const CATEGORY_DETAILS: Record<
     color: "from-cyan-500 to-sky-700",
     icon: "bg-cyan-50 text-cyan-700 ring-cyan-100",
   },
-  Service: {
-    description: "Licences, prestations, audit et demandes sur devis.",
+  Licences: {
+    description: "Licences logicielles, serveur, réseau et accompagnement associé.",
+    color: "from-sky-900 to-cyan-600",
+    icon: "bg-cyan-50 text-cyan-700 ring-cyan-100",
+  },
+  "Services IT": {
+    description: "Services informatiques proposés sur devis selon vos besoins.",
     color: "from-sky-900 to-cyan-600",
     icon: "bg-cyan-50 text-cyan-700 ring-cyan-100",
   },
@@ -208,7 +214,8 @@ function getCategorySlug(title: string) {
     PC: "pc",
     Infra: "infra",
     Réseau: "reseau",
-    Service: "service",
+    Licences: "licences",
+    "Services IT": "services-it",
   };
 
   return slugMap[title] ?? normalizeText(title).replace(/\s+/g, "-");
@@ -280,7 +287,7 @@ function getCategoryDisplayName(name: string) {
     "PC fixes & Workstations": "Workstations",
     "Réseau & Wi-Fi": "Réseau",
     "Serveurs & Stockage": "Server / Stockage",
-    "Licences & Logiciels": "Licence",
+    "Licences & Logiciels": "Licences",
     "Écrans & accessoires": "Écrans",
     "Docks et stations d'accueil": "Docks / stations d’accueil",
     "Sacs et housses": "Accessoires mobilité",
@@ -293,7 +300,7 @@ function getCategoryDisplayName(name: string) {
 
 
 const CATEGORY_CHILD_ORDER_BY_ID: Record<string, number[]> = {
-  PC: [449, 107, 455, 104, 457, 451],
+  PC: [449, 104, 107, 455, 457, 451],
 };
 
 function sortCategoryChildren(group: CategoryGroup) {
@@ -318,13 +325,123 @@ function sortCategoryChildren(group: CategoryGroup) {
   });
 }
 
+
+type DisplayCategoryOption = WooCategory & {
+  selectionIds: number[];
+};
+
+const PC_NOTEBOOK_CATEGORY_ID = 449;
+const PC_FIXED_CATEGORY_ID = 104;
+const PC_WORKSTATION_CATEGORY_IDS = [107, 455];
+const PC_MAIN_DISPLAY_CATEGORY_IDS = [
+  PC_NOTEBOOK_CATEGORY_ID,
+  PC_FIXED_CATEGORY_ID,
+  ...PC_WORKSTATION_CATEGORY_IDS,
+];
+
+function buildCombinedCategoryOption(
+  label: string,
+  virtualId: number,
+  categories: WooCategory[]
+): DisplayCategoryOption | null {
+  if (categories.length === 0) return null;
+
+  const baseCategory = categories[0];
+
+  return {
+    ...baseCategory,
+    id: virtualId,
+    name: label,
+    slug: normalizeText(label).replace(/\s+/g, "-"),
+    count: categories.reduce(
+      (total, category) => total + (category.count ?? 0),
+      0
+    ),
+    selectionIds: categories.map((category) => category.id),
+  };
+}
+
+function getDisplayCategoriesForGroup(group: CategoryGroup): DisplayCategoryOption[] {
+  if (group.title !== "PC") {
+    return group.children.map((category) => ({
+      ...category,
+      selectionIds: [category.id],
+    }));
+  }
+
+  const categoriesById = new Map(
+    group.children.map((category) => [category.id, category])
+  );
+
+  const notebook = categoriesById.get(PC_NOTEBOOK_CATEGORY_ID);
+  const pcFixe = categoriesById.get(PC_FIXED_CATEGORY_ID);
+
+  const workstationCategories = PC_WORKSTATION_CATEGORY_IDS
+    .map((id) => categoriesById.get(id))
+    .filter((category): category is WooCategory => Boolean(category));
+
+  const otherCategories = group.children.filter(
+    (category) => !PC_MAIN_DISPLAY_CATEGORY_IDS.includes(category.id)
+  );
+
+  const displayCategories: DisplayCategoryOption[] = [];
+
+  if (notebook) {
+    displayCategories.push({
+      ...notebook,
+      name: "Notebook",
+      selectionIds: [notebook.id],
+    });
+  }
+
+  if (pcFixe) {
+    displayCategories.push({
+      ...pcFixe,
+      name: "PC fixe",
+      selectionIds: [pcFixe.id],
+    });
+  }
+
+  const workstationOption = buildCombinedCategoryOption(
+    "Workstation",
+    -1001,
+    workstationCategories
+  );
+
+  if (workstationOption) {
+    displayCategories.push(workstationOption);
+  }
+
+  const otherOption = buildCombinedCategoryOption(
+    "Autres",
+    -1002,
+    otherCategories
+  );
+
+  if (otherOption) {
+    displayCategories.push(otherOption);
+  }
+
+  return displayCategories;
+}
+
+function areCategorySelectionIdsSelected(
+  selectedCategoryIds: number[],
+  selectionIds: number[]
+) {
+  return (
+    selectionIds.length > 0 &&
+    selectionIds.every((id) => selectedCategoryIds.includes(id))
+  );
+}
+
 function getParentGroupTitle(category: WooCategory) {
   const name = normalizeText(decodeHtmlEntities(category.name));
 
   if (name === "pc") return "PC";
   if (name === "infra") return "Infra";
   if (name === "reseau") return "Réseau";
-  if (name === "service") return "Service";
+  if (name === "services it" || name === "services") return "Services IT";
 
   if (
     name.includes("ordinateurs portables") ||
@@ -347,13 +464,12 @@ function getParentGroupTitle(category: WooCategory) {
     return "Réseau";
   }
 
-  if (
-    name.includes("licences") ||
-    name.includes("logiciels") ||
-    name.includes("service") ||
-    name.includes("autres")
-  ) {
-    return "Service";
+  if (name.includes("licences") || name.includes("logiciels")) {
+    return "Licences";
+  }
+
+  if (name.includes("service")) {
+    return "Services IT";
   }
 
   return null;
@@ -643,6 +759,10 @@ function FloatingNeedHelpCTA() {
 }
 
 
+function isQuoteOnlyProduct(product: Product) {
+  return product.sku?.toUpperCase().startsWith("HABEUM-SVC-") ?? false;
+}
+
 function getPromotionDiscountPercent(product: Product) {
   const originalPrice = Number(
     (product as Product & { originalPrice?: number }).originalPrice ?? 0
@@ -812,14 +932,27 @@ function PromotionSection({
 
                       <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                         <div>
-                          <p className="text-3xl font-black text-cyan-700">
-                            {formatPrice(product.price)} HT
-                          </p>
+                          {isQuoteOnlyProduct(product) ? (
+                            <div>
+                              <p className="text-3xl font-black text-cyan-700">
+                                Sur devis
+                              </p>
+                              <p className="mt-1 text-sm text-sky-900/55">
+                                Tarif personnalisé selon votre besoin
+                              </p>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-3xl font-black text-cyan-700">
+                                {formatPrice(product.price)} HT
+                              </p>
 
-                          {isPromotionMode && originalPrice > product.price && (
-                            <p className="mt-1 text-sm text-sky-900/45 line-through">
-                              {formatPrice(originalPrice)} HT
-                            </p>
+                              {isPromotionMode && originalPrice > product.price && (
+                                <p className="mt-1 text-sm text-sky-900/45 line-through">
+                                  {formatPrice(originalPrice)} HT
+                                </p>
+                              )}
+                            </>
                           )}
                         </div>
 
@@ -917,6 +1050,20 @@ export function Shop() {
       ? selectedCategoryIds
       : selectedMainCategory?.children.map((category) => category.id) ?? [];
   const selectedCategoryKey = activeCategoryIds.join(",");
+
+  function toggleCategoryOption(selectionIds: number[]) {
+    setSelectedCategoryIds((currentIds) => {
+      const allSelected = selectionIds.every((id) => currentIds.includes(id));
+
+      if (allSelected) {
+        return currentIds.filter((id) => !selectionIds.includes(id));
+      }
+
+      return Array.from(new Set([...currentIds, ...selectionIds]));
+    });
+
+    setCurrentPage(1);
+  }
 
   function updateShopUrl(nextParams: Record<string, string>) {
     const params = new URLSearchParams();
@@ -1475,22 +1622,18 @@ export function Shop() {
                     Sous-catégories
                   </p>
                   <div className="flex gap-4 overflow-x-auto pb-2">
-                    {selectedMainCategory.children.map((category) => {
-                      const checked = selectedCategoryIds.includes(
-                        category.id
+                    {getDisplayCategoriesForGroup(selectedMainCategory).map((category) => {
+                      const selectionIds = category.selectionIds;
+                      const checked = areCategorySelectionIdsSelected(
+                        selectedCategoryIds,
+                        selectionIds
                       );
 
                       return (
                         <button
-                          key={category.id}
+                          key={`${category.id}-${selectionIds.join("-")}`}
                           type="button"
-                          onClick={() =>
-                            toggleNumberFilter(
-                              category.id,
-                              selectedCategoryIds,
-                              setSelectedCategoryIds
-                            )
-                          }
+                          onClick={() => toggleCategoryOption(selectionIds)}
                           className={`min-w-[150px] rounded-2xl border px-4 py-3 text-left text-sm transition ${
                             checked
                               ? "border-sky-700 bg-sky-950 text-white"
@@ -2085,7 +2228,13 @@ function ProductListItem({ product }: { product: Product }) {
         <Link to={`/produit/${product.slug}`} className="block">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <StatusPill
-              label={product.stock ? "En stock" : "Rupture"}
+              label={
+                isQuoteOnlyProduct(product)
+                  ? "Sur devis"
+                  : product.stock
+                    ? "En stock"
+                    : "Rupture"
+              }
               variant={product.stock ? "success" : "warning"}
             />
 
@@ -2135,20 +2284,33 @@ function ProductListItem({ product }: { product: Product }) {
 
       <div className="flex shrink-0 items-end justify-between gap-4 border-t border-sky-100 pt-4 sm:w-full md:w-auto md:min-w-[190px] md:flex-col md:items-end md:border-l md:border-t-0 md:pl-4 md:pt-0">
         <div className="text-right">
-          <p className="text-xl font-bold text-sky-950 sm:text-2xl">
-            {formatPrice(product.price)} HT
-          </p>
+          {isQuoteOnlyProduct(product) ? (
+            <div>
+              <p className="text-xl font-bold text-sky-950 sm:text-2xl">
+                Sur devis
+              </p>
+              <p className="text-sm text-sky-900/50">
+                Demande personnalisée
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-xl font-bold text-sky-950 sm:text-2xl">
+                {formatPrice(product.price)} HT
+              </p>
 
-          {discountPercent && originalPrice > 0 && (
-            <p className="text-sm text-sky-900/45 line-through">
-              {formatPrice(originalPrice)} HT
-            </p>
-          )}
+              {discountPercent && originalPrice > 0 && (
+                <p className="text-sm text-sky-900/45 line-through">
+                  {formatPrice(originalPrice)} HT
+                </p>
+              )}
 
-          {product.priceTTC && (
-            <p className="text-sm text-sky-900/50">
-              {formatPrice(product.priceTTC)} TTC
-            </p>
+              {product.priceTTC && (
+                <p className="text-sm text-sky-900/50">
+                  {formatPrice(product.priceTTC)} TTC
+                </p>
+              )}
+            </>
           )}
         </div>
 
@@ -2185,7 +2347,13 @@ function ProductGridItem({ product }: { product: Product }) {
 
           <div className="absolute right-3 top-3">
             <StatusPill
-              label={product.stock ? "En stock" : "Rupture"}
+              label={
+                isQuoteOnlyProduct(product)
+                  ? "Sur devis"
+                  : product.stock
+                    ? "En stock"
+                    : "Rupture"
+              }
               variant={product.stock ? "success" : "warning"}
             />
           </div>
@@ -2212,29 +2380,44 @@ function ProductGridItem({ product }: { product: Product }) {
               <InfoLine label="Marque" value={product.manufacturer} />
             )}
 
-            {product.conditionLabel && (
-              <InfoLine label="État" value={product.conditionLabel} />
-            )}
+            {!isQuoteOnlyProduct(product) &&
+              product.conditionLabel &&
+              product.conditionLabel !== "Non renseigné" && (
+                <InfoLine label="État" value={product.conditionLabel} />
+              )}
 
             {product.sku && <InfoLine label="SKU" value={product.sku} />}
           </div>
         </Link>
 
         <div className="mt-auto">
-          <p className="text-2xl font-bold text-sky-950">
-            {formatPrice(product.price)} HT
-          </p>
+          {isQuoteOnlyProduct(product) ? (
+            <div>
+              <p className="text-2xl font-bold text-sky-950">
+                Sur devis
+              </p>
+              <p className="text-sm text-sky-900/50">
+                Demande personnalisée
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-sky-950">
+                {formatPrice(product.price)} HT
+              </p>
 
-          {discountPercent && originalPrice > 0 && (
-            <p className="text-sm text-sky-900/45 line-through">
-              {formatPrice(originalPrice)} HT
-            </p>
-          )}
+              {discountPercent && originalPrice > 0 && (
+                <p className="text-sm text-sky-900/45 line-through">
+                  {formatPrice(originalPrice)} HT
+                </p>
+              )}
 
-          {product.priceTTC && (
-            <p className="text-sm text-sky-900/50">
-              {formatPrice(product.priceTTC)} TTC
-            </p>
+              {product.priceTTC && (
+                <p className="text-sm text-sky-900/50">
+                  {formatPrice(product.priceTTC)} TTC
+                </p>
+              )}
+            </>
           )}
 
           <Link
