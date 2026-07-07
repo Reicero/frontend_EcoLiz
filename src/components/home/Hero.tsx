@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, ShieldCheck, Truck, Users, Leaf } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Leaf } from 'lucide-react';
 export function Hero() {
   return (
     <section className="relative pt-32 pb-24 lg:pt-48 lg:pb-40 overflow-hidden bg-brand-50">
@@ -42,7 +42,7 @@ export function Hero() {
             </h1>
 
             <p className="text-xl text-brand-900/70 mb-10 leading-relaxed max-w-xl">
-              EcoLiz reconditionne et maintient le matériel informatique des
+              EcoLiz propose du matériel informatique reconditionné et accompagne les
               entreprises engagées dans une démarche durable.
             </p>
 
@@ -63,20 +63,6 @@ export function Hero() {
               </Link>
             </div>
 
-            <div className="flex items-center gap-8 text-sm text-brand-900/70 font-medium pt-8 border-t border-brand-200">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-brand-600" />
-                <span>Garantie 24 mois</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Truck className="w-5 h-5 text-brand-600" />
-                <span>Livraison 48h</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-brand-600" />
-                <span>+12 000 clients</span>
-              </div>
-            </div>
           </motion.div>
 
           <motion.div
@@ -119,9 +105,9 @@ export function Hero() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 font-medium">
-                    Impact carbone
+                    Impact réduit
                   </p>
-                  <p className="text-sm font-bold text-brand-700">-85% CO₂</p>
+                  <p className="text-sm font-bold text-brand-700">Démarche responsable</p>
                 </div>
               </motion.div>
 
@@ -141,9 +127,9 @@ export function Hero() {
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 font-medium">Grade A+</p>
+                  <p className="text-xs text-gray-500 font-medium">Matériel contrôlé</p>
                   <p className="text-sm font-bold text-brand-950">
-                    État parfait
+                    Sélection qualité
                   </p>
                 </div>
               </motion.div>

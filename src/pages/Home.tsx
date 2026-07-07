@@ -6,23 +6,23 @@ import { Hero } from '../components/home/Hero';
 const highlights = [
 {
   icon: Leaf,
-  title: 'Reconditionné en France',
-  text: 'Audit 50 points, remise à neuf en ateliers certifiés.'
+  title: 'Reconditionné en Europe',
+  text: 'Matériel sélectionné, contrôlé et préparé par des partenaires spécialisés.'
 },
 {
   icon: ShieldCheck,
-  title: 'Garantie 24 mois',
-  text: 'Échange J+1 en cas de panne, SAV basé en France.'
+  title: 'Garantie 36 mois',
+  text: 'Une garantie longue durée pour sécuriser vos achats et prolonger la vie de vos équipements.'
 },
 {
   icon: Wrench,
-  title: 'Services IT durables',
-  text: 'Masterisation, maintenance, gestion de parc, recyclage DEEE.'
+  title: 'Services IT',
+  text: 'Masterisation, maintenance, support utilisateur et accompagnement de parc.'
 },
 {
   icon: Users,
-  title: 'Pour les entreprises',
-  text: '+12 000 clients accompagnés dans leur démarche RSE.'
+  title: 'Pour les entreprises engagées RSE',
+  text: 'Des solutions IT adaptées aux organisations qui intègrent le numérique responsable dans leur démarche RSE.'
 }];
 
 export function Home() {
@@ -94,7 +94,7 @@ export function Home() {
               to: '/boutique',
               eyebrow: 'Boutique',
               title: 'Matériel reconditionné premium',
-              text: 'Ordinateurs portables, postes fixes, écrans et serveurs reconditionnés, garantis 24 mois.',
+              text: 'Ordinateurs portables, postes fixes, écrans et serveurs reconditionnés, garantis 36 mois.',
               cta: 'Voir le catalogue',
               image:
               '/PC_réparation.png'
@@ -103,7 +103,7 @@ export function Home() {
               to: '/services',
               eyebrow: 'Services',
               title: 'Masterisation, maintenance, SAV',
-              text: 'Une gamme complète de services IT pour prolonger la durée de vie de votre parc.',
+              text: 'Des services IT pour préparer, maintenir, accompagner et prolonger la durée de vie de votre parc.',
               cta: 'Découvrir nos services',
               image:
               '/SAV.png'
@@ -112,7 +112,7 @@ export function Home() {
               to: '/impact',
               eyebrow: 'Impact',
               title: 'Notre démarche éco-responsable',
-              text: "Économie circulaire, réduction du CO₂, recyclage DEEE et reporting d'impact.",
+              text: "Économie circulaire, réduction du CO₂ et recyclage DEEE.",
               cta: 'Voir notre impact',
               image:
               '/eco.png'
@@ -181,8 +181,8 @@ export function Home() {
             ?
           </h2>
           <p className="text-lg text-brand-100/70 mb-10 max-w-2xl mx-auto">
-            Demandez un audit gratuit de votre parc informatique. Nos équipes
-            vous répondent sous 4h ouvrées.
+            Vous avez un besoin matériel ou service ? Nos équipes vous accompagnent
+            pour identifier la solution la plus adaptée.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
