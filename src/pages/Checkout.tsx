@@ -18,6 +18,7 @@ type EcolizUser = {
 type WooCartItem = {
   key: string
   id: number
+  sku?: string
   name: string
   quantity: number
   images?: {
@@ -48,6 +49,55 @@ type WooCart = {
 }
 
 const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, '')
+
+const QUOTE_ONLY_SERVICE_PRODUCT_IDS = new Set([
+  16878,
+  16879,
+  16880,
+  16881,
+  16882,
+  16883,
+  16884,
+  16885,
+  16886,
+  16887,
+  16888,
+  16889,
+])
+
+const QUOTE_ONLY_SERVICE_NAMES = new Set([
+  "mco wi-fi / waas",
+  "mco lan / wlan",
+  "firewall as a service",
+  "mco server / iaas",
+  "stockage objet s3 & sauvegarde",
+  "cybersecurite bitdefender edr / xdr / mdr",
+  "conseil en licences microsoft",
+  "operateur lan to lan / fibre xdsl",
+  "helpdesk / assistance utilisateur",
+  "design et conseil infrastructure si",
+  "audit et conseil wi-fi",
+  "integration et support",
+])
+
+function normalizeCartText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+}
+
+function isQuoteOnlyCartItem(item: WooCartItem) {
+  const sku = item.sku?.toUpperCase() ?? ""
+
+  return (
+    sku.startsWith("HABEUM-SVC-") ||
+    QUOTE_ONLY_SERVICE_PRODUCT_IDS.has(item.id) ||
+    QUOTE_ONLY_SERVICE_NAMES.has(normalizeCartText(item.name))
+  )
+}
 
 function decodeHtmlEntities(value?: string): string {
   if (!value) return ''
@@ -186,6 +236,21 @@ export default function Checkout() {
   const [error, setError] = useState<string | null>(null)
   const [successOrder, setSuccessOrder] = useState<unknown>(null)
 
+  const items = cart?.items ?? []
+  const minorUnit = cart?.totals?.currency_minor_unit ?? 2
+  const quoteItems = items.filter(isQuoteOnlyCartItem)
+  const paidItems = items.filter((item) => !isQuoteOnlyCartItem(item))
+  const quoteItemsCount = quoteItems.reduce((sum, item) => sum + item.quantity, 0)
+  const paidItemsCount = paidItems.reduce((sum, item) => sum + item.quantity, 0)
+  const hasQuoteItems = quoteItems.length > 0
+  const hasPaidItems = paidItems.length > 0
+
+  const totalHT =
+    paidItems.reduce((sum, item) => {
+      const lineTotal = item.totals?.line_total
+      return sum + (lineTotal ? Number(lineTotal) : 0)
+    }, 0) / Math.pow(10, minorUnit)
+
   useEffect(() => {
     async function loadCartSummary() {
       try {
@@ -248,12 +313,20 @@ export default function Checkout() {
         phone: formData.phone,
       }
 
+      const serviceNote = hasQuoteItems
+        ? "Services sur devis : les services sélectionnés devront faire l’objet d’un devis personnalisé."
+        : ""
+
+      const customerNote = [formData.note.trim(), serviceNote]
+        .filter(Boolean)
+        .join("\n\n")
+
       const result = await placeOrder({
         billing_address: address,
         shipping_address: address,
-        customer_note: formData.note,
+        customer_note: customerNote,
         create_account: false,
-        payment_method: 'cheque',
+        payment_method: 'bacs',
         payment_data: [],
       })
 
@@ -331,8 +404,10 @@ export default function Checkout() {
             <div className="h-20 w-20 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6">
               <ShieldCheck className="h-9 w-9 text-emerald-600" />
             </div>
-            <h1 className="text-4xl font-bold text-brand-950 mb-4">Commande validée</h1>
-            <p className="text-brand-900/70 mb-8">Votre commande a bien été transmise.</p>
+            <h1 className="text-4xl font-bold text-brand-950 mb-4">Commande prise en compte</h1>
+            <p className="text-brand-900/70 mb-8">
+              Votre panier a bien été transmis à EcoLiz. Nous vous recontacterons pour confirmer la disponibilité, le paiement et les modalités de traitement.
+            </p>
 
             <div className="rounded-2xl bg-brand-50 border border-brand-100 p-5 mb-8 text-left">
               <p className="text-brand-900/70">Numéro de commande :</p>
@@ -357,14 +432,6 @@ export default function Checkout() {
     )
   }
 
-  const items = cart?.items ?? []
-  const minorUnit = cart?.totals?.currency_minor_unit ?? 2
-  const totalHT =
-    items.reduce((sum, item) => {
-      const lineTotal = item.totals?.line_total
-      return sum + (lineTotal ? Number(lineTotal) : 0)
-    }, 0) / Math.pow(10, minorUnit)
-
   return (
     <section className="py-16 lg:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -379,6 +446,12 @@ export default function Checkout() {
           <Card variant="elevated" className="p-8 lg:p-10">
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+
+              {hasQuoteItems && (
+                <div className="rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-brand-900/70">
+                  Les services sélectionnés feront l’objet d’un devis personnalisé après validation du panier.
+                </div>
+              )}
 
               <div className="grid sm:grid-cols-2 gap-5">
                 <div>
@@ -491,7 +564,7 @@ export default function Checkout() {
               </div>
 
               <Button type="submit" fullWidth size="lg" className="group" disabled={loading || cartLoading || items.length === 0}>
-                {loading ? 'Validation en cours...' : 'Valider la commande'}
+                {loading ? 'Validation en cours...' : 'Valider mon panier'}
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </form>
@@ -509,6 +582,7 @@ export default function Checkout() {
                 <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
                   {items.map((item) => {
                     const image = getCartItemImage(item, resolvedImages)
+                    const isQuoteOnly = isQuoteOnlyCartItem(item)
 
                     return (
                       <div key={item.key} className="flex gap-3 border-b border-brand-100 pb-4 last:border-b-0">
@@ -522,12 +596,25 @@ export default function Checkout() {
 
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-brand-950 leading-snug line-clamp-2">{item.name}</p>
-                          <p className="mt-1 text-xs text-brand-900/60">
-                            {item.quantity} x {getItemUnitPrice(item, minorUnit)} HT
-                          </p>
-                          <p className="mt-1 text-sm font-bold text-brand-950">
-                            {getItemLinePrice(item, minorUnit)} HT
-                          </p>
+                          {isQuoteOnly ? (
+                            <>
+                              <p className="mt-1 text-xs text-brand-900/60">
+                                {item.quantity} x Sur devis
+                              </p>
+                              <p className="mt-1 text-sm font-bold text-brand-950">
+                                Sur devis
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="mt-1 text-xs text-brand-900/60">
+                                {item.quantity} x {getItemUnitPrice(item, minorUnit)} HT
+                              </p>
+                              <p className="mt-1 text-sm font-bold text-brand-950">
+                                {getItemLinePrice(item, minorUnit)} HT
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
                     )
@@ -535,16 +622,33 @@ export default function Checkout() {
                 </div>
 
                 <div className="mt-5 pt-5 border-t border-brand-200 space-y-3">
-                  <div className="flex items-center justify-between text-brand-900/70">
-                    <span>Articles</span>
-                    <span>{cart?.items_count ?? items.length}</span>
-                  </div>
+                  {paidItemsCount > 0 && (
+                    <div className="flex items-center justify-between text-brand-900/70">
+                      <span>Articles payants</span>
+                      <span>{paidItemsCount}</span>
+                    </div>
+                  )}
+
+                  {quoteItemsCount > 0 && (
+                    <div className="flex items-center justify-between text-brand-900/70">
+                      <span>Demandes sur devis</span>
+                      <span>{quoteItemsCount}</span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-xl font-bold text-brand-950">
                     <span>Total HT</span>
-                    <span>{formatWooPrice(String(totalHT * Math.pow(10, minorUnit)), minorUnit)}</span>
+                    <span>
+                      {hasPaidItems
+                        ? formatWooPrice(String(totalHT * Math.pow(10, minorUnit)), minorUnit)
+                        : "Sur devis"}
+                    </span>
                   </div>
+
                   <p className="text-xs text-brand-900/50">
-                    Les frais éventuels et conditions de paiement sont confirmés à la validation.
+                    {hasQuoteItems
+                      ? "Les services sélectionnés seront traités comme une demande de devis personnalisée."
+                      : "Les frais éventuels et conditions de paiement sont confirmés à la validation."}
                   </p>
                 </div>
               </>
