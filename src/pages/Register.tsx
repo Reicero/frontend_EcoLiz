@@ -10,6 +10,106 @@ import {
 import { Button } from "../components/ui/Button";
 import { registerCustomer } from "../services/auth";
 
+type CompanySuggestion = {
+  name: string;
+  siret: string;
+  address?: string;
+};
+
+type RechercheEntrepriseEtablissement = {
+  siret?: string;
+  adresse?: string;
+  code_postal?: string;
+  libelle_commune?: string;
+  est_siege?: boolean;
+};
+
+type RechercheEntrepriseResult = {
+  nom_complet?: string;
+  nom_raison_sociale?: string;
+  denomination?: string;
+  siege?: RechercheEntrepriseEtablissement;
+  matching_etablissements?: RechercheEntrepriseEtablissement[];
+};
+
+function normalizeSiret(value: string) {
+  return value.replace(/\D/g, "").slice(0, 14);
+}
+
+function formatSiret(value: string) {
+  return normalizeSiret(value).replace(/(\d{3})(?=\d)/g, "$1 ").trim();
+}
+
+function buildAddress(etablissement?: RechercheEntrepriseEtablissement) {
+  if (!etablissement) {
+    return "";
+  }
+
+  return [
+    etablissement.adresse,
+    etablissement.code_postal,
+    etablissement.libelle_commune,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function mapCompanySuggestion(
+  company: RechercheEntrepriseResult,
+  searchedSiret: string
+): CompanySuggestion | null {
+  const establishments = Array.isArray(company.matching_etablissements)
+    ? company.matching_etablissements
+    : [];
+
+  const establishment =
+    establishments.find((item) => normalizeSiret(item.siret || "") === searchedSiret) ||
+    establishments.find((item) => item.est_siege) ||
+    company.siege ||
+    establishments[0];
+
+  const siret = normalizeSiret(establishment?.siret || company.siege?.siret || "");
+  const name =
+    company.nom_complet ||
+    company.nom_raison_sociale ||
+    company.denomination ||
+    "";
+
+  if (!name || !siret) {
+    return null;
+  }
+
+  return {
+    name,
+    siret,
+    address: buildAddress(establishment || company.siege),
+  };
+}
+
+async function searchCompanySuggestions(
+  query: string,
+  signal: AbortSignal
+): Promise<CompanySuggestion[]> {
+  const searchedSiret = normalizeSiret(query);
+  const response = await fetch(
+    `/wp-api/ecoliz/v1/company-search?q=${encodeURIComponent(query)}&per_page=5`,
+    { signal }
+  );
+
+  if (!response.ok) {
+    throw new Error("Recherche entreprise indisponible.");
+  }
+
+  const data = await response.json();
+  const results = Array.isArray(data?.results) ? data.results : [];
+
+  return results
+    .map((company: RechercheEntrepriseResult) =>
+      mapCompanySuggestion(company, searchedSiret)
+    )
+    .filter(Boolean) as CompanySuggestion[];
+}
+
 export function Register() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,10 +135,121 @@ useEffect(() => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [companySuggestions, setCompanySuggestions] = useState<CompanySuggestion[]>([]);
+  const [companySearchLoading, setCompanySearchLoading] = useState(false);
+  const [companySearchError, setCompanySearchError] = useState<string | null>(null);
+  const [selectedSiret, setSelectedSiret] = useState("");
+  const [companySearchSource, setCompanySearchSource] = useState<"company" | "siret" | null>(null);
+
+  useEffect(() => {
+    const normalizedSiret = normalizeSiret(formData.siret);
+    const query = normalizedSiret.length >= 3 ? normalizedSiret : formData.company.trim();
+
+    if (normalizedSiret && normalizedSiret === selectedSiret) {
+      setCompanySuggestions([]);
+      setCompanySearchError(null);
+      setCompanySearchLoading(false);
+      return;
+    }
+
+    if (query.length < 3) {
+      setCompanySuggestions([]);
+      setCompanySearchError(null);
+      setCompanySearchLoading(false);
+      setCompanySearchSource(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      try {
+        setCompanySearchLoading(true);
+        setCompanySearchError(null);
+
+        const suggestions = await searchCompanySuggestions(query, controller.signal);
+        setCompanySuggestions(suggestions);
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+
+        console.error("Erreur recherche SIRET :", error);
+        setCompanySuggestions([]);
+        setCompanySearchError("Recherche entreprise indisponible pour le moment.");
+      } finally {
+        setCompanySearchLoading(false);
+      }
+    }, 450);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [formData.company, formData.siret, selectedSiret]);
+
+  const selectCompanySuggestion = (suggestion: CompanySuggestion) => {
+    setSelectedSiret(suggestion.siret);
+    setCompanySuggestions([]);
+    setCompanySearchError(null);
+    setCompanySearchSource(null);
+
+    setFormData((current) => ({
+      ...current,
+      company: suggestion.name,
+      siret: suggestion.siret,
+    }));
+  };
+
+  const renderCompanySuggestions = () => {
+    if (!companySearchLoading && !companySearchError && companySuggestions.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="mt-3 overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm">
+        {companySearchLoading && (
+          <p className="px-4 py-3 text-sm text-brand-900/60">
+            Recherche de l’entreprise…
+          </p>
+        )}
+
+        {!companySearchLoading && companySearchError && (
+          <p className="px-4 py-3 text-sm text-red-600">
+            {companySearchError}
+          </p>
+        )}
+
+        {!companySearchLoading &&
+          !companySearchError &&
+          companySuggestions.map((suggestion) => (
+            <button
+              key={suggestion.siret}
+              type="button"
+              onClick={() => selectCompanySuggestion(suggestion)}
+              className="block w-full px-4 py-3 text-left hover:bg-brand-50 transition-colors border-b border-brand-100 last:border-b-0"
+            >
+              <span className="block text-sm font-semibold text-brand-950">
+                {suggestion.name}
+              </span>
+              <span className="block text-xs text-brand-900/60">
+                SIRET : {formatSiret(suggestion.siret)}
+                {suggestion.address ? ` · ${suggestion.address}` : ""}
+              </span>
+            </button>
+          ))}
+      </div>
+    );
+  };
 
   const validateForm = () => {
     if (!formData.company.trim()) {
       return "Le nom de l’entreprise est obligatoire.";
+    }
+
+    const normalizedSiret = normalizeSiret(formData.siret);
+
+    if (normalizedSiret && normalizedSiret.length !== 14) {
+      return "Le numéro SIRET doit contenir 14 chiffres.";
     }
 
     if (!formData.firstName.trim()) {
@@ -86,7 +297,7 @@ useEffect(() => {
   try {
     setLoading(true);
 
-    const result = await registerCustomer(formData);
+    const result = await registerCustomer({ ...formData, siret: normalizeSiret(formData.siret) });
 
     localStorage.setItem("ecoliz_user", JSON.stringify(result.user));
 
@@ -117,7 +328,7 @@ useEffect(() => {
         <div className="relative z-10">
           <Link to="/" className="inline-block bg-white p-2.5 rounded-xl mb-16">
             <img
-              src="/logo-ecoliz.svg"
+              src="/logo.png"
               alt="EcoLiz"
               className="h-8 w-auto object-contain"
             />
@@ -202,16 +413,20 @@ useEffect(() => {
                     type="text"
                     required
                     value={formData.company}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      setSelectedSiret("");
+                      setCompanySearchSource("company");
                       setFormData({
                         ...formData,
                         company: e.target.value,
-                      })
-                    }
+                      });
+                    }}
                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-brand-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition bg-white"
                     placeholder="Acme Corp"
                   />
                 </div>
+
+                {companySearchSource === "company" && renderCompanySuggestions()}
               </div>
 
               <div className="col-span-2">
@@ -228,16 +443,23 @@ useEffect(() => {
                 <input
                   id="siret"
                   type="text"
-                  value={formData.siret}
-                  onChange={(e) =>
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={17}
+                  value={formatSiret(formData.siret)}
+                  onChange={(e) => {
+                    setSelectedSiret("");
+                    setCompanySearchSource("siret");
                     setFormData({
                       ...formData,
-                      siret: e.target.value,
-                    })
-                  }
+                      siret: normalizeSiret(e.target.value),
+                    });
+                  }}
                   className="w-full px-4 py-3 rounded-xl border border-brand-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition bg-white"
                   placeholder="123 456 789 00012"
                 />
+
+                {companySearchSource === "siret" && renderCompanySuggestions()}
               </div>
             </div>
 

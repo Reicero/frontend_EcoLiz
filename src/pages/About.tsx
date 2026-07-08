@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, BookOpen, Leaf, ShieldCheck, Users } from "lucide-react";
@@ -35,11 +36,12 @@ const commitments = [
   },
 ];
 
-const validatedReviews: Array<{
+type ValidatedReview = {
   quote: string;
   author: string;
   company?: string;
-}> = [];
+  role?: string;
+};
 
 function stripHtml(value = "") {
   return value
@@ -63,6 +65,38 @@ function formatArticleDate(value: string) {
 }
 
 export function About() {
+  const [validatedReviews, setValidatedReviews] = useState<ValidatedReview[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetch("/wp-api/ecoliz/v1/testimonials")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Impossible de charger les avis clients.");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setValidatedReviews(Array.isArray(data?.reviews) ? data.reviews : []);
+      })
+      .catch((error) => {
+        console.error("Erreur chargement avis clients :", error);
+
+        if (isMounted) {
+          setValidatedReviews([]);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   const [articles, setArticles] = useState<WordPressArticle[]>([]);
   const [articlesLoading, setArticlesLoading] = useState(true);
   const [articlesError, setArticlesError] = useState("");
@@ -261,6 +295,14 @@ export function About() {
               <div className="rounded-3xl border border-brand-100 bg-brand-50 p-8 text-brand-900/70">
                 Aucun guide n’est encore disponible. Les prochains contenus EcoLiz apparaîtront
                 automatiquement ici lorsqu’ils seront publiés.
+                <div className="pt-1">
+                  <a
+                    href="/temoignage-client"
+                    className="inline-flex items-center justify-center rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-800"
+                  >
+                    Partager un témoignage
+                  </a>
+                </div>
               </div>
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -298,36 +340,74 @@ export function About() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="grid items-start gap-8 lg:grid-cols-2">
           <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-brand-100">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">
               Avis clients
             </p>
 
-            <h2 className="mt-3 text-2xl font-bold text-brand-950">
-              Ils nous feront confiance
-            </h2>
+            <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-2xl font-bold text-brand-950">
+                Ils partagent leur expérience EcoLiz
+              </h2>
+
+              <a
+                href="/temoignage-client"
+                className="inline-flex shrink-0 items-center justify-center rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-800"
+              >
+                Partager un témoignage
+              </a>
+            </div>
 
             {validatedReviews.length > 0 ? (
               <div className="mt-6 space-y-5">
-                {validatedReviews.map((review) => (
+                {validatedReviews.map((review, index) => (
                   <blockquote
-                    key={`${review.author}-${review.quote}`}
-                    className="rounded-2xl bg-brand-50 p-5"
+                    key={`${review.author}-${index}`}
+                    className="rounded-3xl border border-brand-100 bg-brand-50/60 p-6"
                   >
-                    <p className="text-brand-900/75">“{review.quote}”</p>
-                    <footer className="mt-3 text-sm font-semibold text-brand-950">
-                      {review.author}
-                      {review.company ? ` — ${review.company}` : ""}
+                    <div className="flex items-center gap-4">
+                      <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-700 ring-1 ring-brand-100">
+                        Témoignage client
+                      </span>
+                    </div>
+
+                    <p className="mt-5 text-base leading-8 text-brand-900/75">
+                      “{review.quote}”
+                    </p>
+
+                    <footer className="mt-5 border-t border-brand-100 pt-4">
+                      <p className="text-sm font-bold text-brand-950">
+                        {review.author}
+                      </p>
+
+                      {(review.role || review.company) && (
+                        <p className="mt-1 text-sm text-brand-900/60">
+                          {review.role}
+                          {review.role && review.company ? " — " : ""}
+                          {review.company}
+                        </p>
+                      )}
                     </footer>
                   </blockquote>
                 ))}
+
+
               </div>
             ) : (
-              <p className="mt-5 text-base leading-8 text-brand-900/70">
-                Cette zone pourra accueillir les avis clients validés par EcoLiz. Les témoignages
-                seront ajoutés uniquement lorsqu’ils auront été confirmés par l’entreprise.
-              </p>
+              <div className="mt-5 space-y-5">
+                <p className="text-base leading-8 text-brand-900/70">
+                  Les témoignages clients seront publiés uniquement après validation et accord
+                  de l’entreprise concernée.
+                </p>
+
+                <a
+                  href="/temoignage-client"
+                  className="inline-flex items-center justify-center rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-800"
+                >
+                  Partager un témoignage
+                </a>
+              </div>
             )}
           </div>
 
@@ -345,6 +425,20 @@ export function About() {
               question sur un produit, le formulaire de contact permet de transmettre une
               demande à l’équipe EcoLiz.
             </p>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <span className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white">
+                Devis
+              </span>
+
+              <span className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white">
+                Reprise de parc
+              </span>
+
+              <span className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white">
+                Conseil produit
+              </span>
+            </div>
 
             <Link
               to="/contact"

@@ -1,0 +1,251 @@
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, CheckCircle2, Send } from "lucide-react";
+
+export function Testimonial() {
+  const [formData, setFormData] = useState({
+    company: "",
+    name: "",
+    role: "",
+    email: "",
+    quote: "",
+    consent: false,
+    website: "",
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleChange = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value, type } = event.target;
+
+    if (type === "checkbox") {
+      const checked = (event.target as HTMLInputElement).checked;
+      setFormData((current) => ({ ...current, [name]: checked }));
+      return;
+    }
+
+    setFormData((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    setError(null);
+    setSuccess(null);
+
+    if (!formData.company.trim()) {
+      setError("Le nom de l’entreprise est obligatoire.");
+      return;
+    }
+
+    if (!formData.name.trim()) {
+      setError("Votre nom est obligatoire.");
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      setError("L’adresse email est obligatoire.");
+      return;
+    }
+
+    if (!formData.quote.trim()) {
+      setError("Le témoignage est obligatoire.");
+      return;
+    }
+
+    if (!formData.consent) {
+      setError("Merci de cocher l’autorisation de publication.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch("/wp-api/ecoliz/v1/testimonials", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Impossible d’envoyer le témoignage.");
+      }
+
+      setSuccess(
+        "Merci, votre témoignage a bien été transmis à EcoLiz. Il sera relu avant publication."
+      );
+
+      setFormData({
+        company: "",
+        name: "",
+        role: "",
+        email: "",
+        quote: "",
+        consent: false,
+        website: "",
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("Impossible d’envoyer le témoignage pour le moment.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-brand-50/50">
+      <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+        <Link
+          to="/a-propos"
+          className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-brand-700 hover:text-brand-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Retour
+        </Link>
+
+        <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-brand-100">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">
+            Témoignage client
+          </p>
+
+          <h1 className="mt-3 text-3xl font-bold text-brand-950">
+            Partager votre expérience EcoLiz
+          </h1>
+
+          <p className="mt-4 text-base leading-8 text-brand-900/70">
+            Votre retour permet à EcoLiz de présenter des témoignages clients réels,
+            validés et publiés uniquement avec l’accord de l’entreprise concernée.
+          </p>
+
+          {success && (
+            <div className="mt-6 flex gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+              <p>{success}</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            <input
+              type="text"
+              name="website"
+              value={formData.website}
+              onChange={handleChange}
+              className="hidden"
+              tabIndex={-1}
+              autoComplete="off"
+            />
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-brand-900">
+                Nom de l’entreprise *
+              </label>
+              <input
+                name="company"
+                value={formData.company}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-brand-200 bg-white px-4 py-3 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                placeholder="Ex : Votre entreprise"
+              />
+            </div>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-brand-900">
+                  Nom / prénom *
+                </label>
+                <input
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-brand-200 bg-white px-4 py-3 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  placeholder="Votre nom"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-brand-900">
+                  Fonction
+                </label>
+                <input
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-brand-200 bg-white px-4 py-3 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  placeholder="Ex : Responsable informatique"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-brand-900">
+                Email professionnel *
+              </label>
+              <input
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-brand-200 bg-white px-4 py-3 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                placeholder="prenom.nom@entreprise.fr"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-brand-900">
+                Votre témoignage *
+              </label>
+              <textarea
+                name="quote"
+                value={formData.quote}
+                onChange={handleChange}
+                rows={6}
+                className="w-full rounded-xl border border-brand-200 bg-white px-4 py-3 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                placeholder="Expliquez votre expérience avec EcoLiz..."
+              />
+            </div>
+
+            <label className="flex gap-3 rounded-2xl bg-brand-50 p-4 text-sm text-brand-900/75">
+              <input
+                type="checkbox"
+                name="consent"
+                checked={formData.consent}
+                onChange={handleChange}
+                className="mt-1 h-4 w-4 rounded border-brand-300 text-brand-700"
+              />
+              <span>
+                J’autorise EcoLiz à utiliser ce témoignage sur son site ou ses supports
+                de communication après validation.
+              </span>
+            </label>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Envoi en cours..." : "Envoyer mon témoignage"}
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
+        </div>
+      </section>
+    </div>
+  );
+}

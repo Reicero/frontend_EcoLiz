@@ -17,6 +17,7 @@ import { Cart } from './pages/Cart'
 import Checkout from './pages/Checkout'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
+import { Testimonial } from './pages/Testimonial'
 import { CookieBanner } from './components/layout/Cookies'
 
 const AUTH_ROUTES = ['/connexion', '/inscription']
@@ -38,6 +39,7 @@ function AppLayout() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/a-propos" element={<About />} />
+          <Route path="/temoignage-client" element={<Testimonial />} />
           <Route path="/articles/:slug" element={<ArticlePage />} />
           <Route path="/about" element={<About />} />
           <Route path="/panier" element={<Cart />} />
