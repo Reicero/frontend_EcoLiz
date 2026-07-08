@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft } from 'lucide-react'
-import { getCart, updateCartItem, removeCartItem } from '../services/cart'
+import { getCart, updateCartItem, removeCartItem, applyCoupon, removeCoupon } from '../services/cart'
 
 type WooCartItem = {
   key: string
@@ -26,12 +26,22 @@ type WooCartItem = {
   }
 }
 
+type WooCartCoupon = {
+  code: string
+  totals?: {
+    total_discount?: string
+    currency_minor_unit?: number
+  }
+}
+
 type WooCart = {
   items: WooCartItem[]
   items_count: number
+  coupons?: WooCartCoupon[]
   totals?: {
     total_price?: string
     total_items?: string
+    total_discount?: string
     currency_minor_unit?: number
   }
 }
@@ -135,6 +145,9 @@ export function Cart() {
   const [loading, setLoading] = useState(true)
   const [updatingKey, setUpdatingKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [couponCode, setCouponCode] = useState("")
+  const [couponLoading, setCouponLoading] = useState(false)
+  const [couponMessage, setCouponMessage] = useState<string | null>(null)
   const [quantityInputs, setQuantityInputs] = useState<Record<string, string>>({})
 
   async function loadCart() {
@@ -220,6 +233,51 @@ export function Cart() {
     }
   }
 
+  async function handleApplyCoupon(event: React.FormEvent) {
+    event.preventDefault()
+
+    const code = couponCode.trim()
+
+    if (!code) {
+      setCouponMessage("Merci d’indiquer un code promo.")
+      return
+    }
+
+    try {
+      setCouponLoading(true)
+      setError(null)
+      setCouponMessage(null)
+
+      const updatedCart = await applyCoupon(code)
+      setCart(updatedCart)
+      setCouponCode("")
+      setCouponMessage("Code promo appliqué.")
+    } catch (err) {
+      console.error("Erreur code promo :", err)
+      setCouponMessage("Code promo invalide ou non applicable.")
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  async function handleRemoveCoupon(code: string) {
+    try {
+      setCouponLoading(true)
+      setError(null)
+      setCouponMessage(null)
+
+      const updatedCart = await removeCoupon(code)
+      setCart(updatedCart)
+      setCouponMessage("Code promo retiré.")
+    } catch (err) {
+      console.error("Erreur suppression code promo :", err)
+      setCouponMessage("Impossible de retirer le code promo.")
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+
   const items = cart?.items ?? []
   const minorUnit = cart?.totals?.currency_minor_unit ?? 2
 
@@ -235,6 +293,15 @@ export function Cart() {
       const lineTotal = item.totals?.line_total
       return sum + (lineTotal ? Number(lineTotal) : 0)
     }, 0) / Math.pow(10, minorUnit)
+
+  const coupons = cart?.coupons ?? []
+  const couponDiscountHT =
+    coupons.reduce((sum, coupon) => {
+      const discount = coupon.totals?.total_discount
+      return sum + (discount ? Number(discount) : 0)
+    }, 0) / Math.pow(10, minorUnit)
+
+  const totalAfterDiscountHT = Math.max(totalHT - couponDiscountHT, 0)
 
   const checkoutLabel = "Valider mon panier"
 
@@ -399,15 +466,78 @@ export function Cart() {
                     </div>
                   )}
 
+                  {coupons.length > 0 && (
+                    <div className="space-y-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                      {coupons.map((coupon) => (
+                        <div key={coupon.code} className="flex items-center justify-between gap-3">
+                          <span>
+                            Code promo <strong>{coupon.code}</strong>
+                            {couponDiscountHT > 0 && (
+                              <> · -{formatWooPrice(String(couponDiscountHT * Math.pow(10, minorUnit)), minorUnit)} HT</>
+                            )}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => void handleRemoveCoupon(coupon.code)}
+                            disabled={couponLoading}
+                            className="text-xs font-semibold underline disabled:opacity-50"
+                          >
+                            Retirer
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-brand-950 font-bold text-xl">
                     <span>Total HT</span>
                     <span>
                       {hasPaidItems
-                        ? formatWooPrice(String(totalHT * Math.pow(10, minorUnit)), minorUnit)
+                        ? formatWooPrice(String(totalAfterDiscountHT * Math.pow(10, minorUnit)), minorUnit)
                         : "Sur devis"}
                     </span>
                   </div>
                 </div>
+
+                {hasPaidItems && (
+                  <details className="mb-5">
+                    <summary className="cursor-pointer text-sm font-medium text-brand-900/60 underline underline-offset-4 hover:text-brand-700">
+                      Ajouter un code promo
+                    </summary>
+
+                    <form onSubmit={handleApplyCoupon} className="mt-3 rounded-2xl border border-brand-100 bg-brand-50 p-4">
+                    <label className="mb-2 block text-sm font-semibold text-brand-950">
+                      Code promo
+                    </label>
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(event) => setCouponCode(event.target.value)}
+                        className="min-w-0 flex-1 rounded-xl border border-brand-200 px-4 py-2 text-sm uppercase outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                        placeholder="Saisir le code"
+                        disabled={couponLoading}
+                      />
+
+                      <button
+                        type="submit"
+                        disabled={couponLoading}
+                        className="rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-50"
+                      >
+                        {couponLoading ? "..." : "Appliquer"}
+                      </button>
+                    </div>
+
+                    {couponMessage && (
+                      <p className="mt-2 text-xs text-brand-900/60">
+                        {couponMessage}
+                      </p>
+                    )}
+                    </form>
+                  </details>
+                )}
 
                 {hasQuoteItems && (
                   <div className="mb-5 rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-brand-900/70">

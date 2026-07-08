@@ -154,3 +154,26 @@ export async function removeCartItem(key: string) {
   notifyCartUpdated(cart?.items_count ?? 0);
   return cart;
 }
+export async function applyCoupon(code: string) {
+  const cart = await requestCart("/cart/apply-coupon", {
+    method: "POST",
+    body: JSON.stringify({
+      code,
+    }),
+  });
+
+  notifyCartUpdated(cart?.items_count ?? 0);
+  return cart;
+}
+
+export async function removeCoupon(code: string) {
+  const cart = await requestCart("/cart/remove-coupon", {
+    method: "POST",
+    body: JSON.stringify({
+      code,
+    }),
+  });
+
+  notifyCartUpdated(cart?.items_count ?? 0);
+  return cart;
+}
