@@ -131,6 +131,7 @@ useEffect(() => {
     email: "",
     password: "",
   });
+  const [newsletterConsent, setNewsletterConsent] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -299,6 +300,31 @@ useEffect(() => {
 
     const result = await registerCustomer({ ...formData, siret: normalizeSiret(formData.siret) });
 
+    if (newsletterConsent) {
+      try {
+        const newsletterResponse = await fetch("/wp-api/ecoliz/v1/newsletter", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: formData.email.trim(),
+            company: formData.company.trim(),
+            name: `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim(),
+            customer_id: result.user?.id ?? result.user?.customer_id ?? 0,
+            source: "inscription-client",
+            consent: true,
+          }),
+        });
+
+        if (!newsletterResponse.ok) {
+          console.warn("Inscription newsletter non enregistrée.");
+        }
+      } catch (newsletterError) {
+        console.warn("Erreur inscription newsletter :", newsletterError);
+      }
+    }
+
     localStorage.setItem("ecoliz_user", JSON.stringify(result.user));
 
     setSuccess("Compte créé avec succès. Redirection vers la commande...");
@@ -326,11 +352,11 @@ useEffect(() => {
         <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-accent-700/20 rounded-full blur-[120px] translate-x-1/3 translate-y-1/3" />
 
         <div className="relative z-10">
-          <Link to="/" className="inline-block bg-white p-2.5 rounded-xl mb-16">
+          <Link to="/" className="inline-block mb-16">
             <img
               src="/logo.png"
               alt="EcoLiz"
-              className="h-8 w-auto object-contain"
+              className="h-10 w-auto object-contain drop-shadow-[0_8px_20px_rgba(0,0,0,0.35)]"
             />
           </Link>
 
@@ -571,6 +597,23 @@ useEffect(() => {
                   Le mot de passe doit contenir au moins 8 caractères.
                 </p>
               </div>
+            </div>
+
+            <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4">
+              <label className="flex items-start gap-3 text-sm text-brand-900">
+                <input
+                  type="checkbox"
+                  checked={newsletterConsent}
+                  onChange={(event) => setNewsletterConsent(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-brand-300 text-brand-700 focus:ring-brand-500"
+                />
+                <span>
+                  <span className="font-medium">
+                    Je souhaite recevoir les nouveautés, promotions et arrivages EcoLiz.
+                  </span>
+
+                </span>
+              </label>
             </div>
 
             <div className="pt-2">
