@@ -1,9 +1,3 @@
-/**
- * Contact form service for Contact Form 7
- */
-
-import { config } from '../config/env';
-
 export interface ContactPayload {
   firstname: string;
   lastname: string;
@@ -11,64 +5,44 @@ export interface ContactPayload {
   phone?: string;
   company?: string;
   subject: string;
+  orderNumber?: string;
   message: string;
+  website?: string;
 }
 
-const CONTACT_FORM_ID = import.meta.env.VITE_CF7_CONTACT_FORM_ID || '6567';
-
-/**
- * Validate contact form is configured
- */
-function validateContactForm(): void {
-  if (!CONTACT_FORM_ID) {
-    throw new Error('ID du formulaire de contact manquant.');
-  }
+export interface ContactResponse {
+  success: boolean;
+  ticket_number?: string;
+  status?: string;
+  message?: string;
 }
 
-/**
- * Build Contact Form 7 request payload
- */
-function buildContactFormData(payload: ContactPayload): FormData {
-  const formData = new FormData();
-
-  formData.append('_wpcf7', CONTACT_FORM_ID);
-  formData.append('_wpcf7_version', '6.0');
-  formData.append('_wpcf7_locale', 'fr_FR');
-  formData.append('_wpcf7_unit_tag', `wpcf7-f${CONTACT_FORM_ID}-o1`);
-  formData.append('_wpcf7_container_post', '0');
-
-  formData.append('your-firstname', payload.firstname);
-  formData.append('your-lastname', payload.lastname);
-  formData.append('your-email', payload.email);
-  formData.append('your-phone', payload.phone ?? '');
-  formData.append('your-company', payload.company ?? '');
-  formData.append('your-subject', payload.subject);
-  formData.append('your-message', payload.message);
-
-  return formData;
-}
-
-/**
- * Send contact form message
- */
-export async function sendContactMessage(payload: ContactPayload) {
-  validateContactForm();
-
-  const contactUrl = `${config.wordpressUrl}/wp-json/contact-form-7/v1/contact-forms/${CONTACT_FORM_ID}/feedback`;
-  const formData = buildContactFormData(payload);
-
-  const response = await fetch(contactUrl, {
-    method: 'POST',
-    body: formData,
+export async function sendContactMessage(
+  payload: ContactPayload
+): Promise<ContactResponse> {
+  const response = await fetch("/wp-api/ecoliz/v1/support-request", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      firstname: payload.firstname,
+      lastname: payload.lastname,
+      email: payload.email,
+      phone: payload.phone ?? "",
+      company: payload.company ?? "",
+      subject: payload.subject,
+      order_number: payload.orderNumber ?? "",
+      message: payload.message,
+      website: payload.website ?? "",
+    }),
   });
 
   const data = await response.json().catch(() => null);
 
-  if (!response.ok || data?.status !== 'mail_sent') {
+  if (!response.ok) {
     throw new Error(
-      data?.message ||
-        data?.status ||
-        'Impossible d\'envoyer le message pour le moment.'
+      data?.message || "Impossible d'envoyer le message pour le moment."
     );
   }
 

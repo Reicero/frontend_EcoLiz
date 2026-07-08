@@ -4,6 +4,7 @@ import { sendContactMessage } from "../services/contact";
 
 export function Contact() {
   const [submitted, setSubmitted] = useState(false);
+  const [ticketNumber, setTicketNumber] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -14,7 +15,9 @@ export function Contact() {
     phone: "",
     company: "",
     subject: "Demande de devis",
+    orderNumber: "",
     message: "",
+    website: "",
   });
 
   function updateField(field: keyof typeof formData, value: string) {
@@ -31,9 +34,11 @@ export function Contact() {
       setLoading(true);
       setError("");
       setSubmitted(false);
+      setTicketNumber(null);
 
-      await sendContactMessage(formData);
+      const result = await sendContactMessage(formData);
 
+      setTicketNumber(result.ticket_number ?? null);
       setSubmitted(true);
 
       setFormData({
@@ -43,7 +48,9 @@ export function Contact() {
         phone: "",
         company: "",
         subject: "Demande de devis",
+        orderNumber: "",
         message: "",
+        website: "",
       });
     } catch (err) {
       setError(
@@ -140,15 +147,28 @@ export function Contact() {
                   Message envoyé !
                 </h2>
 
-                <p className="text-brand-900/70 mb-6">
-                  Votre message a bien été transmis. Notre équipe vous répondra
-                  sous 4h ouvrées.
+                <p className="text-brand-900/70 mb-4">
+                  Votre demande a bien été transmise à EcoLiz.
+                </p>
+
+                {ticketNumber && (
+                  <div className="mb-6 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-900">
+                    Référence ticket :{" "}
+                    <span className="font-semibold text-brand-700">
+                      {ticketNumber}
+                    </span>
+                  </div>
+                )}
+
+                <p className="text-sm text-brand-900/60 mb-6">
+                  Un email de confirmation vient de vous être envoyé avec cette référence.
                 </p>
 
                 <button
                   type="button"
                   onClick={() => {
                     setSubmitted(false);
+                    setTicketNumber(null);
                     setError("");
                   }}
                   className="text-brand-700 hover:text-brand-800 underline"
@@ -158,7 +178,17 @@ export function Contact() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
-            <p className="mb-4 text-sm text-slate-500">* Champs obligatoires</p>
+                <input
+                  type="text"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={formData.website}
+                  onChange={(e) => updateField("website", e.target.value)}
+                  className="hidden"
+                  aria-hidden="true"
+                />
+
+                <p className="mb-4 text-sm text-slate-500">* Champs obligatoires</p>
                 {error && (
                   <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                     {error}
@@ -251,6 +281,20 @@ export function Contact() {
                   <option value="Autre">Autre</option>
 
                 </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-900 mb-2">
+                    Numéro de commande <span className="text-brand-900/50">(optionnel)</span>
+                  </label>
+
+                  <input
+                    type="text"
+                    value={formData.orderNumber}
+                    onChange={(e) => updateField("orderNumber", e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-brand-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
+                    placeholder="Ex : #1234"
+                  />
                 </div>
 
                 <div>
