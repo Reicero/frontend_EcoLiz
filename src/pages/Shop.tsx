@@ -1788,12 +1788,6 @@ export function Shop() {
 
         {!shouldShowProductArea && (
           <>
-            <PromotionSection
-              products={promotionProducts}
-              loading={promotionsLoading}
-              mode={highlightSectionMode}
-            />
-
             <section className="mb-8">
               <div className="mb-5">
                 <p className="text-sm font-black uppercase tracking-[0.16em] text-cyan-700">
@@ -1826,6 +1820,14 @@ export function Shop() {
               )}
             </section>
           </>
+        )}
+
+        {!shouldShowProductArea && (
+          <PromotionSection
+            products={promotionProducts}
+            loading={promotionsLoading}
+            mode={highlightSectionMode}
+          />
         )}
 
         {shouldShowProductArea && (
@@ -2256,6 +2258,18 @@ export function Shop() {
                   </button>
                 </nav>
               )}
+
+              {!loading && products.length > 0 && (
+                <div className="mt-14">
+                  <PromotionSection
+                    products={promotionProducts}
+                    loading={promotionsLoading}
+                    mode={highlightSectionMode}
+                  />
+                </div>
+              )}
+
+
             </main>
           </div>
         )}
