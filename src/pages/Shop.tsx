@@ -52,6 +52,156 @@ type SortOption =
 
 type SelectedFilters = SelectedProductFilters;
 
+function normalizeSearchToken(value: unknown) {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[”“″]/g, '"')
+    .replace(/[’']/g, "'")
+    .replace(/,/g, ".")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hasSearchWord(search: string, word: string) {
+  const safeWord = String(word ?? "").trim();
+
+  if (!safeWord) {
+    return false;
+  }
+
+  return new RegExp(`(^|\\s)${safeWord}(\\s|$)`, "i").test(search);
+}
+
+function findFilterSlugs(
+  filterGroups: WooFilterGroup[],
+  key: ProductFilterKey,
+  matcher: (option: WooFilterOption) => boolean
+) {
+  return (
+    filterGroups
+      .find((group) => group.key === key)
+      ?.options.filter(matcher)
+      .map((option) => option.slug) ?? []
+  );
+}
+
+function buildSearchFiltersFromTerm(
+  searchTerm: string,
+  filterGroups: WooFilterGroup[]
+) {
+  const normalizedSearch = normalizeSearchToken(searchTerm);
+  const filters: SelectedProductFilters = {};
+  let cleanedSearch = normalizedSearch;
+
+  const removeFromSearch = (patterns: RegExp[]) => {
+    patterns.forEach((pattern) => {
+      cleanedSearch = cleanedSearch.replace(pattern, " ");
+    });
+    cleanedSearch = cleanedSearch.replace(/\s+/g, " ").trim();
+  };
+
+  if (hasSearchWord(normalizedSearch, "qwerty")) {
+    const slugs = findFilterSlugs(
+      filterGroups,
+      "keyboardLanguage",
+      (option) =>
+        normalizeSearchToken(`${option.label} ${option.slug}`).includes("qwerty")
+    );
+
+    if (slugs.length > 0) {
+      filters.keyboardLanguage = slugs;
+      removeFromSearch([/(^|\s)qwerty(\s|$)/gi]);
+    }
+  }
+
+  if (hasSearchWord(normalizedSearch, "azerty")) {
+    const slugs = findFilterSlugs(
+      filterGroups,
+      "keyboardLanguage",
+      (option) =>
+        normalizeSearchToken(`${option.label} ${option.slug}`).includes("azerty")
+    );
+
+    if (slugs.length > 0) {
+      filters.keyboardLanguage = [
+        ...new Set([...(filters.keyboardLanguage ?? []), ...slugs]),
+      ];
+      removeFromSearch([/(^|\s)azerty(\s|$)/gi]);
+    }
+  }
+
+  const screenRules = [
+    {
+      key: "15",
+      patterns: [
+        /(^|\s)15(\s)*(pouces|pouce|\"|'')?(\s|$)/gi,
+        /(^|\s)15[.,]6(\s)*(pouces|pouce|\"|'')?(\s|$)/gi,
+      ],
+    },
+    {
+      key: "14",
+      patterns: [/(^|\s)14(\s)*(pouces|pouce|\"|'')?(\s|$)/gi],
+    },
+    {
+      key: "13",
+      patterns: [
+        /(^|\s)13(\s)*(pouces|pouce|\"|'')?(\s|$)/gi,
+        /(^|\s)13[.,]3(\s)*(pouces|pouce|\"|'')?(\s|$)/gi,
+      ],
+    },
+  ];
+
+  screenRules.forEach((rule) => {
+    const hasScreenSearch = rule.patterns.some((pattern) => {
+      pattern.lastIndex = 0;
+      return pattern.test(normalizedSearch);
+    });
+
+    if (!hasScreenSearch) {
+      return;
+    }
+
+    const slugs = findFilterSlugs(filterGroups, "screen", (option) => {
+      const value = normalizeSearchToken(`${option.label} ${option.slug}`);
+      return value.includes(rule.key);
+    });
+
+    if (slugs.length > 0) {
+      filters.screen = [...new Set([...(filters.screen ?? []), ...slugs])];
+      removeFromSearch(rule.patterns);
+    }
+  });
+
+  filterGroups
+    .filter((group) => group.key === "brand")
+    .forEach((group) => {
+      group.options.forEach((option) => {
+        const label = normalizeSearchToken(option.label);
+        const slug = normalizeSearchToken(option.slug);
+
+        if (
+          label &&
+          (hasSearchWord(normalizedSearch, label) ||
+            hasSearchWord(normalizedSearch, slug))
+        ) {
+          filters.brand = [...new Set([...(filters.brand ?? []), option.slug])];
+          removeFromSearch([
+            new RegExp(`(^|\\s)${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`, "gi"),
+            new RegExp(`(^|\\s)${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`, "gi"),
+          ]);
+        }
+      });
+    });
+
+  return {
+    searchText: cleanedSearch,
+    filters,
+  };
+}
+
+
 type HighlightSectionMode = "promotions" | "latest";
 
 type CategoryGroup = {
@@ -1027,6 +1177,14 @@ export function Shop() {
 
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [productAlertLoading, setProductAlertLoading] = useState(false);
+  const [productAlertSuccess, setProductAlertSuccess] = useState<string | null>(null);
+  const [productAlertError, setProductAlertError] = useState<string | null>(null);
+  const [productAlertForm, setProductAlertForm] = useState({
+    product: "",
+    message: "",
+    website: "",
+  });
 
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   const [selectedMainCategoryTitle, setSelectedMainCategoryTitle] = useState<
@@ -1324,13 +1482,17 @@ export function Shop() {
         ? selectedStockStatuses[0]
         : null;
 
+    const smartSearch = isSearching
+      ? buildSearchFiltersFromTerm(searchTerm, filterGroups)
+      : { searchText: "", filters: {} };
+
     listProducts({
       page: currentPage,
       perPage: productsPerPage,
-      search: searchTerm || undefined,
+      search: isSearching ? smartSearch.searchText || undefined : undefined,
       categoryIds: isSearching ? undefined : activeCategoryIds,
       stockStatus,
-      attributeFilters: isSearching ? {} : selectedFilters,
+      attributeFilters: isSearching ? smartSearch.filters : selectedFilters,
       ...getSortParams(sortOption),
     })
       .then((result) => {
@@ -1363,6 +1525,7 @@ export function Shop() {
     selectedCategoryKey,
     selectedStockStatuses,
     selectedFilters,
+    filterGroups,
     sortOption,
     productsPerPage,
   ]);
@@ -1542,6 +1705,75 @@ export function Shop() {
     selectedStockStatuses.length +
     textFilterCount +
     (searchTerm ? 1 : 0);
+
+  const storedCustomer = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("ecoliz_user") || "null") as any;
+    } catch {
+      return null;
+    }
+  })();
+
+  const loggedCustomerId = storedCustomer?.id ?? storedCustomer?.customer_id ?? null;
+  const isCustomerLoggedIn = Boolean(loggedCustomerId);
+
+  const submitProductAlert = async (event: any) => {
+    event.preventDefault();
+
+    const product = (productAlertForm.product || searchTerm).trim();
+
+    setProductAlertError(null);
+    setProductAlertSuccess(null);
+
+    if (!isCustomerLoggedIn) {
+      setProductAlertError("Vous devez être connecté pour envoyer une demande produit.");
+      return;
+    }
+
+    if (!product) {
+      setProductAlertError("Merci d’indiquer le produit recherché.");
+      return;
+    }
+
+    try {
+      setProductAlertLoading(true);
+
+      const response = await fetch("/wp-api/ecoliz/v1/product-alert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          customer_id: loggedCustomerId,
+          product,
+          search: searchTerm,
+          message: productAlertForm.message,
+          website: productAlertForm.website,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Impossible d’envoyer la demande.");
+      }
+
+      setProductAlertSuccess("Votre demande a bien été transmise à EcoLiz.");
+      setProductAlertForm({
+        product: "",
+        message: "",
+        website: "",
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        setProductAlertError(error.message);
+      } else {
+        setProductAlertError("Impossible d’envoyer la demande pour le moment.");
+      }
+    } finally {
+      setProductAlertLoading(false);
+    }
+  };
 
   return (
     <section className="min-h-screen bg-[radial-gradient(circle_at_top_left,#c7f5ff_0,#ecfbff_38%,#f8fdff_70%,#dff4ff_100%)] pb-24 pt-28">
@@ -1829,8 +2061,124 @@ export function Shop() {
                   Chargement du catalogue…
                 </div>
               ) : products.length === 0 ? (
-                <div className="rounded-2xl border border-sky-100 bg-white py-20 text-center text-sky-900/50">
-                  Aucun produit ne correspond aux filtres sélectionnés.
+                <div className="rounded-3xl border border-sky-100 bg-white p-8 shadow-sm">
+                  <div className="mx-auto max-w-2xl text-center">
+                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-700">
+                      Produit introuvable
+                    </p>
+
+                    <h3 className="mt-3 text-2xl font-bold text-sky-950">
+                      Vous ne trouvez pas le produit recherché ?
+                    </h3>
+
+                    <p className="mt-3 text-sm leading-7 text-sky-900/60">
+                      EcoLiz peut vous aider à trouver une référence équivalente
+                      ou vérifier une disponibilité hors catalogue.
+                    </p>
+                  </div>
+
+                  {!isCustomerLoggedIn ? (
+                    <div className="mx-auto mt-8 max-w-2xl rounded-2xl border border-sky-100 bg-sky-50 p-6 text-center">
+                      <p className="text-sm font-semibold text-sky-950">
+                        Connectez-vous pour créer une demande produit.
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-sky-900/60">
+                        Cela permet à EcoLiz de rattacher la demande à votre compte client,
+                        votre entreprise et votre historique.
+                      </p>
+
+                      <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+                        <a
+                          href="/connexion"
+                          className="inline-flex items-center justify-center rounded-full bg-sky-700 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-sky-800"
+                        >
+                          Se connecter
+                        </a>
+                        <a
+                          href="/inscription"
+                          className="inline-flex items-center justify-center rounded-full border border-sky-200 bg-white px-5 py-3 text-sm font-semibold text-sky-800 transition-colors hover:border-sky-300 hover:bg-sky-50"
+                        >
+                          Créer un compte
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={submitProductAlert} className="mx-auto mt-8 grid max-w-2xl gap-4 text-left">
+                      <input
+                        type="text"
+                        name="website"
+                        value={productAlertForm.website}
+                        onChange={(event) =>
+                          setProductAlertForm({
+                            ...productAlertForm,
+                            website: event.target.value,
+                          })
+                        }
+                        className="hidden"
+                        tabIndex={-1}
+                        autoComplete="off"
+                      />
+
+                      <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-900/70">
+                        Demande envoyée en tant que client connecté.
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-sky-950">
+                          Produit recherché *
+                        </label>
+                        <input
+                          value={productAlertForm.product}
+                          onChange={(event) =>
+                            setProductAlertForm({
+                              ...productAlertForm,
+                              product: event.target.value,
+                            })
+                          }
+                          className="w-full rounded-xl border border-sky-100 bg-white px-4 py-3 text-sm text-sky-950 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                          placeholder={searchTerm || "Ex : Lenovo ThinkPad, écran Dell, switch Cisco..."}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-sky-950">
+                          Précisions
+                        </label>
+                        <textarea
+                          value={productAlertForm.message}
+                          onChange={(event) =>
+                            setProductAlertForm({
+                              ...productAlertForm,
+                              message: event.target.value,
+                            })
+                          }
+                          rows={4}
+                          className="w-full rounded-xl border border-sky-100 bg-white px-4 py-3 text-sm text-sky-950 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                          placeholder="Quantité, marque, caractéristiques souhaitées, délai..."
+                        />
+                      </div>
+
+                      {productAlertError && (
+                        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                          {productAlertError}
+                        </div>
+                      )}
+
+                      {productAlertSuccess && (
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                          {productAlertSuccess}
+                        </div>
+                      )}
+
+                      <button
+                        type="submit"
+                        disabled={productAlertLoading}
+                        className="inline-flex items-center justify-center rounded-full bg-sky-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {productAlertLoading ? "Envoi en cours..." : "Envoyer ma demande"}
+                      </button>
+                    </form>
+                  )}
                 </div>
               ) : viewMode === "list" ? (
                 <div className="space-y-3">
