@@ -563,8 +563,35 @@ export default function Checkout() {
                 </div>
               </div>
 
+                <div className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
+                      <ShieldCheck className="h-5 w-5" />
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-brand-950">
+                        Avez-vous pensé à protéger vos postes ?
+                      </p>
+
+                      <p className="mt-1 text-sm leading-6 text-brand-900/70">
+                        EcoLiz peut aussi vous accompagner sur les solutions Bitdefender
+                        EDR, XDR et MDR pour sécuriser votre parc informatique.
+                      </p>
+
+                      <Link
+                        to="/contact"
+                        className="mt-2 inline-flex text-sm font-semibold text-cyan-700 underline underline-offset-4 hover:text-cyan-800"
+                      >
+                        Demander une information cybersécurité
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+
               <Button type="submit" fullWidth size="lg" className="group" disabled={loading || cartLoading || items.length === 0}>
                 {loading ? 'Validation en cours...' : 'Valider mon panier'}
+
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </form>

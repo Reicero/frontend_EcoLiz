@@ -19,6 +19,7 @@ import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { Testimonial } from './pages/Testimonial'
 import { CookieBanner } from './components/layout/Cookies'
+import { BitdefenderPopup } from "./components/layout/BitdefenderPopup";
 
 const AUTH_ROUTES = ['/connexion', '/inscription']
 
@@ -52,7 +53,12 @@ function AppLayout() {
           <Route path="/inscription" element={<Register />} />
         </Routes>
       </main>
-      {!isAuthRoute && <Footer />}
+      {!isAuthRoute && (
+        <>
+          <Footer />
+          <BitdefenderPopup />
+        </>
+      )}
       <CookieBanner />
     </div>
   )
