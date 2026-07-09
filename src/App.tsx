@@ -20,6 +20,7 @@ import { Register } from './pages/Register'
 import { Testimonial } from './pages/Testimonial'
 import { CookieBanner } from './components/layout/Cookies'
 import { BitdefenderPopup } from "./components/layout/BitdefenderPopup";
+import { SeoManager } from "./components/seo/SeoManager";
 
 const AUTH_ROUTES = ['/connexion', '/inscription']
 
@@ -67,6 +68,7 @@ function AppLayout() {
 export function App() {
   return (
     <BrowserRouter>
+      <SeoManager />
       <AppLayout />
     </BrowserRouter>
   )
