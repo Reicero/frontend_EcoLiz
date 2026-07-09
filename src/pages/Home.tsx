@@ -79,13 +79,13 @@ export function Home() {
             <p className="text-brand-700 font-semibold tracking-wide uppercase text-sm mb-3">
               Notre univers
             </p>
-            <h2 className="text-4xl sm:text-5xl font-bold text-brand-950 tracking-tight leading-tight">
+            <h1 className="text-4xl sm:text-5xl font-bold text-brand-950 tracking-tight leading-tight">
               Une plateforme{' '}
               <span className="font-display italic text-accent-500">
                 complète
               </span>{' '}
               pour votre IT.
-            </h2>
+            </h1>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
