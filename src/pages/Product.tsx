@@ -604,6 +604,7 @@ export function ProductPage() {
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,#9fe8ff_0,#d8f5ff_38%,#eefbff_76%,#dff3ff_100%)] pb-24 pt-32">
+      <ProductSeo product={product} />
       <div className="absolute -right-20 top-28 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl" />
       <div className="absolute -left-24 bottom-24 h-80 w-80 rounded-full bg-sky-400/18 blur-3xl" />
 
@@ -971,6 +972,157 @@ export function ProductPage() {
       </div>
     </main>
   );
+}
+
+
+function cleanSeoText(value?: string) {
+  return decodeHtmlEntities(value ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function setSeoMeta(name: string, content: string) {
+  let tag = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+
+  if (!tag) {
+    tag = document.createElement("meta");
+    tag.setAttribute("name", name);
+    document.head.appendChild(tag);
+  }
+
+  tag.setAttribute("content", content);
+}
+
+function setSeoProperty(property: string, content: string) {
+  let tag = document.querySelector<HTMLMetaElement>(
+    `meta[property="${property}"]`
+  );
+
+  if (!tag) {
+    tag = document.createElement("meta");
+    tag.setAttribute("property", property);
+    document.head.appendChild(tag);
+  }
+
+  tag.setAttribute("content", content);
+}
+
+function setSeoCanonical(url: string) {
+  let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+
+  if (!link) {
+    link = document.createElement("link");
+    link.setAttribute("rel", "canonical");
+    document.head.appendChild(link);
+  }
+
+  link.setAttribute("href", url);
+}
+
+function ProductSeo({ product }: { product: Product }) {
+  useEffect(() => {
+    const siteUrl = "https://ecoliz.fr";
+    const productUrl = `${siteUrl}/produit/${product.slug}`;
+    const productName = cleanSeoText(product.name);
+    const productDescription =
+      cleanSeoText(product.description) ||
+      cleanSeoText(product.specs) ||
+      `${productName} disponible sur EcoLiz, spécialiste du matériel informatique reconditionné pour les professionnels.`;
+
+    const shortDescription =
+      productDescription.length > 155
+        ? `${productDescription.slice(0, 152).trim()}...`
+        : productDescription;
+
+    const image =
+      product.images?.find(Boolean) ||
+      product.image ||
+      `${siteUrl}/logo.png`;
+
+    const absoluteImage = image.startsWith("http")
+      ? image
+      : `${siteUrl}${image.startsWith("/") ? image : `/${image}`}`;
+
+    const isQuoteOnly = isQuoteOnlyProduct(product);
+    const hasPrice = Number.isFinite(product.price) && product.price > 0;
+
+    document.title = `${productName} | EcoLiz`;
+
+    setSeoMeta("description", shortDescription);
+    setSeoCanonical(productUrl);
+
+    setSeoProperty("og:site_name", "EcoLiz");
+    setSeoProperty("og:type", "product");
+    setSeoProperty("og:title", `${productName} | EcoLiz`);
+    setSeoProperty("og:description", shortDescription);
+    setSeoProperty("og:url", productUrl);
+    setSeoProperty("og:image", absoluteImage);
+
+    setSeoMeta("twitter:card", "summary_large_image");
+    setSeoMeta("twitter:title", `${productName} | EcoLiz`);
+    setSeoMeta("twitter:description", shortDescription);
+    setSeoMeta("twitter:image", absoluteImage);
+
+    const productJsonLd: Record<string, unknown> = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: productName,
+      description: shortDescription,
+      image: [absoluteImage],
+      sku: product.sku || undefined,
+      brand: product.manufacturer
+        ? {
+            "@type": "Brand",
+            name: product.manufacturer,
+          }
+        : undefined,
+      category: product.category || undefined,
+      itemCondition: "https://schema.org/RefurbishedCondition",
+    };
+
+    if (!isQuoteOnly && hasPrice) {
+      productJsonLd.offers = {
+        "@type": "Offer",
+        url: productUrl,
+        priceCurrency: "EUR",
+        price: product.price.toFixed(2),
+        availability: product.stock
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
+        itemCondition: "https://schema.org/RefurbishedCondition",
+      };
+    }
+
+    Object.keys(productJsonLd).forEach((key) => {
+      if (productJsonLd[key] === undefined) {
+        delete productJsonLd[key];
+      }
+    });
+
+    let script = document.querySelector<HTMLScriptElement>(
+      'script[data-ecoliz-seo="product"]'
+    );
+
+    if (!script) {
+      script = document.createElement("script");
+      script.type = "application/ld+json";
+      script.setAttribute("data-ecoliz-seo", "product");
+      document.head.appendChild(script);
+    }
+
+    script.textContent = JSON.stringify(productJsonLd);
+
+    return () => {
+      const currentScript = document.querySelector<HTMLScriptElement>(
+        'script[data-ecoliz-seo="product"]'
+      );
+
+      currentScript?.remove();
+    };
+  }, [product]);
+
+  return null;
 }
 
 function TrustItem({
