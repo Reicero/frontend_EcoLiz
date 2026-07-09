@@ -111,6 +111,45 @@ function setCanonical(url: string) {
   link.setAttribute("href", url);
 }
 
+function setJsonLdScript(id: string, data: Record<string, unknown>) {
+  let script = document.querySelector<HTMLScriptElement>(
+    `script[data-ecoliz-schema="${id}"]`
+  );
+
+  if (!script) {
+    script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.setAttribute("data-ecoliz-schema", id);
+    document.head.appendChild(script);
+  }
+
+  script.textContent = JSON.stringify(data);
+}
+
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": ["Organization", "LocalBusiness"],
+  name: "EcoLiz",
+  url: SITE_URL,
+  logo: `${SITE_URL}/logo.png`,
+  image: `${SITE_URL}/logo.png`,
+  email: "contact@ecoliz.fr",
+  telephone: "+33178969080",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "15 Avenue d’Unterschleissheim",
+    postalCode: "34920",
+    addressLocality: "Le Crès",
+    addressCountry: "FR",
+  },
+  sameAs: [
+    "https://www.instagram.com/ecoliz_eu",
+    "https://www.linkedin.com/company/ecoliz",
+  ],
+  description:
+    "EcoLiz propose du matériel informatique reconditionné et des services associés pour les professionnels, entreprises, associations et collectivités.",
+};
+
 export function SeoManager() {
   const location = useLocation();
 
@@ -132,6 +171,8 @@ export function SeoManager() {
     setMetaTag("twitter:card", "summary_large_image");
     setMetaTag("twitter:title", seo.title);
     setMetaTag("twitter:description", seo.description);
+
+    setJsonLdScript("organization", organizationSchema);
   }, [location.pathname]);
 
   return null;
