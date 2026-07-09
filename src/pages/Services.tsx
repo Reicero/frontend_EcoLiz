@@ -65,8 +65,10 @@ export function Services() {
               </span>
             </h1>
             <p className="text-xl text-brand-900/70 leading-relaxed">
-              Au-delà de la vente, nous accompagnons les entreprises dans la
-              gestion complète et responsable de leur cycle de vie matériel.
+              Au-delà de la vente de matériel informatique reconditionné, nous
+              accompagnons les entreprises, associations et collectivités dans la
+              préparation, le support et la gestion responsable de leur parc
+              informatique.
             </p>
           </div>
         </div>

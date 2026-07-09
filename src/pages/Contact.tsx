@@ -77,8 +77,10 @@ export function Contact() {
           </h1>
 
           <p className="text-lg text-brand-900/70">
-            Une question, un devis ou un audit de parc ? Notre équipe vous
-            répond sous 4h ouvrées.
+            Une question, un devis, un SAV ou un audit de parc ? EcoLiz
+            accompagne les entreprises, associations et collectivités dans leurs
+            besoins en matériel informatique reconditionné et vous répond sous
+            4h ouvrées.
           </p>
         </header>
 

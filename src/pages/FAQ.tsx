@@ -91,8 +91,9 @@ export function FAQ() {
 
           <p className="mt-5 text-brand-900/65 max-w-2xl mx-auto leading-relaxed">
             Retrouvez les réponses aux questions les plus fréquentes sur le
-            reconditionnement, les grades, les garanties, le thermocollage et
-            les services EcoLiz.
+            matériel informatique reconditionné EcoLiz : grades, garanties,
+            commandes, services, thermocollage, SAV et accompagnement des
+            entreprises, associations et collectivités.
           </p>
         </div>
 
@@ -143,7 +144,8 @@ export function FAQ() {
 
           <p className="mt-3 text-sm leading-6 text-sky-100/80">
             Notre équipe peut vous accompagner pour un besoin spécifique, une
-            commande, une reprise de parc ou une demande de devis.
+            commande de matériel informatique reconditionné, une reprise de parc,
+            un SAV ou une demande de devis.
           </p>
 
           <Link
