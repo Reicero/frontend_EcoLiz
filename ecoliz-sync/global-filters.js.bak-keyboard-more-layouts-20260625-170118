@@ -1,0 +1,994 @@
+const GLOBAL_FILTER_DEFINITIONS = {
+  brand: { name: "Marque", slug: "marque" },
+  condition: { name: "État", slug: "etat" },
+  os: { name: "OS", slug: "os" },
+  processor: { name: "Processeur", slug: "processeur" },
+  processorGeneration: {
+    name: "Génération processeur",
+    slug: "generation-processeur",
+  },
+  ram: { name: "RAM", slug: "ram" },
+  ramType: { name: "Type de RAM", slug: "type-ram" },
+  storage: { name: "Stockage", slug: "stockage" },
+  storageType: { name: "Type de stockage", slug: "type-stockage" },
+  screen: { name: "Taille écran", slug: "taille-ecran" },
+  resolution: { name: "Résolution", slug: "resolution" },
+  gpu: { name: "Carte graphique", slug: "carte-graphique" },
+  ports: { name: "Nombre de ports", slug: "nombre-ports" },
+  speed: { name: "Débit réseau", slug: "debit-reseau" },
+  poe: { name: "PoE", slug: "poe" },
+  wifi: { name: "Norme Wi-Fi", slug: "norme-wifi" },
+  processorModel: { name: "Modèle processeur", slug: "modele-processeur" },
+  coreCount: { name: "Nombre de cœurs", slug: "nombre-coeurs" },
+  gpuModel: { name: "Modèle carte graphique", slug: "modele-carte-graphique" },
+  touchscreen: { name: "Écran tactile", slug: "ecran-tactile" },
+  panelType: { name: "Technologie de dalle", slug: "technologie-dalle" },
+  connectivity: { name: "Connectique", slug: "connectique" },
+  vesa: { name: "Compatible VESA", slug: "compatible-vesa" },
+  webcam: { name: "Webcam intégrée", slug: "webcam-integree" },
+  serverType: { name: "Type de serveur", slug: "type-serveur" },
+  diskFormat: { name: "Format de disque", slug: "format-disque" },
+  raidController: { name: "Contrôleur RAID", slug: "controleur-raid" },
+  switchManagement: { name: "Administration réseau", slug: "administration-reseau" },
+  networkPortType: { name: "Type de port réseau", slug: "type-port-reseau" },
+  equipmentType: { name: "Type d’équipement", slug: "type-equipement" },
+  wifiEquipmentType: { name: "Type d’équipement Wi-Fi", slug: "type-equipement-wifi" },
+  licenseVendor: { name: "Éditeur de licence", slug: "editeur-licence" },
+  licenseType: { name: "Type de licence", slug: "type-licence" },
+  keyboardLanguage: { name: "Langue du clavier", slug: "langue-du-clavier" },
+};
+
+const attributeCache = new Map();
+const termCache = new Map();
+let attributesLoaded = false;
+
+function clean(value) {
+  return value === undefined || value === null ? "" : String(value).trim();
+}
+
+function normalizeText(value) {
+  return clean(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function unique(values) {
+  return [...new Set(values.map(clean).filter(Boolean))];
+}
+
+function getSpecifications(apiProduct) {
+  const map = new Map();
+
+  for (const specification of apiProduct?.specifications || []) {
+    const key = normalizeText(specification?.key);
+    const value = clean(specification?.value);
+
+    if (key && value) {
+      map.set(key, value);
+    }
+  }
+
+  return map;
+}
+
+function getSpec(specifications, ...keys) {
+  for (const key of keys) {
+    const value = specifications.get(normalizeText(key));
+    if (value) return value;
+  }
+
+  return "";
+}
+
+function buildSearchText({ row, product, apiProduct, specifications }) {
+  return normalizeText(
+    [
+      row?.["Category"],
+      row?.["Description"],
+      row?.["Web Description"],
+      row?.["Product Group"],
+      row?.["OS"],
+      product?.name,
+      product?.description,
+      product?.short_description,
+      apiProduct?.manufacturerName,
+      apiProduct?.modelName,
+      apiProduct?.shortDescription,
+      apiProduct?.description,
+      ...Array.from(specifications.values()),
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+function normalizeBrand(value) {
+  const text = normalizeText(value);
+
+  if (!text) return "";
+  if (text === "hp" || text.includes("hp inc") || text.includes("hewlett") || text === "hpe") {
+    return "HP / HPE";
+  }
+  if (text.includes("dell")) return "Dell";
+  if (text.includes("lenovo")) return "Lenovo";
+  if (text.includes("apple")) return "Apple";
+  if (text.includes("cisco")) return "Cisco";
+  if (text.includes("aruba")) return "Aruba";
+  if (text.includes("samsung")) return "Samsung";
+
+  return clean(value);
+}
+
+function normalizeCondition(value) {
+  const status = clean(value).toUpperCase();
+
+  if (["N1", "N2", "N3"].includes(status)) return "Neuf";
+  if (["R4", "W1", "W2"].includes(status)) return "Reconditionné";
+  if (status === "G5") return "Grade B";
+  if (["D1", "D2"].includes(status)) return "Déstockage";
+  if (status === "AS") return "As-is";
+
+  return clean(value);
+}
+
+function normalizeOs(value, searchText) {
+  const text = normalizeText(`${value} ${searchText}`);
+
+  if (/\bw11p\b/.test(text) || text.includes("windows 11 pro")) return "Windows 11 Pro";
+  if (/\bw10p\b/.test(text) || text.includes("windows 10 pro")) return "Windows 10 Pro";
+  if (/\bw11h\b/.test(text) || text.includes("windows 11 home")) return "Windows 11 Home";
+  if (text.includes("windows 11 se")) return "Windows 11 SE";
+  if (text.includes("chrome os") || text.includes("chromeos")) return "Chrome OS";
+  if (text.includes("macos") || text.includes("mac os")) return "macOS";
+  if (text.includes("freedos")) return "FreeDOS";
+  if (text.includes("linux")) return "Linux";
+
+  return clean(value);
+}
+
+function normalizeProcessor(searchText) {
+  if (/\b(?:intel\s+)?(?:core\s*)?i3[-\s]/.test(searchText) || /\bi3-\d/.test(searchText)) {
+    return "Intel Core i3";
+  }
+  if (/\b(?:intel\s+)?(?:core\s*)?i5[-\s]/.test(searchText) || /\bi5-\d/.test(searchText)) {
+    return "Intel Core i5";
+  }
+  if (/\b(?:intel\s+)?(?:core\s*)?i7[-\s]/.test(searchText) || /\bi7-\d/.test(searchText)) {
+    return "Intel Core i7";
+  }
+  if (/\b(?:intel\s+)?(?:core\s*)?i9[-\s]/.test(searchText) || /\bi9-\d/.test(searchText)) {
+    return "Intel Core i9";
+  }
+  if (searchText.includes("xeon")) return "Intel Xeon";
+  if (searchText.includes("epyc")) return "AMD EPYC";
+  if (searchText.includes("ryzen") || searchText.includes("r-ai max")) return "AMD Ryzen";
+
+  return "";
+}
+
+function normalizeProcessorGeneration(value, processorText) {
+  const text = normalizeText(`${value} ${processorText}`);
+
+  const generationMatch = text.match(
+    /\b(\d{1,2})(?:st|nd|rd|th|e|eme)?\s+generation\b/
+  );
+
+  if (generationMatch) {
+    return `${Number(generationMatch[1])}e génération`;
+  }
+
+  return "";
+}
+
+function normalizeCapacity(numberValue, unitValue, rawValue) {
+  let number = Number(String(numberValue || "").replace(",", "."));
+  let unit = normalizeText(unitValue);
+
+  if (!Number.isFinite(number)) {
+    const match = clean(rawValue).match(/(\d+(?:[.,]\d+)?)\s*(TB|GB|TO|GO)/i);
+    if (!match) return "";
+
+    number = Number(match[1].replace(",", "."));
+    unit = normalizeText(match[2]);
+  }
+
+  if (["tb", "to"].includes(unit)) {
+    if (number >= 2) return "2 To et plus";
+    return "1 To";
+  }
+
+  if (["gb", "go"].includes(unit)) {
+    if (number >= 2000) return "2 To et plus";
+    if (number >= 900) return "1 To";
+    if (number >= 500) return "512 Go";
+    if (number >= 250) return "256 Go";
+    if (number >= 120) return "128 Go";
+  }
+
+  return "";
+}
+
+function normalizeRam(numberValue, unitValue, rawValue) {
+  let number = Number(String(numberValue || "").replace(",", "."));
+  const unit = normalizeText(unitValue);
+
+  if (!Number.isFinite(number)) {
+    const match = clean(rawValue).match(/(\d+(?:[.,]\d+)?)\s*(GB|GO)/i);
+    if (!match) return "";
+    number = Number(match[1].replace(",", "."));
+  }
+
+  if (unit && !["gb", "go"].includes(unit)) return "";
+  if (number >= 128) return "128 Go et plus";
+  if (number >= 64) return "64 Go";
+  if (number >= 32) return "32 Go";
+  if (number >= 16) return "16 Go";
+  if (number >= 8) return "8 Go";
+
+  return "";
+}
+
+function normalizeRamType(value, searchText) {
+  const text = normalizeText(`${value} ${searchText}`);
+
+  if (text.includes("ddr5")) return "DDR5";
+  if (text.includes("ddr4")) return "DDR4";
+  if (text.includes("ddr3")) return "DDR3";
+
+  return "";
+}
+
+function normalizeStorageTypes(value, searchText) {
+  const text = normalizeText(`${value} ${searchText}`);
+  const types = [];
+
+  if (text.includes("nvme")) types.push("NVMe");
+  if (/\bssd\b/.test(text)) types.push("SSD");
+  if (/\bsas\b/.test(text)) types.push("SAS");
+  if (/\bsata\b|s-ata/.test(text)) types.push("SATA");
+  if (/\bhdd\b/.test(text) && !text.includes("hdd capacity")) types.push("HDD");
+
+  return unique(types);
+}
+
+function normalizeScreen(value, searchText) {
+  const text = clean(value) || clean(searchText);
+  const match = text.match(/(\d{1,2}(?:[.,]\d+)?)\s*(?:"|″|inch(?:es)?)/i);
+
+  if (!match) return "";
+
+  const size = Number(match[1].replace(",", "."));
+
+  if (size < 13.5) return "13 pouces";
+  if (size < 14.5) return "14 pouces";
+  if (size < 15.8) return "15 pouces";
+  if (size < 16.8) return "16 pouces";
+  if (size < 19) return "17 pouces et plus";
+  if (size < 25.5) return "24 pouces";
+  if (size < 29.5) return "27 pouces";
+  if (size < 33.5) return "32 pouces";
+
+  return "34 pouces et plus";
+}
+
+function normalizeResolution(value, searchText) {
+  const text = normalizeText(`${value} ${searchText}`).replace(/\s+/g, "");
+
+  if (text.includes("3840x2160") || text.includes("4k") || text.includes("uhd")) return "4K";
+  if (text.includes("2560x1440") || text.includes("qhd")) return "QHD";
+  if (text.includes("1920x1200") || text.includes("wuxga")) return "WUXGA";
+  if (text.includes("1920x1080") || text.includes("fhd") || text.includes("fullhd")) return "Full HD";
+
+  return "";
+}
+
+function normalizeGpu(value, searchText) {
+  const text = normalizeText(`${value} ${searchText}`);
+
+  if (text.includes("nvidia") || text.includes("quadro") || text.includes("geforce") || /\brtx\b/.test(text)) {
+    return "NVIDIA";
+  }
+  if (text.includes("radeon")) return "AMD Radeon";
+  if (text.includes("intel uhd") || text.includes("intel graphics") || text.includes("iris xe")) {
+    return "Intel Graphics";
+  }
+
+  return "";
+}
+
+function normalizePorts(searchText) {
+  const patterns = [
+    /\bswitch\s+(8|16|24|48)\b/,
+    /\b(8|16|24|48)\s*(?:ports?|port)\b/,
+    /\b(8|16|24|48)g\s+\d*\s*sfp/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = searchText.match(pattern);
+    if (match) return `${match[1]} ports`;
+  }
+
+  return "";
+}
+
+function normalizeSpeeds(searchText) {
+  const speeds = [];
+
+  if (/\b100\s*(?:g|gbe|gbps)\b|\b100ge\b/.test(searchText)) speeds.push("100G");
+  if (/\b40\s*(?:g|gbe|gbps)\b|\b40ge\b/.test(searchText)) speeds.push("40G");
+  if (/\b25\s*(?:g|gbe|gbps)\b|\b25ge\b/.test(searchText)) speeds.push("25G");
+  if (/\b10\s*(?:g|gbe|gbps)\b|\b10ge\b|sfp\+/.test(searchText)) speeds.push("10G");
+  if (/\b1\s*(?:g|gbe|gbps)\b|\b1000\b|gigabit/.test(searchText)) speeds.push("1G");
+
+  return unique(speeds);
+}
+
+function normalizePoe(searchText) {
+  if (/\b(?:non|no)\s*poe\b/.test(searchText)) return "Non PoE";
+  if (/\bpoe\+\+\b/.test(searchText)) return "PoE++";
+  if (/\bpoe\+\b/.test(searchText)) return "PoE+";
+  if (/\bpoe\b/.test(searchText)) return "PoE";
+
+  return "";
+}
+
+function normalizeWifi(searchText) {
+  if (searchText.includes("wifi 7") || searchText.includes("wi-fi 7") || searchText.includes("802.11be")) {
+    return "Wi-Fi 7";
+  }
+  if (searchText.includes("wifi 6e") || searchText.includes("wi-fi 6e")) return "Wi-Fi 6E";
+  if (searchText.includes("wifi 6") || searchText.includes("wi-fi 6") || searchText.includes("802.11ax") || /\b9\d{3}ax\b/.test(searchText)) {
+    return "Wi-Fi 6";
+  }
+  if (searchText.includes("wifi 5") || searchText.includes("wi-fi 5") || searchText.includes("802.11ac")) {
+    return "Wi-Fi 5";
+  }
+
+  return "";
+}
+
+
+function normalizeProcessorModel(value) {
+  const raw = clean(value)
+    .replace(/Intel®|Intel™|AMD®|AMD™|Core™|Ryzen™/gi, "")
+    .replace(/Processor/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!raw) return "";
+
+  const patterns = [
+    /\b(?:i[3579]-\d{4,5}[a-z]{0,3})\b/i,
+    /\b(?:xeon\s+[a-z0-9 -]+)\b/i,
+    /\b(?:epyc\s+[a-z0-9 -]+)\b/i,
+    /\b(?:ryzen\s+(?:ai\s+)?[a-z0-9+ -]+)\b/i,
+    /\b(?:[3-9]\d{3}[a-z]{0,2})\b/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = raw.match(pattern);
+    if (match) return match[0].trim();
+  }
+
+  return raw.length <= 80 ? raw : "";
+}
+
+function normalizeCoreCount(value, searchText) {
+  const raw = clean(value);
+  const direct = raw.match(/\d+/);
+  if (direct) return `${Number(direct[0])} cœurs`;
+
+  const text = clean(searchText);
+  const match = text.match(/\b(\d{1,3})[- ]?core\b/i);
+  if (match) return `${Number(match[1])} cœurs`;
+
+  return "";
+}
+
+function normalizeGpuModel(value, searchText) {
+  const text = clean(`${value} ${searchText}`);
+
+  const patterns = [
+    /\bNVIDIA\s+Quadro\s+RTX\s+\d{3,4}\b/i,
+    /\b(?:NVIDIA\s+)?(?:Quadro\s+)?RTX\s+\d{3,4}(?:\s+(?:Ti|SUPER|Max-Q))?\b/i,
+    /\bGeForce\s+(?:GTX|RTX)\s+\d{3,4}(?:\s+(?:Ti|SUPER))?\b/i,
+    /\b(?:AMD\s+)?Radeon(?:\s+Pro)?\s+[A-Z]?\d{3,4}[A-Z]{0,3}\b/i,
+    /\bIntel\s+UHD\s+Graphics\s+\d+\b/i,
+    /\bIntel\s+Iris\s+Xe\s+Graphics\b/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+
+    if (!match) {
+      continue;
+    }
+
+    let model = match[0].replace(/\s+/g, " ").trim();
+
+    if (/^Radeon/i.test(model)) {
+      model = `AMD ${model}`;
+    }
+
+    if (/^(?:Quadro|RTX)/i.test(model)) {
+      model = `NVIDIA ${model}`;
+    }
+
+    return model;
+  }
+
+  return "";
+}
+
+function normalizeBoolean(value, searchText, positiveTerms = [], negativeTerms = []) {
+  const text = normalizeText(`${value} ${searchText}`);
+
+  if (
+    /^(no|non|false|0)$/.test(normalizeText(value)) ||
+    negativeTerms.some((term) => text.includes(normalizeText(term)))
+  ) {
+    return "Non";
+  }
+
+  if (
+    /^(yes|oui|true|1)$/.test(normalizeText(value)) ||
+    positiveTerms.some((term) => text.includes(normalizeText(term)))
+  ) {
+    return "Oui";
+  }
+
+  return "";
+}
+
+function normalizePanelType(searchText) {
+  if (/\boled\b/i.test(searchText)) return "OLED";
+  if (/\bips\b/i.test(searchText)) return "IPS";
+  if (/\bva\b/i.test(searchText)) return "VA";
+  if (/\btn\b/i.test(searchText)) return "TN";
+  if (/\bmini[- ]?led\b/i.test(searchText)) return "Mini-LED";
+  if (/\bled\b|\blcd\b/i.test(searchText)) return "LCD / LED";
+  return "";
+}
+
+function normalizeConnectivity(searchText, specifications) {
+  const text = normalizeText(searchText);
+  const values = [];
+
+  if (text.includes("thunderbolt") || /\btb[34]\b/.test(text)) values.push("Thunderbolt");
+  if (text.includes("usb-c") || text.includes("usb type-c")) values.push("USB-C");
+  if (/\bhdmi\b/.test(text) || normalizeText(getSpec(specifications, "HDMI")) === "yes") values.push("HDMI");
+  if (text.includes("displayport") || /\bdp\b/.test(text) || getSpec(specifications, "DisplayPorts quantity")) values.push("DisplayPort");
+  if (/\bdvi\b/.test(text)) values.push("DVI");
+  if (/\bvga\b/.test(text)) values.push("VGA");
+
+  return unique(values);
+}
+
+function normalizeServerType(searchText) {
+  if (/\bblade\b/.test(searchText)) return "Serveur blade";
+  if (/\btower\b|serveur tour|server tower/.test(searchText)) return "Serveur tour";
+  if (/\brack\b|\bdl\d{3}\b|proliant dl|poweredge r\d+/.test(searchText)) return "Serveur rack";
+  return "";
+}
+
+function normalizeDiskFormat(searchText) {
+  const formats = [];
+  if (/\b2[.,]5(?:"|″| inch)?\b|\bsff\b/.test(searchText)) formats.push("2,5 pouces");
+  if (/\b3[.,]5(?:"|″| inch)?\b|\blff\b/.test(searchText)) formats.push("3,5 pouces");
+  return unique(formats);
+}
+
+function normalizeRaidController(searchText) {
+  const patterns = [
+    /\b(?:smart array|perc|megaraid|mr\d+[a-z-]*|p\d{3,4}[a-z]*)\b/i,
+    /\braid controller\b/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = clean(searchText).match(pattern);
+    if (match) return match[0].replace(/\s+/g, " ").trim();
+  }
+
+  return "";
+}
+
+function normalizeSwitchManagement(searchText) {
+  if (/\bunmanaged\b|non manageable|non-manageable/.test(searchText)) return "Non manageable";
+  if (/\bmanaged\b|manageable|smart switch|layer ?[23]/.test(searchText)) return "Manageable";
+  return "";
+}
+
+function normalizeNetworkPortTypes(searchText) {
+  const types = [];
+  if (/\brj-?45\b|10\/100\/1000/.test(searchText)) types.push("RJ45");
+  if (/\bsfp28\b/.test(searchText)) types.push("SFP28");
+  if (/\bqsfp\+?/.test(searchText)) types.push("QSFP");
+  if (/\bsfp\+/.test(searchText)) types.push("SFP+");
+  else if (/\bsfp\b/.test(searchText)) types.push("SFP");
+  return unique(types);
+}
+
+function normalizeEquipmentType(searchText) {
+  if (/\bswitch(?:es)?\b/.test(searchText)) return "Switch";
+  if (/\b(?:router|routeur)\b/.test(searchText)) return "Routeur";
+  if (/\bfirewall\b/.test(searchText)) return "Firewall";
+  if (/\b(?:sfp|sfp\+|sfp28|qsfp|transceiver|module optique|optic)\b/.test(searchText)) {
+    return "Module optique";
+  }
+  if (/\b(?:network card|carte reseau|carte réseau|nic)\b/.test(searchText)) {
+    return "Carte réseau";
+  }
+  if (/\b(?:network cable|cable reseau|câble réseau|ethernet cable)\b/.test(searchText)) {
+    return "Câble réseau";
+  }
+  return "";
+}
+
+function normalizeWifiEquipmentType(searchText) {
+  if (/power injector|poe injector|injecteur/.test(searchText)) return "Injecteur PoE";
+  if (/access point|point d'acces|point d’accès|catalyst 91\d{2}|aruba ap|wireless ap/.test(searchText)) return "Point d’accès";
+  if (/wireless controller|wifi controller|contrôleur wifi|controleur wifi/.test(searchText)) return "Contrôleur Wi-Fi";
+  return "";
+}
+
+function normalizeLicenseVendor(searchText) {
+  if (searchText.includes("microsoft")) return "Microsoft";
+  if (searchText.includes("veeam")) return "Veeam";
+  if (searchText.includes("vmware")) return "VMware";
+  if (searchText.includes("adobe")) return "Adobe";
+  if (searchText.includes("smartnet") || searchText.includes("smart net")) return "Cisco";
+  return "";
+}
+
+function normalizeLicenseType(searchText) {
+  if (searchText.includes("smartnet") || searchText.includes("smart net")) return "Smartnet";
+  if (searchText.includes("subscription") || searchText.includes("abonnement")) return "Abonnement";
+  if (searchText.includes("server license") || searchText.includes("licence serveur")) return "Licence serveur";
+  if (searchText.includes("user license") || searchText.includes("licence utilisateur")) return "Licence utilisateur";
+  if (searchText.includes("license") || searchText.includes("licence") || searchText.includes("software")) return "Autre licence";
+  return "";
+}
+
+
+function normalizeKeyboardLanguage(value) {
+  const text = normalizeText(value);
+
+  if (!text) return "";
+
+  if (
+    text.includes("french") ||
+    text.includes("francais") ||
+    text.includes("français") ||
+    text === "fr"
+  ) {
+    return "AZERTY FR";
+  }
+
+  if (
+    text.includes("german") ||
+    text.includes("deutsch") ||
+    text === "de" ||
+    text.includes("qwertz")
+  ) {
+    return "QWERTZ DE";
+  }
+
+  if (
+    text.includes("spanish") ||
+    text.includes("espagnol") ||
+    text.includes("espanol")
+  ) {
+    return "Espagnol";
+  }
+
+  if (
+    text.includes("italian") ||
+    text.includes("italien")
+  ) {
+    return "Italien";
+  }
+
+  if (
+    text.includes("english int") ||
+    text.includes("english international") ||
+    text.includes("international layout") ||
+    text.includes("int layout")
+  ) {
+    return "QWERTY international";
+  }
+
+  if (
+    text.includes("english") ||
+    text.includes("anglais") ||
+    text.includes("qwert")
+  ) {
+    return "QWERTY international";
+  }
+
+  if (
+    text.includes("english") ||
+    text.includes("anglais") ||
+    text.includes("qwerty")
+  ) {
+    return "QWERTY";
+  }
+
+  if (
+    text.includes("uk") ||
+    text.includes("united kingdom") ||
+    text.includes("british")
+  ) {
+    return "QWERTY UK";
+  }
+
+  if (
+    text.includes("us") ||
+    text.includes("us int") ||
+    text.includes("united states") ||
+    text.includes("american")
+  ) {
+    return "QWERTY US";
+  }
+
+  return "Autre";
+}
+
+function inferKeyboardLanguageFromText(...values) {
+  const text = normalizeText(values.filter(Boolean).join(" "));
+
+  if (!text) return "";
+
+  const keyboardRelated =
+    text.includes("keyboard") ||
+    text.includes("clavier") ||
+    text.includes("type cover") ||
+    text.includes("layout") ||
+    text.includes("azerty") ||
+    text.includes("qwerty") ||
+    text.includes("qwertz");
+
+  if (!keyboardRelated) return "";
+
+  if (
+    text.includes("french") ||
+    text.includes("francais") ||
+    text.includes("français") ||
+    text.includes("azerty")
+  ) {
+    return "French";
+  }
+
+  if (
+    text.includes("german") ||
+    text.includes("deutsch") ||
+    text.includes("qwertz")
+  ) {
+    return "German";
+  }
+
+  if (
+    text.includes("english int") ||
+    text.includes("english international") ||
+    text.includes("international layout") ||
+    text.includes("int layout")
+  ) {
+    return "English international";
+  }
+
+  if (
+    text.includes("english") ||
+    text.includes("anglais") ||
+    text.includes("qwerty")
+  ) {
+    return "English";
+  }
+
+  if (
+    text.includes("spanish") ||
+    text.includes("espagnol") ||
+    text.includes("espanol")
+  ) {
+    return "Spanish";
+  }
+
+  if (
+    text.includes("italian") ||
+    text.includes("italien")
+  ) {
+    return "Italian";
+  }
+
+  return "";
+}
+
+
+function extractFilterValues({ row, product, apiProduct }) {
+  const specifications = getSpecifications(apiProduct);
+  const searchText = buildSearchText({ row, product, apiProduct, specifications });
+
+  const brand = normalizeBrand(apiProduct?.manufacturerName || row?.["Manufacturer"]);
+  const condition = normalizeCondition(row?.["Status"] || apiProduct?.productCondition);
+  const os = normalizeOs(getSpec(specifications, "OS") || row?.["OS"], searchText);
+  const keyboardLanguageSource =
+    getSpec(
+      specifications,
+      "KBlanguage",
+      "KB language",
+      "Keyboard language",
+      "Keyboard Language",
+      "Keyboard layout",
+      "Langue du clavier",
+      "Langue clavier",
+      "Clavier"
+    ) ||
+    inferKeyboardLanguageFromText(
+      product?.name,
+      product?.description,
+      product?.short_description,
+      apiProduct?.name,
+      apiProduct?.description,
+      apiProduct?.short_description,
+      row?.Description,
+      row?.["Web Description"],
+      row?.["Product Group"],
+      row?.Category
+    );
+
+  const keyboardLanguage = normalizeKeyboardLanguage(keyboardLanguageSource);
+  const processor = normalizeProcessor(
+    normalizeText(
+      [
+        getSpec(specifications, "FullProcessorName"),
+        getSpec(specifications, "Processor"),
+        getSpec(specifications, "CPU"),
+        searchText,
+      ].join(" ")
+    )
+  );
+  const processorGeneration = normalizeProcessorGeneration(
+    getSpec(specifications, "Processor generation"),
+    [
+      getSpec(specifications, "FullProcessorName"),
+      getSpec(specifications, "Processor"),
+      getSpec(specifications, "ProductCollection"),
+    ].join(" ")
+  );
+  const ram = normalizeRam(
+    getSpec(specifications, "Memory Capacity"),
+    getSpec(specifications, "Memory Unit of Measure"),
+    getSpec(specifications, "Memory")
+  );
+  const ramType = normalizeRamType(
+    getSpec(specifications, "Internal memory type"),
+    searchText
+  );
+  const storage = normalizeCapacity(
+    getSpec(specifications, "HDD capacity"),
+    getSpec(specifications, "HDD Unit of Measure"),
+    getSpec(specifications, "HDD") || searchText
+  );
+  const storageTypes = normalizeStorageTypes(getSpec(specifications, "HDD"), searchText);
+  const screen = normalizeScreen(
+    getSpec(specifications, "Screen size (in)", "Screen"),
+    searchText
+  );
+  const resolution = normalizeResolution(
+    getSpec(specifications, "Display resolution", "Screen"),
+    searchText
+  );
+  const gpu = normalizeGpu(getSpec(specifications, "Videocard"), searchText);
+  const ports = normalizePorts(searchText);
+  const speeds = normalizeSpeeds(searchText);
+  const poe = normalizePoe(searchText);
+  const wifi = normalizeWifi(searchText);
+  const processorModel = normalizeProcessorModel(
+    getSpec(specifications, "FullProcessorName", "Processor", "CPU")
+  );
+  const coreCount = normalizeCoreCount(
+    getSpec(specifications, "NumberOfCores"),
+    searchText
+  );
+  const gpuModel = normalizeGpuModel(getSpec(specifications, "Videocard"), searchText);
+  const touchscreen = normalizeBoolean(
+    getSpec(specifications, "Touchscreen"),
+    searchText,
+    ["touchscreen", "ecran tactile", "écran tactile"],
+    ["no touchscreen", "non tactile"]
+  );
+  const panelType = normalizePanelType(searchText);
+  const connectivity = normalizeConnectivity(searchText, specifications);
+  const vesa = normalizeBoolean(
+    getSpec(specifications, "Vesa mounting", "VESA mounting"),
+    searchText,
+    ["vesa"],
+    ["no vesa", "non vesa"]
+  );
+  const webcam = normalizeBoolean(
+    getSpec(specifications, "Webcam"),
+    searchText,
+    ["webcam", "/cam/", " cam "],
+    ["no webcam"]
+  );
+  const serverType = normalizeServerType(searchText);
+  const diskFormat = normalizeDiskFormat(searchText);
+  const raidController = normalizeRaidController(searchText);
+  const switchManagement = normalizeSwitchManagement(searchText);
+  const networkPortType = normalizeNetworkPortTypes(searchText);
+  const equipmentType = normalizeEquipmentType(searchText);
+  const wifiEquipmentType = normalizeWifiEquipmentType(searchText);
+  const licenseVendor = normalizeLicenseVendor(searchText);
+  const licenseType = normalizeLicenseType(searchText);
+
+  return {
+    keyboardLanguage: [keyboardLanguage],
+    brand: unique([brand]),
+    condition: unique([condition]),
+    os: unique([os]),
+    processor: unique([processor]),
+    processorGeneration: unique([processorGeneration]),
+    ram: unique([ram]),
+    ramType: unique([ramType]),
+    storage: unique([storage]),
+    storageType: storageTypes,
+    screen: unique([screen]),
+    resolution: unique([resolution]),
+    gpu: unique([gpu]),
+    ports: unique([ports]),
+    speed: speeds,
+    poe: unique([poe]),
+    wifi: unique([wifi]),
+    processorModel: unique([processorModel]),
+    coreCount: unique([coreCount]),
+    gpuModel: unique([gpuModel]),
+    touchscreen: unique([touchscreen]),
+    panelType: unique([panelType]),
+    connectivity,
+    vesa: unique([vesa]),
+    webcam: unique([webcam]),
+    serverType: unique([serverType]),
+    diskFormat,
+    raidController: unique([raidController]),
+    switchManagement: unique([switchManagement]),
+    networkPortType,
+    equipmentType: unique([equipmentType]),
+    wifiEquipmentType: unique([wifiEquipmentType]),
+    licenseVendor: unique([licenseVendor]),
+    licenseType: unique([licenseType]),
+  };
+}
+
+async function loadAttributes(wcRequest) {
+  if (attributesLoaded) return;
+
+  const response = await wcRequest("get", "/products/attributes", {
+    params: { per_page: 100 },
+  });
+
+  for (const attribute of response.data || []) {
+    attributeCache.set(normalizeText(attribute.slug), attribute);
+    attributeCache.set(normalizeText(attribute.name), attribute);
+  }
+
+  attributesLoaded = true;
+}
+
+async function getOrCreateAttribute(wcRequest, definition) {
+  await loadAttributes(wcRequest);
+
+  const cached =
+    attributeCache.get(normalizeText(definition.slug)) ||
+    attributeCache.get(normalizeText(definition.name));
+
+  if (cached) return cached;
+
+  const response = await wcRequest("post", "/products/attributes", {
+    name: definition.name,
+    slug: definition.slug,
+    type: "select",
+    order_by: "menu_order",
+    has_archives: true,
+  });
+
+  attributeCache.set(normalizeText(definition.slug), response.data);
+  attributeCache.set(normalizeText(definition.name), response.data);
+
+  return response.data;
+}
+
+async function getOrCreateTerm(wcRequest, attributeId, termName) {
+  const cacheKey = `${attributeId}:${normalizeText(termName)}`;
+
+  if (termCache.has(cacheKey)) {
+    return termCache.get(cacheKey);
+  }
+
+  const response = await wcRequest(
+    "get",
+    `/products/attributes/${attributeId}/terms`,
+    {
+      params: {
+        search: termName,
+        per_page: 100,
+        hide_empty: false,
+      },
+    }
+  );
+
+  const existing = (response.data || []).find(
+    (term) => normalizeText(term.name) === normalizeText(termName)
+  );
+
+  if (existing) {
+    termCache.set(cacheKey, existing);
+    return existing;
+  }
+
+  try {
+    const createResponse = await wcRequest(
+      "post",
+      `/products/attributes/${attributeId}/terms`,
+      { name: termName }
+    );
+
+    termCache.set(cacheKey, createResponse.data);
+    return createResponse.data;
+  } catch (error) {
+    const existingId = error?.response?.data?.data?.resource_id;
+
+    if (error?.response?.data?.code === "term_exists" && existingId) {
+      const term = { id: existingId, name: termName };
+      termCache.set(cacheKey, term);
+      return term;
+    }
+
+    throw error;
+  }
+}
+
+async function buildGlobalFilterAttributes({
+  wcRequest,
+  row,
+  product,
+  apiProduct,
+  dryRun = false,
+}) {
+  const filterValues = extractFilterValues({ row, product, apiProduct });
+  const attributes = [];
+
+  for (const [key, values] of Object.entries(filterValues)) {
+    const cleanValues = unique(values);
+    const definition = GLOBAL_FILTER_DEFINITIONS[key];
+
+    if (!definition || cleanValues.length === 0) continue;
+
+    if (dryRun) {
+      attributes.push({
+        name: definition.name,
+        visible: true,
+        variation: false,
+        options: cleanValues,
+      });
+      continue;
+    }
+
+    const attribute = await getOrCreateAttribute(wcRequest, definition);
+
+    for (const value of cleanValues) {
+      await getOrCreateTerm(wcRequest, attribute.id, value);
+    }
+
+    attributes.push({
+      id: attribute.id,
+      visible: true,
+      variation: false,
+      options: cleanValues,
+    });
+  }
+
+  return attributes;
+}
+
+module.exports = {
+  buildGlobalFilterAttributes,
+};

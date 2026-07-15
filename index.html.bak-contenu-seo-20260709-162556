@@ -7,7 +7,6 @@
     <title>EcoLiz | Matériel informatique reconditionné professionnel</title>
     <meta name="description" content="EcoLiz propose du matériel informatique reconditionné pour les professionnels : ordinateurs, écrans, réseau, serveurs, accessoires et services associés." />
   <meta name="robots" content="index, follow" />
-  <meta name="google-site-verification" content="vpQjXNOkpXXl4-TYZawAcILgo9FqM5UoXoXsSjV-arE" />
   <meta property="og:site_name" content="EcoLiz" />
   <meta property="og:title" content="EcoLiz | Matériel informatique reconditionné professionnel" />
   <meta property="og:description" content="EcoLiz propose du matériel informatique reconditionné pour les professionnels : ordinateurs, écrans, réseau, serveurs, accessoires et services associés." />
@@ -20,7 +19,7 @@
   <meta name="twitter:image" content="https://ecoliz.fr/logo.png" />
   <link rel="canonical" href="https://ecoliz.fr/" />
   <script type="application/ld+json" data-ecoliz-schema="organization">{"@context": "https://schema.org", "@type": ["Organization", "LocalBusiness"], "name": "EcoLiz", "url": "https://ecoliz.fr", "logo": "https://ecoliz.fr/logo.png", "image": "https://ecoliz.fr/logo.png", "email": "contact@ecoliz.fr", "telephone": "+33178969080", "address": {"@type": "PostalAddress", "streetAddress": "15 Avenue d’Unterschleissheim", "postalCode": "34920", "addressLocality": "Le Crès", "addressCountry": "FR"}, "sameAs": ["https://www.instagram.com/ecoliz_eu", "https://www.linkedin.com/company/ecoliz"], "description": "EcoLiz propose du matériel informatique reconditionné et des services associés pour les professionnels, entreprises, associations et collectivités."}</script>
- </head>
+</head>
   <body>
     <div id="root">
       <main data-ecoliz-static-fallback="true">
@@ -38,24 +37,6 @@
           d’informatique responsable.
         </p>
 
-        <section aria-label="Présentation EcoLiz">
-          <h2>Réemploi informatique et matériel professionnel reconditionné</h2>
-          <p>
-            EcoLiz accompagne les entreprises, associations et collectivités dans l'achat
-            de matériel informatique reconditionné : ordinateurs portables, postes fixes,
-            écrans, équipements réseau, serveurs, accessoires et services associés.
-          </p>
-          <p>
-            Notre objectif est de prolonger la durée de vie du matériel informatique,
-            de réduire le gaspillage électronique et de proposer une alternative plus
-            responsable pour équiper les parcs informatiques professionnels.
-          </p>
-          <p>
-            EcoLiz associe vente de matériel reconditionné, préparation de postes,
-            support utilisateur, SAV et accompagnement dans la gestion du parc informatique.
-          </p>
-        </section>
-
         <nav aria-label="Liens principaux EcoLiz">
           <a href="/boutique">Boutique EcoLiz</a>
           <a href="/services">Services EcoLiz</a>
@@ -67,15 +48,6 @@
           <a href="/cgv">Conditions générales de vente</a>
           <a href="/rgpd">Politique de confidentialité</a>
           <a href="/cookies">Gestion des cookies</a>
-        </nav>
-
-        <nav aria-label="Ressources externes sur le numérique responsable">
-          <a href="https://longuevieauxobjets.gouv.fr/" rel="noopener">
-            Longue vie aux objets
-          </a>
-          <a href="https://www.ademe.fr/" rel="noopener">
-            ADEME
-          </a>
         </nav>
       </main>
     </div>

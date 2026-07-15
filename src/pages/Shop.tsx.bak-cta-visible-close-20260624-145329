@@ -1,0 +1,2176 @@
+import { useEffect, useRef, useState } from "react";
+import type {
+  Dispatch,
+  FormEvent,
+  SetStateAction,
+  SyntheticEvent,
+} from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BadgePercent,
+  Briefcase,
+  CheckCircle2,
+  ChevronDown,
+  Filter,
+  Grid3X3,
+  Headphones,
+  Laptop,
+  Leaf,
+  List,
+  Network,
+  RotateCcw,
+  Search,
+  Server,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
+} from "lucide-react";
+
+import type { Product } from "../types/product";
+import {
+  listCategories,
+  listProductFilterGroups,
+  listProducts,
+  type ProductFilterKey,
+  type SelectedProductFilters,
+  type WooCategory,
+  type WooFilterGroup,
+  type WooFilterOption,
+} from "../services/woocommerce";
+import { formatPrice } from "../utils/formatPrice";
+
+const PRODUCTS_PER_PAGE_OPTIONS = [12, 24, 48, 96] as const;
+
+type SortOption =
+  | "default"
+  | "price-asc"
+  | "price-desc"
+  | "name-asc"
+  | "name-desc";
+
+type SelectedFilters = SelectedProductFilters;
+
+type HighlightSectionMode = "promotions" | "latest";
+
+type CategoryGroup = {
+  title: string;
+  children: WooCategory[];
+};
+
+const CATEGORY_ORDER = ["PC", "Infra", "Réseau", "Service"] as const;
+
+const FILTERS_BY_CATEGORY: Record<string, string[]> = {
+  pc: [
+    "marque",
+    "etat",
+    "processeur",
+    "cpu",
+    "modele-processeur",
+    "cpumodel",
+    "generation-processeur",
+    "cpugeneration",
+    "nombre-coeurs",
+    "cpucores",
+    "ram",
+    "type-ram",
+    "ramtype",
+    "stockage",
+    "type-stockage",
+    "storagetype",
+    "os",
+    "taille-ecran",
+    "screen",
+    "resolution",
+    "technologie-dalle",
+    "paneltechnology",
+    "carte-graphique",
+    "gpu",
+    "modele-carte-graphique",
+    "gpumodel",
+    "ecran-tactile",
+    "touchscreen",
+    "connectique",
+    "connectivity",
+    "webcam-integree",
+    "webcam",
+    "compatible-vesa",
+    "vesa",
+  ],
+  infra: [
+    "marque",
+    "etat",
+    "type-serveur",
+    "servertype",
+    "processeur",
+    "cpu",
+    "modele-processeur",
+    "cpumodel",
+    "nombre-coeurs",
+    "cpucores",
+    "ram",
+    "type-ram",
+    "ramtype",
+    "stockage",
+    "type-stockage",
+    "storagetype",
+    "format-disque",
+    "diskformat",
+    "controleur-raid",
+    "raidcontroller",
+    "connectique",
+    "connectivity",
+  ],
+  reseau: [
+    "marque",
+    "etat",
+    "type-equipement",
+    "equipmenttype",
+    "administration-reseau",
+    "switchmanagement",
+    "nombre-ports",
+    "ports",
+    "type-port-reseau",
+    "networkporttype",
+    "debit-reseau",
+    "speed",
+    "poe",
+    "norme-wifi",
+    "wifistandard",
+    "type-equipement-wifi",
+    "wifiequipmenttype",
+    "connectique",
+    "connectivity",
+  ],
+  service: [
+    "marque",
+    "etat",
+    "editeur-licence",
+    "licenseeditor",
+    "type-licence",
+    "licensetype",
+    "os",
+  ],
+};
+
+const CATEGORY_ICONS = {
+  PC: Laptop,
+  Infra: Server,
+  Réseau: Network,
+  Service: Briefcase,
+} as const;
+
+const CATEGORY_DETAILS: Record<
+  string,
+  {
+    description: string;
+    color: string;
+    icon: string;
+  }
+> = {
+  PC: {
+    description: "Postes utilisateurs, écrans, docks et mobilité pro.",
+    color: "from-sky-500 to-cyan-400",
+    icon: "bg-sky-50 text-sky-700 ring-sky-100",
+  },
+  Infra: {
+    description: "Serveurs, stockage, disques, RAID et infrastructure.",
+    color: "from-sky-950 to-blue-700",
+    icon: "bg-sky-50 text-sky-800 ring-sky-100",
+  },
+  Réseau: {
+    description: "Switches, routeurs, firewalls, Wi-Fi et modules optiques.",
+    color: "from-cyan-500 to-sky-700",
+    icon: "bg-cyan-50 text-cyan-700 ring-cyan-100",
+  },
+  Service: {
+    description: "Licences, prestations, audit et demandes sur devis.",
+    color: "from-sky-900 to-cyan-600",
+    icon: "bg-cyan-50 text-cyan-700 ring-cyan-100",
+  },
+};
+
+function getCategorySlug(title: string) {
+  const slugMap: Record<string, string> = {
+    PC: "pc",
+    Infra: "infra",
+    Réseau: "reseau",
+    Service: "service",
+  };
+
+  return slugMap[title] ?? normalizeText(title).replace(/\s+/g, "-");
+}
+
+function getSortParams(sortOption: SortOption) {
+  switch (sortOption) {
+    case "price-asc":
+      return { orderby: "price" as const, order: "asc" as const };
+    case "price-desc":
+      return { orderby: "price" as const, order: "desc" as const };
+    case "name-asc":
+      return { orderby: "title" as const, order: "asc" as const };
+    case "name-desc":
+      return { orderby: "title" as const, order: "desc" as const };
+    default:
+      return {};
+  }
+}
+
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function normalizeFilterValue(value: unknown) {
+  return normalizeText(decodeHtmlEntities(String(value ?? "")))
+    .replace(/[’']/g, "-")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function decodeHtmlEntities(value: string) {
+  const namedEntities: Record<string, string> = {
+    amp: "&",
+    quot: '"',
+    apos: "'",
+    "#039": "'",
+    rsquo: "’",
+    Prime: "″",
+    prime: "′",
+    eacute: "é",
+    egrave: "è",
+    ecirc: "ê",
+    agrave: "à",
+    ugrave: "ù",
+    ccedil: "ç",
+  };
+
+  return value
+    .replace(/&#x([0-9a-f]+);/gi, (_, hexadecimal: string) =>
+      String.fromCodePoint(Number.parseInt(hexadecimal, 16))
+    )
+    .replace(/&#(\d+);/g, (_, decimal: string) =>
+      String.fromCodePoint(Number.parseInt(decimal, 10))
+    )
+    .replace(/&([a-zA-Z0-9#]+);/g, (match, entity: string) => {
+      return namedEntities[entity] ?? match;
+    });
+}
+
+function getCategoryDisplayName(name: string) {
+  const decodedName = decodeHtmlEntities(name);
+
+  const labels: Record<string, string> = {
+    "Ordinateurs portables & Mobilité": "Notebooks",
+    "PC fixes & Workstations": "Workstations",
+    "Réseau & Wi-Fi": "Réseau",
+    "Serveurs & Stockage": "Server / Stockage",
+    "Licences & Logiciels": "Licence",
+    "Écrans & accessoires": "Écrans",
+    "Docks et stations d'accueil": "Docks / stations d’accueil",
+    "Sacs et housses": "Accessoires mobilité",
+    "Routeurs & Firewalls": "Routeurs / Firewalls",
+    "Rails et accessoires rack": "Rails / accessoires rack",
+  };
+
+  return labels[decodedName] ?? decodedName;
+}
+
+function getParentGroupTitle(category: WooCategory) {
+  const name = normalizeText(decodeHtmlEntities(category.name));
+
+  if (name === "pc") return "PC";
+  if (name === "infra") return "Infra";
+  if (name === "reseau") return "Réseau";
+  if (name === "service") return "Service";
+
+  if (
+    name.includes("ordinateurs portables") ||
+    name.includes("pc fixes") ||
+    name.includes("workstations") ||
+    name.includes("ecrans")
+  ) {
+    return "PC";
+  }
+
+  if (name.includes("serveurs") || name.includes("stockage")) {
+    return "Infra";
+  }
+
+  if (
+    name.includes("reseau") ||
+    name.includes("wi-fi") ||
+    name.includes("wifi")
+  ) {
+    return "Réseau";
+  }
+
+  if (
+    name.includes("licences") ||
+    name.includes("logiciels") ||
+    name.includes("service") ||
+    name.includes("autres")
+  ) {
+    return "Service";
+  }
+
+  return null;
+}
+
+function getCategoryGroups(categories: WooCategory[]) {
+  const visibleCategories = categories.filter(
+    (category) => (category.count ?? 0) > 0
+  );
+
+  const parentCategories = visibleCategories.filter(
+    (category) => category.parent === 0
+  );
+
+  const childCategories = visibleCategories.filter(
+    (category) => category.parent !== 0
+  );
+
+  const parentsById = new Map(
+    parentCategories.map((category) => [category.id, category])
+  );
+
+  const groups = new Map<string, CategoryGroup>();
+
+  CATEGORY_ORDER.forEach((title) => {
+    groups.set(title, {
+      title,
+      children: [],
+    });
+  });
+
+  function addChild(groupTitle: string, category: WooCategory) {
+    const group = groups.get(groupTitle);
+
+    if (!group) return;
+
+    const alreadyExists = group.children.some(
+      (child) => child.id === category.id
+    );
+
+    if (!alreadyExists) {
+      group.children.push(category);
+    }
+  }
+
+  childCategories.forEach((category) => {
+    const parent = parentsById.get(category.parent);
+
+    if (!parent) return;
+
+    const parentTitle = getParentGroupTitle(parent);
+
+    if (!parentTitle) return;
+
+    addChild(parentTitle, category);
+  });
+
+  parentCategories.forEach((category) => {
+    const hasVisibleChildren = childCategories.some(
+      (child) => child.parent === category.id
+    );
+
+    if (hasVisibleChildren) return;
+
+    const parentTitle = getParentGroupTitle(category);
+
+    if (!parentTitle) return;
+
+    addChild(parentTitle, category);
+  });
+
+  return CATEGORY_ORDER.map((title) => groups.get(title)).filter(
+    (group): group is CategoryGroup =>
+      Boolean(group && group.children.length > 0)
+  );
+}
+
+function getVisibleFilterGroups(
+  filterGroups: WooFilterGroup[],
+  selectedMainCategoryTitle: string | null
+) {
+  if (!selectedMainCategoryTitle) return [];
+
+  const categorySlug = getCategorySlug(selectedMainCategoryTitle);
+  const allowedFilterKeys = FILTERS_BY_CATEGORY[categorySlug] ?? [];
+
+  return filterGroups.filter((group) => {
+    const normalizedKey = normalizeText(group.key).replace(/_/g, "-");
+    const normalizedTitle = normalizeText(group.title).replace(/\s+/g, "-");
+
+    return allowedFilterKeys.some((key) => {
+      const normalizedAllowedKey = normalizeText(key);
+      return (
+        normalizedKey.includes(normalizedAllowedKey) ||
+        normalizedTitle.includes(normalizedAllowedKey)
+      );
+    });
+  });
+}
+
+function getProductAttributeValues(product: Product, group: WooFilterGroup) {
+  const productAttributes = product.attributes ?? [];
+  const normalizedTitle = normalizeText(group.title);
+  const normalizedKey = normalizeText(group.key).replace(/_/g, "-");
+
+  return productAttributes.flatMap((attribute) => {
+    const normalizedAttributeName = normalizeText(attribute.name).replace(
+      /\s+/g,
+      "-"
+    );
+
+    const matchesGroup =
+      normalizedAttributeName === normalizedTitle.replace(/\s+/g, "-") ||
+      normalizedAttributeName.includes(normalizedTitle.replace(/\s+/g, "-")) ||
+      normalizedTitle.includes(normalizedAttributeName) ||
+      normalizedAttributeName.includes(normalizedKey);
+
+    return matchesGroup ? attribute.values : [];
+  });
+}
+
+function buildContextualFilterGroups(
+  filterGroups: WooFilterGroup[],
+  products: Product[],
+  selectedMainCategoryTitle: string | null
+) {
+  const visibleGroups = getVisibleFilterGroups(
+    filterGroups,
+    selectedMainCategoryTitle
+  );
+
+  if (products.length === 0) {
+    return visibleGroups;
+  }
+
+  return visibleGroups
+    .map((group) => {
+      const availableValues = new Set<string>();
+
+      products.forEach((product) => {
+        getProductAttributeValues(product, group).forEach((value) => {
+          availableValues.add(normalizeFilterValue(value));
+        });
+      });
+
+      return {
+        ...group,
+        options: group.options.filter((option) =>
+          availableValues.has(normalizeFilterValue(option.name))
+        ),
+      };
+    })
+    .filter((group) => group.options.length > 0);
+}
+
+function handleProductImageError(event: SyntheticEvent<HTMLImageElement>) {
+  const image = event.currentTarget;
+  const originalSrc = image.dataset.originalSrc || image.src;
+
+  if (
+    image.dataset.retryDone === "true" ||
+    originalSrc.includes("/placeholder-product.png")
+  ) {
+    return;
+  }
+
+  const retryUrl = new URL(originalSrc, window.location.href);
+
+  retryUrl.searchParams.set("ecoliz_image_retry", Date.now().toString());
+  image.dataset.retryDone = "true";
+  image.src = retryUrl.toString();
+}
+
+
+function FloatingNeedHelpCTA() {
+  return (
+    <a
+      href="/contact"
+      className="group fixed bottom-6 left-4 right-4 z-[9999] overflow-hidden rounded-2xl border border-cyan-200/80 bg-sky-950 text-white shadow-[0_18px_55px_rgba(8,47,73,0.45)] transition hover:-translate-y-1 hover:shadow-[0_24px_75px_rgba(6,182,212,0.4)] sm:left-auto sm:right-6 sm:w-[370px]"
+    >
+      <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-cyan-300/30 blur-2xl transition group-hover:bg-cyan-300/45" />
+      <div className="absolute -bottom-10 left-8 h-24 w-24 rounded-full bg-teal-300/20 blur-2xl" />
+
+      <div className="relative flex items-center gap-4 p-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-cyan-300 text-2xl shadow-[0_0_30px_rgba(103,232,249,0.55)]">
+          💬
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="mb-1 inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
+            Besoin spécifique ?
+          </p>
+
+          <p className="text-sm font-black leading-snug text-white">
+            Vous ne trouvez pas votre matériel ?
+          </p>
+
+          <p className="mt-1 text-xs leading-5 text-sky-100/80">
+            EcoLiz peut le rechercher pour vous, même hors catalogue.
+          </p>
+
+          <span className="mt-3 inline-flex items-center rounded-full bg-white px-3 py-2 text-xs font-bold text-sky-950 transition group-hover:bg-cyan-100">
+            Parlez-nous de votre projet →
+          </span>
+        </div>
+
+        <span className="absolute right-3 top-3 flex h-3 w-3">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-300 opacity-75" />
+          <span className="relative inline-flex h-3 w-3 rounded-full bg-cyan-300" />
+        </span>
+      </div>
+    </a>
+  );
+}
+
+function getPromotionDiscountPercent(product: Product) {
+  const originalPrice = Number(
+    (product as Product & { originalPrice?: number }).originalPrice ?? 0
+  );
+  const salePrice = Number(product.price ?? 0);
+
+  if (!originalPrice || !salePrice || salePrice >= originalPrice) {
+    return null;
+  }
+
+  return Math.round(((originalPrice - salePrice) / originalPrice) * 100);
+}
+
+// PromotionSection avec le design du nouveau code
+function PromotionSection({
+  products,
+  loading,
+  mode,
+}: {
+  products: Product[];
+  loading: boolean;
+  mode: HighlightSectionMode;
+}) {
+  const [currentProductIndex, setCurrentProductIndex] = useState(0);
+  const activeProduct = products[currentProductIndex];
+  const hasMultiplePromotions = products.length > 1;
+  const isPromotionMode = mode === "promotions";
+
+  const eyebrow = isPromotionMode
+    ? "Promotions du moment"
+    : "Les derniers arrivages dans notre catalogue";
+
+  const badgeLabel = isPromotionMode ? "Offres à saisir" : "Nouveautés";
+
+  const productBadgeLabel = isPromotionMode
+    ? "En promotion"
+    : "Reconditionné";
+
+  const ctaLabel = isPromotionMode ? "Voir l’offre" : "Voir le produit";
+
+  useEffect(() => {
+    setCurrentProductIndex(0);
+  }, [products.length]);
+
+  function showPreviousPromotion() {
+    setCurrentProductIndex((currentIndex) =>
+      currentIndex === 0 ? products.length - 1 : currentIndex - 1
+    );
+  }
+
+  function showNextPromotion() {
+    setCurrentProductIndex((currentIndex) =>
+      currentIndex === products.length - 1 ? 0 : currentIndex + 1
+    );
+  }
+
+  return (
+    <section className="relative mb-8 overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/90 p-4 shadow-[0_18px_48px_rgba(3,105,161,0.14)] backdrop-blur">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(103,232,249,0.22),transparent_28%),radial-gradient(circle_at_85%_80%,rgba(14,165,233,0.16),transparent_30%)]" />
+
+      <div className="relative mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-teal-500 px-3 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-white shadow-[0_10px_24px_rgba(6,182,212,0.28)]">
+            <Sparkles className="h-3.5 w-3.5" />
+            {badgeLabel}
+          </span>
+
+          <p className="text-sm font-medium text-sky-900/55">{eyebrow}</p>
+        </div>
+
+        {hasMultiplePromotions && (
+          <div className="hidden items-center gap-2 sm:flex">
+            <button
+              type="button"
+              onClick={showPreviousPromotion}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-sky-100 bg-white text-xl text-sky-700 shadow-sm transition hover:border-cyan-300 hover:text-sky-950"
+              aria-label="Produit précédent"
+            >
+              ‹
+            </button>
+
+            <button
+              type="button"
+              onClick={showNextPromotion}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-sky-100 bg-white text-xl text-sky-700 shadow-sm transition hover:border-cyan-300 hover:text-sky-950"
+              aria-label="Produit suivant"
+            >
+              ›
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="relative">
+        {loading && (
+          <div className="rounded-[1.4rem] border border-sky-100 bg-white px-5 py-8 text-center text-sm text-sky-900/50">
+            Chargement des produits mis en avant…
+          </div>
+        )}
+
+        {!loading && products.length === 0 && (
+          <div className="rounded-[1.4rem] border border-sky-100 bg-white px-5 py-8 text-center text-sm text-sky-900/50">
+            Les prochains produits mis en avant apparaîtront bientôt ici.
+          </div>
+        )}
+
+        {!loading && activeProduct && (
+          <div>
+            <div className="relative mx-auto max-w-6xl px-0 sm:px-12">
+              {hasMultiplePromotions && (
+                <button
+                  type="button"
+                  onClick={showPreviousPromotion}
+                  className="absolute -left-1 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-sky-100 bg-white text-2xl text-sky-700 shadow-[0_12px_28px_rgba(8,47,73,0.14)] transition hover:border-cyan-300 hover:text-sky-950 sm:flex"
+                  aria-label="Produit précédent"
+                >
+                  ‹
+                </button>
+              )}
+
+              {hasMultiplePromotions && (
+                <button
+                  type="button"
+                  onClick={showNextPromotion}
+                  className="absolute -right-1 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-sky-100 bg-white text-2xl text-sky-700 shadow-[0_12px_28px_rgba(8,47,73,0.14)] transition hover:border-cyan-300 hover:text-sky-950 sm:flex"
+                  aria-label="Produit suivant"
+                >
+                  ›
+                </button>
+              )}
+
+              {(() => {
+                const product = activeProduct;
+                const productName = decodeHtmlEntities(product.name);
+                const discountPercent = getPromotionDiscountPercent(product);
+                const originalPrice = Number(
+                  (product as Product & { originalPrice?: number })
+                    .originalPrice ?? 0
+                );
+
+                return (
+                  <article className="grid overflow-hidden rounded-[1.4rem] border border-sky-100 bg-white shadow-[0_14px_40px_rgba(8,47,73,0.08)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(8,47,73,0.14)] md:grid-cols-[0.75fr_1.35fr]">
+                    <Link
+                      to={`/produit/${product.slug}`}
+                      className="relative flex min-h-[170px] items-center justify-center bg-gradient-to-br from-sky-50 to-white p-5"
+                    >
+                      {isPromotionMode && discountPercent && (
+                        <span className="absolute left-4 top-4 rounded-xl bg-cyan-300 px-2.5 py-1.5 text-lg font-black leading-none text-sky-950 shadow-[0_0_24px_rgba(103,232,249,0.42)]">
+                          -{discountPercent}%
+                        </span>
+                      )}
+
+                      <img
+                        src={product.image || "/placeholder-product.png"}
+                        alt={productName}
+                        loading="lazy"
+                        data-original-src={
+                          product.image || "/placeholder-product.png"
+                        }
+                        onError={handleProductImageError}
+                        className="h-full max-h-40 w-full object-contain mix-blend-multiply transition duration-300 hover:scale-105"
+                      />
+                    </Link>
+
+                    <div className="flex min-w-0 flex-col justify-center p-5 sm:p-7">
+                      <p className="mb-3 inline-flex w-fit rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1.5 text-xs font-bold text-cyan-700">
+                        {productBadgeLabel}
+                      </p>
+
+                      <h3 className="max-w-3xl break-words text-xl font-black leading-tight text-sky-950 [overflow-wrap:anywhere] sm:text-2xl">
+                        {productName}
+                      </h3>
+
+                      <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-sky-900/65">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-cyan-600" />
+                          Reconditionné
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-cyan-600" />
+                          Contrôlé & testé
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5">
+                          <ShieldCheck className="h-3.5 w-3.5 text-cyan-600" />
+                          Garantie 12 mois
+                        </span>
+                      </div>
+
+                      <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                          <p className="text-3xl font-black text-cyan-700">
+                            {formatPrice(product.price)} HT
+                          </p>
+
+                          {isPromotionMode && originalPrice > product.price && (
+                            <p className="mt-1 text-sm text-sky-900/45 line-through">
+                              {formatPrice(originalPrice)} HT
+                            </p>
+                          )}
+                        </div>
+
+                        <Link
+                          to={`/produit/${product.slug}`}
+                          className="inline-flex w-fit items-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-[0_12px_26px_rgba(6,182,212,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(6,182,212,0.34)]"
+                        >
+                          {ctaLabel}
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })()}
+            </div>
+
+            {hasMultiplePromotions && (
+              <div className="mt-4 flex justify-center gap-2">
+                {products.map((product, index) => (
+                  <button
+                    key={product.id}
+                    type="button"
+                    onClick={() => setCurrentProductIndex(index)}
+                    aria-label={`Voir le produit mis en avant ${index + 1}`}
+                    className={`h-2.5 rounded-full transition-all ${
+                      index === currentProductIndex
+                        ? "w-8 bg-cyan-500"
+                        : "w-2.5 bg-sky-200 hover:bg-cyan-300"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+export function Shop() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filterProductsCache = useRef<Record<string, Product[]>>({});
+  const [products, setProducts] = useState<Product[]>([]);
+  const [promotionProducts, setPromotionProducts] = useState<Product[]>([]);
+  const [highlightSectionMode, setHighlightSectionMode] =
+    useState<HighlightSectionMode>("promotions");
+  const [categories, setCategories] = useState<WooCategory[]>([]);
+  const [filterGroups, setFilterGroups] = useState<WooFilterGroup[]>([]);
+  const [categoryFilterProducts, setCategoryFilterProducts] = useState<
+    Product[]
+  >([]);
+
+  const [loading, setLoading] = useState(false);
+  const [promotionsLoading, setPromotionsLoading] = useState(false);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [filterGroupsLoading, setFilterGroupsLoading] = useState(false);
+  const [contextualFiltersLoading, setContextualFiltersLoading] =
+    useState(false);
+
+  const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
+  const [expandedCategoryGroup, setExpandedCategoryGroup] = useState<
+    string | null
+  >(null);
+  const [expandedFilterGroup, setExpandedFilterGroup] = useState<string | null>(
+    null
+  );
+
+  const [sortOption, setSortOption] = useState<SortOption>("default");
+  const [productsPerPage, setProductsPerPage] = useState(24);
+
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+  const [selectedMainCategoryTitle, setSelectedMainCategoryTitle] = useState<
+    string | null
+  >(null);
+  const [selectedStockStatuses, setSelectedStockStatuses] = useState<
+    Array<"instock" | "outofstock">
+  >([]);
+
+  const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({});
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const selectedCategoryKey = selectedCategoryIds.join(",");
+  const categoryGroups = getCategoryGroups(categories);
+  const selectedMainCategory =
+    categoryGroups.find((group) => group.title === selectedMainCategoryTitle) ??
+    null;
+
+  function updateShopUrl(nextParams: Record<string, string>) {
+    const params = new URLSearchParams();
+
+    Object.entries(nextParams).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value);
+      }
+    });
+
+    setSearchParams(params);
+  }
+
+  useEffect(() => {
+    setCategoriesLoading(true);
+
+    listCategories()
+      .then(setCategories)
+      .catch((error) => {
+        console.error("Erreur lors de la récupération des catégories :", error);
+        setCategories([]);
+      })
+      .finally(() => {
+        setCategoriesLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadHighlightProducts() {
+      setPromotionsLoading(true);
+
+      try {
+        const promotionsResult = await listProducts({
+          page: 1,
+          perPage: 6,
+          onSale: true,
+        } as Parameters<typeof listProducts>[0] & { onSale: boolean });
+
+        if (cancelled) return;
+
+        if (promotionsResult.products.length > 0) {
+          setHighlightSectionMode("promotions");
+          setPromotionProducts(promotionsResult.products);
+          return;
+        }
+
+        const latestResult = await listProducts({
+          page: 1,
+          perPage: 6,
+          stockStatus: "instock",
+          orderby: "date" as never,
+          order: "desc",
+        });
+
+        if (cancelled) return;
+
+        setHighlightSectionMode("latest");
+        setPromotionProducts(latestResult.products);
+      } catch (error) {
+        if (cancelled) return;
+
+        console.error(
+          "Erreur lors de la r?cup?ration des produits mis en avant :",
+          error
+        );
+        setHighlightSectionMode("latest");
+        setPromotionProducts([]);
+      } finally {
+        if (!cancelled) {
+          setPromotionsLoading(false);
+        }
+      }
+    }
+
+    loadHighlightProducts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setFilterGroupsLoading(true);
+
+    listProductFilterGroups()
+      .then(setFilterGroups)
+      .catch((error) => {
+        console.error(
+          "Erreur lors de la récupération des filtres WooCommerce :",
+          error
+        );
+        setFilterGroups([]);
+      })
+      .finally(() => {
+        setFilterGroupsLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setCurrentPage(1);
+      setSearchTerm(searchInput.trim());
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
+
+  useEffect(() => {
+    const querySearch = searchParams.get("recherche")?.trim() ?? "";
+    const queryCategory = searchParams.get("categorie")?.trim() ?? "";
+
+    if (querySearch) {
+      if (searchInput !== querySearch) {
+        setSearchInput(querySearch);
+      }
+
+      if (searchTerm !== querySearch) {
+        setSearchTerm(querySearch);
+      }
+
+      setSelectedMainCategoryTitle(null);
+      setSelectedCategoryIds([]);
+      setSelectedStockStatuses([]);
+      setSelectedFilters({});
+      setCurrentPage(1);
+      return;
+    }
+
+    if (queryCategory && categoryGroups.length > 0) {
+      const group = categoryGroups.find(
+        (item) => getCategorySlug(item.title) === queryCategory
+      );
+
+      if (group && selectedMainCategoryTitle !== group.title) {
+        setSearchInput("");
+        setSearchTerm("");
+        setSelectedMainCategoryTitle(group.title);
+        setSelectedCategoryIds(group.children.map((category) => category.id));
+        setSelectedStockStatuses([]);
+        setSelectedFilters({});
+        setExpandedCategoryGroup(group.title);
+        setExpandedFilterGroup(null);
+        setCurrentPage(1);
+      }
+
+      return;
+    }
+
+    if (!queryCategory && !querySearch) {
+      setSearchInput("");
+      setSearchTerm("");
+      setSelectedMainCategoryTitle(null);
+      setSelectedCategoryIds([]);
+      setSelectedStockStatuses([]);
+      setSelectedFilters({});
+      setExpandedCategoryGroup(null);
+      setExpandedFilterGroup(null);
+      setCurrentPage(1);
+    }
+  }, [searchParams, categories]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (
+      searchTerm ||
+      !selectedMainCategoryTitle ||
+      selectedCategoryIds.length === 0
+    ) {
+      setCategoryFilterProducts([]);
+      setContextualFiltersLoading(false);
+      return;
+    }
+
+    const cachedProducts = filterProductsCache.current[selectedCategoryKey];
+
+    if (cachedProducts) {
+      setCategoryFilterProducts(cachedProducts);
+      setContextualFiltersLoading(false);
+      return;
+    }
+
+    async function loadCategoryProductsForFilters() {
+      setContextualFiltersLoading(true);
+
+      try {
+        const firstPage = await listProducts({
+          page: 1,
+          perPage: 100,
+          categoryIds: selectedCategoryIds,
+        });
+
+        const extraPages = Array.from(
+          { length: Math.max(firstPage.totalPages - 1, 0) },
+          (_, index) => index + 2
+        );
+
+        const extraResults = await Promise.all(
+          extraPages.map((page) =>
+            listProducts({
+              page,
+              perPage: 100,
+              categoryIds: selectedCategoryIds,
+            })
+          )
+        );
+
+        const allProducts = [
+          ...firstPage.products,
+          ...extraResults.flatMap((result) => result.products),
+        ];
+
+        if (!cancelled) {
+          filterProductsCache.current[selectedCategoryKey] = allProducts;
+          setCategoryFilterProducts(allProducts);
+        }
+      } catch (error) {
+        console.error(
+          "Erreur lors de la récupération des filtres de catégorie :",
+          error
+        );
+
+        if (!cancelled) {
+          setCategoryFilterProducts([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setContextualFiltersLoading(false);
+        }
+      }
+    }
+
+    loadCategoryProductsForFilters();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchTerm, selectedMainCategoryTitle, selectedCategoryKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const isSearching = searchTerm.length > 0;
+
+    setLoading(true);
+
+    if (!isSearching && selectedCategoryIds.length === 0) {
+      setProducts([]);
+      setTotalProducts(0);
+      setTotalPages(1);
+      setLoading(false);
+      return;
+    }
+
+    const stockStatus =
+      !isSearching && selectedStockStatuses.length === 1
+        ? selectedStockStatuses[0]
+        : null;
+
+    listProducts({
+      page: currentPage,
+      perPage: productsPerPage,
+      search: searchTerm || undefined,
+      categoryIds: isSearching ? undefined : selectedCategoryIds,
+      stockStatus,
+      attributeFilters: isSearching ? {} : selectedFilters,
+      ...getSortParams(sortOption),
+    })
+      .then((result) => {
+        if (cancelled) return;
+
+        setProducts(result.products);
+        setTotalProducts(result.total);
+        setTotalPages(Math.max(result.totalPages, 1));
+      })
+      .catch((error) => {
+        if (cancelled) return;
+
+        console.error("Erreur lors de la récupération des produits :", error);
+        setProducts([]);
+        setTotalProducts(0);
+        setTotalPages(1);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    currentPage,
+    searchTerm,
+    selectedCategoryIds,
+    selectedStockStatuses,
+    selectedFilters,
+    sortOption,
+    productsPerPage,
+  ]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(Math.max(1, totalPages));
+    }
+  }, [currentPage, totalPages]);
+
+  function toggleNumberFilter(
+    value: number,
+    selectedValues: number[],
+    setSelectedValues: Dispatch<SetStateAction<number[]>>
+  ) {
+    setCurrentPage(1);
+
+    setSelectedValues(
+      selectedValues.includes(value)
+        ? selectedValues.filter((item) => item !== value)
+        : [...selectedValues, value]
+    );
+  }
+
+  function toggleStockFilter(value: "instock" | "outofstock") {
+    setCurrentPage(1);
+
+    setSelectedStockStatuses((currentStatuses) =>
+      currentStatuses.includes(value)
+        ? currentStatuses.filter((item) => item !== value)
+        : [...currentStatuses, value]
+    );
+  }
+
+  function toggleTextFilter(filterKey: ProductFilterKey, optionSlug: string) {
+    setCurrentPage(1);
+
+    setSelectedFilters((currentFilters) => {
+      const currentOptions = currentFilters[filterKey] ?? [];
+
+      return {
+        ...currentFilters,
+        [filterKey]: currentOptions.includes(optionSlug)
+          ? currentOptions.filter((item) => item !== optionSlug)
+          : [...currentOptions, optionSlug],
+      };
+    });
+  }
+
+  function toggleFilterGroup(groupKey: string) {
+    setExpandedFilterGroup((currentGroup) =>
+      currentGroup === groupKey ? null : groupKey
+    );
+  }
+
+  function resetFilters() {
+    setSearchInput("");
+    setSearchTerm("");
+    setSelectedCategoryIds([]);
+    setSelectedMainCategoryTitle(null);
+    setSelectedStockStatuses([]);
+    setSelectedFilters({});
+    setExpandedCategoryGroup(null);
+    setExpandedFilterGroup(null);
+    setSortOption("default");
+    setProductsPerPage(24);
+    setCurrentPage(1);
+    updateShopUrl({});
+  }
+
+  function selectMainCategory(group: CategoryGroup) {
+    setSearchInput("");
+    setSearchTerm("");
+    setSelectedMainCategoryTitle(group.title);
+    setSelectedCategoryIds(group.children.map((category) => category.id));
+    setSelectedStockStatuses([]);
+    setSelectedFilters({});
+    setExpandedCategoryGroup(group.title);
+    setExpandedFilterGroup(null);
+    setCurrentPage(1);
+    updateShopUrl({
+      categorie: getCategorySlug(group.title),
+    });
+  }
+
+  function returnToCategories() {
+    setSelectedMainCategoryTitle(null);
+    setSelectedCategoryIds([]);
+    setSelectedStockStatuses([]);
+    setSelectedFilters({});
+    setExpandedCategoryGroup(null);
+    setExpandedFilterGroup(null);
+    setCurrentPage(1);
+    updateShopUrl({});
+  }
+
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const term = searchInput.trim();
+
+    setCurrentPage(1);
+    setSearchTerm(term);
+
+    if (term) {
+      setSelectedMainCategoryTitle(null);
+      setSelectedCategoryIds([]);
+      setSelectedStockStatuses([]);
+      setSelectedFilters({});
+      updateShopUrl({ recherche: term });
+      return;
+    }
+
+    updateShopUrl({});
+  }
+
+  function getPaginationPages() {
+    const pages: Array<number | "..."> = [];
+
+    if (totalPages <= 7) {
+      for (let page = 1; page <= totalPages; page += 1) {
+        pages.push(page);
+      }
+
+      return pages;
+    }
+
+    if (currentPage <= 4) {
+      return [1, 2, 3, 4, 5, "...", totalPages];
+    }
+
+    if (currentPage >= totalPages - 3) {
+      return [
+        1,
+        "...",
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages,
+      ];
+    }
+
+    return [
+      1,
+      "...",
+      currentPage - 1,
+      currentPage,
+      currentPage + 1,
+      "...",
+      totalPages,
+    ];
+  }
+
+  const visibleFilterGroups = buildContextualFilterGroups(
+    filterGroups,
+    categoryFilterProducts,
+    selectedMainCategoryTitle
+  );
+  const paginationPages = getPaginationPages();
+  const shouldShowProductArea = Boolean(selectedMainCategory || searchTerm);
+  const pageTitle = searchTerm
+    ? `Résultats pour "${searchTerm}"`
+    : selectedMainCategory?.title ?? "Résultats de recherche";
+
+  const textFilterCount = Object.values(selectedFilters).reduce(
+    (total, values) => total + (values?.length ?? 0),
+    0
+  );
+  const selectedSubcategoryCount =
+    selectedMainCategory &&
+    selectedCategoryIds.length !== selectedMainCategory.children.length
+      ? selectedCategoryIds.length
+      : 0;
+  const activeFilterCount =
+    selectedSubcategoryCount +
+    selectedStockStatuses.length +
+    textFilterCount +
+    (searchTerm ? 1 : 0);
+
+  return (
+    <section className="min-h-screen bg-[radial-gradient(circle_at_top_left,#c7f5ff_0,#ecfbff_38%,#f8fdff_70%,#dff4ff_100%)] pb-24 pt-28">
+      <FloatingNeedHelpCTA />
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* HeroSection intégré avec la fonctionnalité de recherche */}
+        <HeroSection
+          searchInput={searchInput}
+          setSearchInput={setSearchInput}
+          submitSearch={submitSearch}
+        />
+
+        {!shouldShowProductArea && (
+          <>
+            <PromotionSection
+              products={promotionProducts}
+              loading={promotionsLoading}
+              mode={highlightSectionMode}
+            />
+
+            <section className="mb-8">
+              <div className="mb-5">
+                <p className="text-sm font-black uppercase tracking-[0.16em] text-cyan-700">
+                  Accès rapide
+                </p>
+                <h2 className="mt-1 text-3xl font-black text-sky-950">
+                  Choisir votre univers matériel
+                </h2>
+              </div>
+
+              {categoriesLoading ? (
+                <div className="rounded-2xl border border-sky-100 bg-white py-10 text-center text-sky-900/50">
+                  Chargement des catégories…
+                </div>
+              ) : categoryGroups.length === 0 ? (
+                <div className="rounded-2xl border border-sky-100 bg-white py-10 text-center text-sky-900/50">
+                  Aucune catégorie disponible.
+                </div>
+              ) : (
+                <div className="flex flex-wrap justify-center gap-5">
+                  {categoryGroups.map((group) => (
+                    <CategorySelectionCard
+                      key={group.title}
+                      group={group}
+                      isSelected={selectedMainCategoryTitle === group.title}
+                      onSelect={() => selectMainCategory(group)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
+        )}
+
+        {shouldShowProductArea && (
+          <div className="overflow-hidden rounded-[2rem] border border-sky-100 bg-white shadow-[0_18px_50px_rgba(3,105,161,0.12)]">
+            <div className="border-b border-sky-100 bg-sky-50 px-5 py-4 text-sm text-sky-900/60">
+              <span>Boutique</span>
+              <span className="mx-2">›</span>
+              <span className="font-semibold text-sky-950">{pageTitle}</span>
+            </div>
+
+            <main className="min-w-0 bg-white p-5 lg:p-7">
+              {!searchTerm && (
+                <button
+                  type="button"
+                  onClick={returnToCategories}
+                  className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-sky-700 transition hover:text-sky-900"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Retour aux catégories
+                </button>
+              )}
+
+              {!searchTerm && selectedMainCategory ? (
+                <div className="mb-6">
+                  <p className="mb-3 text-xs font-black uppercase tracking-[0.16em] text-sky-700">
+                    Sous-catégories
+                  </p>
+                  <div className="flex gap-4 overflow-x-auto pb-2">
+                    {selectedMainCategory.children.map((category) => {
+                      const checked = selectedCategoryIds.includes(
+                        category.id
+                      );
+
+                      return (
+                        <button
+                          key={category.id}
+                          type="button"
+                          onClick={() =>
+                            toggleNumberFilter(
+                              category.id,
+                              selectedCategoryIds,
+                              setSelectedCategoryIds
+                            )
+                          }
+                          className={`min-w-[150px] rounded-2xl border px-4 py-3 text-left text-sm transition ${
+                            checked
+                              ? "border-sky-700 bg-sky-950 text-white"
+                              : "border-sky-100 bg-sky-50 text-sky-950 hover:border-sky-300 hover:bg-white"
+                          }`}
+                        >
+                          <span className="block font-semibold">
+                            {getCategoryDisplayName(category.name)}
+                          </span>
+                          {typeof category.count === "number" && (
+                            <span
+                              className={`mt-1 block text-xs ${
+                                checked ? "text-white/70" : "text-sky-900/45"
+                              }`}
+                            >
+                              {category.count} produits
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mb-6 rounded-2xl border border-sky-100 bg-white p-4 shadow-[0_12px_30px_rgba(3,105,161,0.08)]">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-sky-900/60" />
+                    <h2 className="font-semibold text-sky-950">Filtres</h2>
+                    {activeFilterCount > 0 && (
+                      <span className="rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-700">
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </div>
+
+                  {activeFilterCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="inline-flex items-center gap-2 text-sm text-sky-700 underline hover:text-sky-900"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Réinitialiser
+                    </button>
+                  )}
+                </div>
+
+                {searchTerm ? (
+                  <p className="text-sm text-sky-900/60">
+                    La recherche parcourt toute la boutique.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap items-start gap-3">
+                    <FilterGroup
+                      title="Disponibilité"
+                      options={["En stock", "Rupture de stock"]}
+                      selectedOptions={selectedStockStatuses.map((status) =>
+                        status === "instock" ? "En stock" : "Rupture de stock"
+                      )}
+                      isOpen={expandedFilterGroup === "availability"}
+                      onToggleGroup={() => toggleFilterGroup("availability")}
+                      onToggle={(option) =>
+                        toggleStockFilter(
+                          option === "En stock" ? "instock" : "outofstock"
+                        )
+                      }
+                    />
+
+                    {filterGroupsLoading ? (
+                      <p className="text-sm text-sky-900/50">
+                        Chargement des filtres…
+                      </p>
+                    ) : (
+                      visibleFilterGroups.map((group) => (
+                        <FilterGroup
+                          key={group.key}
+                          title={group.title}
+                          options={group.options}
+                          selectedOptions={selectedFilters[group.key] ?? []}
+                          isOpen={expandedFilterGroup === group.key}
+                          onToggleGroup={() => toggleFilterGroup(group.key)}
+                          onToggle={(optionSlug) =>
+                            toggleTextFilter(group.key, optionSlug)
+                          }
+                        />
+                      ))
+                    )}
+
+                    {contextualFiltersLoading && !filterGroupsLoading && (
+                      <span className="self-center rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">
+                        Filtres en cours d'affinage…
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="min-w-0">
+                  <h2 className="text-3xl font-black text-sky-950">
+                    {pageTitle}
+                  </h2>
+                  <p className="mt-1 text-sm text-sky-900/60">
+                    {loading
+                      ? "Chargement des produits…"
+                      : "Catalogue filtré selon votre sélection"}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <label className="flex items-center justify-between gap-2 text-sm text-sky-900/60 sm:justify-start">
+                    <span className="whitespace-nowrap">Trier par</span>
+
+                    <select
+                      value={sortOption}
+                      onChange={(event) => {
+                        setCurrentPage(1);
+                        setSortOption(event.target.value as SortOption);
+                      }}
+                      className="min-w-0 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                    >
+                      <option value="default">Défaut</option>
+                      <option value="price-asc">Prix croissant</option>
+                      <option value="price-desc">Prix décroissant</option>
+                      <option value="name-asc">Nom A-Z</option>
+                      <option value="name-desc">Nom Z-A</option>
+                    </select>
+                  </label>
+
+                  <label className="flex items-center justify-between gap-2 text-sm text-sky-900/60 sm:justify-start">
+                    <span className="whitespace-nowrap">Afficher</span>
+
+                    <select
+                      value={productsPerPage}
+                      onChange={(event) => {
+                        setCurrentPage(1);
+                        setProductsPerPage(Number(event.target.value));
+                      }}
+                      className="min-w-0 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                    >
+                      {PRODUCTS_PER_PAGE_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option} / page
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <div className="flex shrink-0 items-center gap-1 rounded-xl border border-sky-100 bg-sky-50 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("list")}
+                      className={`rounded-lg p-2 transition-colors ${
+                        viewMode === "list"
+                          ? "bg-white text-sky-700 shadow-sm"
+                          : "text-sky-900/40 hover:text-sky-900"
+                      }`}
+                      aria-label="Vue liste"
+                    >
+                      <List className="h-4 w-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("grid")}
+                      className={`rounded-lg p-2 transition-colors ${
+                        viewMode === "grid"
+                          ? "bg-white text-sky-700 shadow-sm"
+                          : "text-sky-900/40 hover:text-sky-900"
+                      }`}
+                      aria-label="Vue grille"
+                    >
+                      <Grid3X3 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-6 flex min-w-0 items-center justify-between gap-3 border-b border-sky-100 pb-4 text-sm text-sky-900/60">
+                <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                <span className="mr-auto truncate">
+                  Page {currentPage} / {totalPages}
+                </span>
+                <span className="shrink-0">
+                  {totalProducts} produit{totalProducts > 1 ? "s" : ""}
+                </span>
+              </div>
+
+              {loading ? (
+                <div className="rounded-2xl border border-sky-100 bg-white py-20 text-center text-sky-900/50">
+                  Chargement du catalogue…
+                </div>
+              ) : products.length === 0 ? (
+                <div className="rounded-2xl border border-sky-100 bg-white py-20 text-center text-sky-900/50">
+                  Aucun produit ne correspond aux filtres sélectionnés.
+                </div>
+              ) : viewMode === "list" ? (
+                <div className="space-y-3">
+                  {products.map((product) => (
+                    <ProductListItem
+                      key={product.id}
+                      product={product}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid min-w-0 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {products.map((product) => (
+                    <ProductGridItem
+                      key={product.id}
+                      product={product}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {!loading && totalPages > 1 && (
+                <nav
+                  className="mt-12 flex flex-wrap items-center justify-center gap-2"
+                  aria-label="Pagination du catalogue"
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((page) => Math.max(page - 1, 1))
+                    }
+                    disabled={currentPage === 1 || loading}
+                    className="rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-sky-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Précédent
+                  </button>
+
+                  {paginationPages.map((page, index) =>
+                    page === "..." ? (
+                      <span
+                        key={`ellipsis-${index}`}
+                        className="px-3 py-2 text-sky-900/50"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setCurrentPage(Number(page))}
+                        disabled={loading}
+                        aria-current={
+                          currentPage === Number(page) ? "page" : undefined
+                        }
+                        className={`h-11 w-11 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                          currentPage === page
+                            ? "border-sky-700 bg-sky-700 text-white"
+                            : "border-sky-200 bg-white/70 text-sky-900 hover:bg-sky-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((page) => Math.min(page + 1, totalPages))
+                    }
+                    disabled={currentPage === totalPages || loading}
+                    className="rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-sky-900 transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Suivant
+                  </button>
+                </nav>
+              )}
+            </main>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function HeroSection({
+  searchInput,
+  setSearchInput,
+  submitSearch,
+}: {
+  searchInput: string;
+  setSearchInput: (value: string) => void;
+  submitSearch: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <header className="relative mb-6 overflow-hidden rounded-[1.75rem] border border-cyan-200/70 bg-sky-950 text-white shadow-[0_18px_50px_rgba(12,74,110,0.22)]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_28%,rgba(34,211,238,0.28),transparent_25%),radial-gradient(circle_at_12%_88%,rgba(14,165,233,0.16),transparent_28%),linear-gradient(135deg,#082f49_0%,#0f172a_48%,#0e7490_100%)]" />
+      <div className="absolute right-16 top-8 h-52 w-52 rounded-full border border-cyan-300/15" />
+      <div className="absolute right-28 top-14 h-40 w-40 rounded-full bg-cyan-300/18 blur-3xl" />
+      <div className="absolute right-8 top-8 h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_18px_rgba(103,232,249,0.9)]" />
+
+      <div className="relative grid gap-6 p-5 lg:grid-cols-[1fr_0.82fr] lg:items-center lg:p-7">
+        <div className="min-w-0">
+        <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-100">
+          <Leaf className="h-3.5 w-3.5" />
+          Boutique EcoLiz
+        </p>
+          <h1 className="max-w-2xl text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
+            Trouvez le bon matériel pro.
+            <span className="mt-1 block bg-gradient-to-r from-cyan-200 to-teal-300 bg-clip-text text-transparent">
+              Reconditionné, filtré, prêt à travailler.
+            </span>
+          </h1>
+
+          <p className="mt-4 max-w-xl text-sm leading-6 text-sky-100/82">
+            Parcourez les catégories, repérez les offres du moment et filtrez le
+            catalogue selon vos besoins réels.
+          </p>
+
+          <form onSubmit={submitSearch} className="relative mt-5 max-w-xl">
+            <Search className="absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-sky-900/45" />
+
+            <input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Rechercher un produit, une marque, une référence…"
+              className="w-full rounded-full border border-white/70 bg-white py-3 pl-12 pr-14 text-sm text-sky-950 outline-none shadow-[0_12px_30px_rgba(8,47,73,0.22)] transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-300/25"
+            />
+
+            <button
+              type="submit"
+              className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-[0_10px_22px_rgba(6,182,212,0.3)] transition hover:scale-105"
+              aria-label="Rechercher"
+            >
+              <ArrowRight className="h-4.5 w-4.5" />
+            </button>
+          </form>
+
+          <div className="mt-5 grid gap-2 text-xs text-sky-50/92 sm:grid-cols-3">
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 backdrop-blur">
+              <ShieldCheck className="h-5 w-5 shrink-0 text-cyan-200" />
+              <span>Matériel vérifié et garanti</span>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 backdrop-blur">
+              <Leaf className="h-5 w-5 shrink-0 text-teal-200" />
+              <span>Démarche éco-responsable</span>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 backdrop-blur">
+              <Headphones className="h-5 w-5 shrink-0 text-cyan-200" />
+              <span>Support pro dédié</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative hidden min-h-[245px] lg:block">
+          <div className="absolute right-10 top-3 h-44 w-44 rounded-full bg-cyan-300/18 blur-2xl" />
+          <div className="absolute right-16 top-8 h-40 w-40 rounded-full border border-cyan-200/18" />
+          <div className="absolute right-24 top-5 rotate-12 text-cyan-200/45">
+            <Leaf className="h-16 w-16" />
+          </div>
+
+          <div className="absolute bottom-12 right-28 h-10 w-48 rounded-[50%] bg-white/14 blur-sm" />
+
+          <div className="absolute bottom-14 right-28 w-56 rounded-2xl border border-white/18 bg-gradient-to-br from-slate-800 to-sky-950 p-2.5 shadow-[0_20px_48px_rgba(0,0,0,0.3)]">
+            <div className="aspect-[16/10] rounded-xl border border-cyan-200/20 bg-gradient-to-br from-slate-950 to-sky-800 p-6">
+              <Leaf className="mx-auto mt-5 h-12 w-12 text-teal-300" />
+            </div>
+            <div className="mx-auto h-3 w-20 rounded-b-xl bg-slate-700" />
+          </div>
+
+          <div className="absolute right-2 top-12 h-52 w-20 rounded-2xl border border-cyan-100/20 bg-gradient-to-b from-slate-700 to-slate-950 p-2.5 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={index}
+                className="mb-2.5 flex h-4.5 items-center gap-1 rounded-md bg-slate-950/80 px-1.5"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
+                <span className="h-1.5 flex-1 rounded-full bg-slate-600" />
+              </div>
+            ))}
+          </div>
+
+          <div className="absolute bottom-3 right-8 w-60 rounded-2xl border border-cyan-100/20 bg-slate-950 p-3 shadow-[0_18px_42px_rgba(0,0,0,0.32)]">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex gap-1">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <span
+                    key={index}
+                    className="h-3 w-3 rounded-sm bg-slate-700"
+                  />
+                ))}
+              </div>
+
+              <span className="text-[10px] font-bold text-cyan-200">
+                EcoLiz
+              </span>
+            </div>
+
+            <div className="flex gap-1">
+              {Array.from({ length: 10 }).map((_, index) => (
+                <span
+                  key={index}
+                  className="h-1.5 flex-1 rounded-full bg-emerald-400/70"
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function CategorySelectionCard({
+  group,
+  isSelected,
+  onSelect,
+}: {
+  group: CategoryGroup;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const Icon =
+    CATEGORY_ICONS[group.title as keyof typeof CATEGORY_ICONS] ?? Grid3X3;
+  const details = CATEGORY_DETAILS[group.title] ?? {
+    description: "Matériel professionnel reconditionné.",
+    color: "from-sky-800 to-cyan-500",
+    icon: "bg-sky-50 text-sky-800 ring-sky-100",
+  };
+  const productCount = group.children.reduce(
+    (total, category) => total + (category.count ?? 0),
+    0
+  );
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`group relative w-full overflow-hidden rounded-[1.35rem] border bg-white p-5 text-left shadow-[0_12px_32px_rgba(8,47,73,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300 hover:shadow-[0_20px_44px_rgba(8,47,73,0.14)] sm:w-[calc(50%-0.625rem)] xl:w-[calc(25%-0.9375rem)] ${
+        isSelected
+          ? "border-cyan-400 ring-4 ring-cyan-100"
+          : "border-sky-100"
+      }`}
+    >
+      <span className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${details.color}`} />
+      <span className="mb-5 flex items-start justify-between gap-3 pt-2">
+        <span
+          className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ring-1 transition duration-300 group-hover:scale-110 group-hover:-rotate-3 ${details.icon}`}
+        >
+          <Icon className="h-8 w-8" />
+        </span>
+
+        <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700">
+          {productCount.toLocaleString("fr-FR")} produit
+          {productCount > 1 ? "s" : ""}
+        </span>
+      </span>
+
+      <span className="block text-2xl font-black text-sky-950">
+        {group.title}
+      </span>
+      <span className="mt-3 block min-h-[50px] text-sm leading-6 text-sky-900/65">
+        {details.description}
+      </span>
+      <span className="mt-6 inline-flex items-center gap-2 text-sm font-black text-cyan-700 transition group-hover:translate-x-1 group-hover:text-sky-950">
+        Explorer la catégorie
+        <ArrowRight className="h-4 w-4" />
+      </span>
+    </button>
+  );
+}
+
+function FilterGroup({
+  title,
+  options,
+  selectedOptions,
+  isOpen,
+  onToggleGroup,
+  onToggle,
+}: {
+  title: string;
+  options: Array<WooFilterOption | string>;
+  selectedOptions: string[];
+  isOpen: boolean;
+  onToggleGroup: () => void;
+  onToggle: (optionSlug: string) => void;
+}) {
+  return (
+    <div className="relative w-full self-start sm:w-[180px]">
+      <button
+        type="button"
+        onClick={onToggleGroup}
+        aria-expanded={isOpen}
+        className={`flex w-full items-center justify-between gap-3 rounded-xl border border-sky-100 bg-white px-3 py-2.5 text-left transition-colors hover:bg-sky-50 ${
+          isOpen ? "border-sky-200 bg-sky-50 shadow-sm" : ""
+        }`}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-semibold text-sky-950">
+            {title}
+          </span>
+
+          {selectedOptions.length > 0 && (
+            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">
+              {selectedOptions.length}
+            </span>
+          )}
+        </span>
+
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-sky-900/50 transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-full z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-sky-100 bg-white px-3 py-3 shadow-[0_18px_42px_rgba(3,105,161,0.18)]">
+          {options.length === 0 ? (
+            <p className="px-2 py-3 text-center text-xs text-sky-900/40">
+              Aucune option
+            </p>
+          ) : (
+            options.map((option) => {
+              const optionSlug =
+                typeof option === "string"
+                  ? normalizeFilterValue(option)
+                  : option.slug ?? normalizeFilterValue(option.name);
+              const optionName =
+                typeof option === "string" ? option : option.name;
+              const isSelected = selectedOptions.includes(optionSlug);
+
+              return (
+                <label
+                  key={optionSlug}
+                  className="flex cursor-pointer items-center gap-2 py-1 text-sm text-sky-900/70"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => onToggle(optionSlug)}
+                    className="rounded border-sky-300 text-sky-700 focus:ring-sky-700"
+                  />
+
+                  <span className="break-words">
+                    {decodeHtmlEntities(optionName)}
+                  </span>
+                </label>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProductListItem({ product }: { product: Product }) {
+  const productName = decodeHtmlEntities(product.name);
+  const discountPercent = getPromotionDiscountPercent(product);
+  const originalPrice = Number(
+    (product as Product & { originalPrice?: number }).originalPrice ?? 0
+  );
+
+  return (
+    <article className="group flex min-w-0 flex-col gap-5 overflow-hidden rounded-2xl border border-sky-100 bg-white p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-[0_18px_42px_rgba(3,105,161,0.16)] sm:flex-row">
+      <Link to={`/produit/${product.slug}`} className="block shrink-0">
+        <div className="h-48 w-full overflow-hidden rounded-xl border border-sky-100 bg-sky-50 sm:h-32 sm:w-40">
+          <img
+            src={product.image || "/placeholder-product.png"}
+            alt={productName}
+            loading="lazy"
+            data-original-src={product.image || "/placeholder-product.png"}
+            onError={handleProductImageError}
+            className="h-full w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-[1.03]"
+          />
+        </div>
+      </Link>
+
+      <div className="min-w-0 flex-1">
+        <Link to={`/produit/${product.slug}`} className="block">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <StatusPill
+              label={product.stock ? "En stock" : "Rupture"}
+              variant={product.stock ? "success" : "warning"}
+            />
+
+            {product.conditionLabel &&
+              product.conditionLabel !== "Non renseigné" && (
+                <StatusPill label={product.conditionLabel} variant="brand" />
+              )}
+
+            {discountPercent && (
+              <StatusPill label={`Promo -${discountPercent}%`} variant="promo" />
+            )}
+
+            {product.manufacturer && (
+              <span className="break-words text-xs text-sky-900/50">
+                {decodeHtmlEntities(product.manufacturer)}
+              </span>
+            )}
+          </div>
+
+          <h3 className="mb-2 line-clamp-3 break-words text-lg font-bold text-sky-950 [overflow-wrap:anywhere] transition-colors group-hover:text-sky-700">
+            {productName}
+          </h3>
+        </Link>
+
+        <div className="mb-3 grid min-w-0 gap-x-4 gap-y-1 text-xs text-sky-900/60 sm:grid-cols-2 xl:grid-cols-4">
+          {product.sku && <InfoLine label="SKU" value={product.sku} />}
+
+          {product.manufacturerPartNumber && (
+            <InfoLine label="Réf." value={product.manufacturerPartNumber} />
+          )}
+
+          {product.category && (
+            <InfoLine label="Catégorie" value={product.category} />
+          )}
+
+          {product.productGroup && (
+            <InfoLine label="Famille" value={product.productGroup} />
+          )}
+        </div>
+
+        {product.specs && (
+          <p className="line-clamp-2 break-words text-sm text-sky-900/60 [overflow-wrap:anywhere]">
+            {decodeHtmlEntities(product.specs)}
+          </p>
+        )}
+      </div>
+
+      <div className="flex shrink-0 items-end justify-between gap-4 border-t border-sky-100 pt-4 sm:w-full md:w-auto md:min-w-[190px] md:flex-col md:items-end md:border-l md:border-t-0 md:pl-4 md:pt-0">
+        <div className="text-right">
+          <p className="text-xl font-bold text-sky-950 sm:text-2xl">
+            {formatPrice(product.price)} HT
+          </p>
+
+          {discountPercent && originalPrice > 0 && (
+            <p className="text-sm text-sky-900/45 line-through">
+              {formatPrice(originalPrice)} HT
+            </p>
+          )}
+
+          {product.priceTTC && (
+            <p className="text-sm text-sky-900/50">
+              {formatPrice(product.priceTTC)} TTC
+            </p>
+          )}
+        </div>
+
+        <Link
+          to={`/produit/${product.slug}`}
+          className="inline-flex items-center rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 hover:shadow-[0_10px_24px_rgba(3,105,161,0.22)]"
+        >
+          Voir la fiche →
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+function ProductGridItem({ product }: { product: Product }) {
+  const productName = decodeHtmlEntities(product.name);
+  const discountPercent = getPromotionDiscountPercent(product);
+  const originalPrice = Number(
+    (product as Product & { originalPrice?: number }).originalPrice ?? 0
+  );
+
+  return (
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-sky-100 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300 hover:shadow-[0_18px_42px_rgba(3,105,161,0.16)]">
+      <Link to={`/produit/${product.slug}`} className="block">
+        <div className="relative aspect-[4/3] overflow-hidden bg-sky-50">
+          <img
+            src={product.image || "/placeholder-product.png"}
+            alt={productName}
+            loading="lazy"
+            data-original-src={product.image || "/placeholder-product.png"}
+            onError={handleProductImageError}
+            className="h-full w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-[1.03]"
+          />
+
+          <div className="absolute right-3 top-3">
+            <StatusPill
+              label={product.stock ? "En stock" : "Rupture"}
+              variant={product.stock ? "success" : "warning"}
+            />
+          </div>
+
+          {discountPercent && (
+            <div className="absolute left-3 top-3">
+              <StatusPill
+                label={`Promo -${discountPercent}%`}
+                variant="promo"
+              />
+            </div>
+          )}
+        </div>
+      </Link>
+
+      <div className="flex min-w-0 flex-1 flex-col p-5">
+        <Link to={`/produit/${product.slug}`} className="block flex-1">
+          <h3 className="mb-2 line-clamp-3 break-words text-lg font-bold text-sky-950 [overflow-wrap:anywhere] transition-colors group-hover:text-sky-700">
+            {productName}
+          </h3>
+
+          <div className="mb-4 min-w-0 space-y-1 text-xs text-sky-900/60">
+            {product.manufacturer && (
+              <InfoLine label="Marque" value={product.manufacturer} />
+            )}
+
+            {product.conditionLabel && (
+              <InfoLine label="État" value={product.conditionLabel} />
+            )}
+
+            {product.sku && <InfoLine label="SKU" value={product.sku} />}
+          </div>
+        </Link>
+
+        <div className="mt-auto">
+          <p className="text-2xl font-bold text-sky-950">
+            {formatPrice(product.price)} HT
+          </p>
+
+          {discountPercent && originalPrice > 0 && (
+            <p className="text-sm text-sky-900/45 line-through">
+              {formatPrice(originalPrice)} HT
+            </p>
+          )}
+
+          {product.priceTTC && (
+            <p className="text-sm text-sky-900/50">
+              {formatPrice(product.priceTTC)} TTC
+            </p>
+          )}
+
+          <Link
+            to={`/produit/${product.slug}`}
+            className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-sky-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 hover:shadow-[0_10px_24px_rgba(3,105,161,0.22)]"
+          >
+            Voir la fiche →
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <p className="min-w-0 break-words [overflow-wrap:anywhere]">
+      <span className="font-medium text-sky-900/70">{label} :</span>{" "}
+      <span>{decodeHtmlEntities(value)}</span>
+    </p>
+  );
+}
+
+function StatusPill({
+  label,
+  variant,
+}: {
+  label: string;
+  variant: "success" | "warning" | "brand" | "promo";
+}) {
+  const styles = {
+    success: "border-sky-200 bg-sky-50 text-sky-700",
+    warning: "border-amber-200 bg-amber-50 text-amber-700",
+    brand: "border-cyan-100 bg-cyan-50 text-cyan-700",
+    promo: "border-cyan-200 bg-cyan-300 text-sky-950",
+  };
+  const baseClass =
+    variant === "promo"
+      ? "inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-black uppercase tracking-wide shadow-[0_0_18px_rgba(103,232,249,0.35)]"
+      : "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium";
+
+  return (
+    <span className={`${baseClass} ${styles[variant]}`}>
+      {decodeHtmlEntities(label)}
+    </span>
+  );
+}

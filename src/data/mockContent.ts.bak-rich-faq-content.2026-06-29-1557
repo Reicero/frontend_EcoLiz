@@ -1,0 +1,85 @@
+import type { FAQItem } from '../types/page';
+
+const FAQ_ITEMS: FAQItem[] = [
+  {
+    question: "Qu'est-ce qu'un produit reconditionné par EcoLiz ?",
+    answer:
+      "Un produit reconditionné est un équipement informatique professionnel qui a été contrôlé, nettoyé, testé et remis en état avant sa remise en vente. Chaque équipement passe par un processus de vérification technique et esthétique afin de proposer du matériel fiable, fonctionnel et adapté aux usages professionnels, tout en favorisant le réemploi.",
+    category: "Reconditionnement",
+  },
+  {
+    question: "Quelle différence y a-t-il entre les grades A+, A et B ?",
+    answer:
+      "Les grades de reconditionnement reflètent uniquement l’aspect esthétique du matériel. En termes de performance, tous nos appareils sont équivalents : chaque machine est contrôlée selon un processus de vérification technique.\n\nNous proposons 3 grades :\nA+ : un état impeccable, très proche du neuf.\nA : de légères traces d’usure.\nB : des marques visibles, sans impact sur le bon fonctionnement.",
+    category: "Grades",
+  },
+  {
+    question: "Quelle est la durée des garanties ?",
+    answer:
+      "Notre matériel bénéficie d’une garantie standard de 12 mois. Les ordinateurs portables peuvent être prolongés jusqu’à 36 mois sur demande, selon les conditions commerciales validées avec EcoLiz. Les conditions exactes de garantie sont précisées sur la fiche produit, le devis ou la facture.",
+    category: "Garantie",
+  },
+  {
+    question: "Qu'est-ce que le thermocollage ?",
+    answer:
+      "Le thermocollage est une technique qui permet de modifier visuellement un clavier QWERTY ou QWERTZ en AZERTY, sans changer le matériel. Il s’agit d’une solution propre et durable pour adapter l’affichage des touches au clavier français.\n\nLorsqu’un ordinateur portable possède un clavier QWERTY ou QWERTZ, une option de thermocollage AZERTY peut être proposée gratuitement afin de faciliter son utilisation.",
+    category: "Clavier",
+  },
+  {
+    question: "Quels sont les délais de livraison ?",
+    answer:
+      "Les délais de livraison dépendent de la disponibilité des produits, du volume commandé, de la préparation du matériel et du transporteur. Les délais exacts sont confirmés au moment de la commande ou dans les échanges commerciaux avec EcoLiz.",
+    category: "Livraison",
+  },
+  {
+    question: "Comment fonctionne le SAV EcoLiz ?",
+    answer:
+      "En cas de problème avec un produit ou une commande, le client peut contacter EcoLiz afin qu’une analyse soit réalisée. Selon la situation, la garantie applicable et les conditions commerciales validées, EcoLiz pourra proposer une prise en charge, une réparation, un remplacement, un retour ou une autre solution adaptée.",
+    category: "SAV",
+  },
+  {
+    question: "Proposez-vous des services de gestion de parc informatique ?",
+    answer:
+      "Oui. EcoLiz accompagne les professionnels dans leurs besoins liés au matériel informatique : achat de matériel reconditionné, renouvellement de parc, reprise d’équipements, réemploi, recyclage et accompagnement vers une consommation IT plus responsable. Pour un besoin spécifique, il est recommandé de contacter EcoLiz afin d’étudier une solution adaptée.",
+    category: "Services",
+  },
+];
+
+export const mockFAQ: FAQItem[] = FAQ_ITEMS;
+
+export const ecoStats = [
+  { id: 1, value: '450+', label: 'Tonnes de CO₂ évitées' },
+  { id: 2, value: '12k', label: 'Appareils reconditionnés' },
+  { id: 3, value: '85%', label: 'Déchets électroniques évités' },
+  { id: 4, value: '98%', label: 'Matières réutilisées' },
+];
+
+export const testimonials = [
+  {
+    id: '1',
+    quote:
+      "Le passage au reconditionné avec EcoLiz nous a permis de réduire notre budget IT de 40% tout en gardant un niveau d'exigence très élevé pour nos développeurs.",
+    author: 'Sophie Martin',
+    role: 'CTO, TechFlow SAS',
+    avatar:
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150&h=150',
+  },
+  {
+    id: '2',
+    quote:
+      "Un SAV irréprochable. Lorsqu'un poste tombe en panne, l'échange à J+1 nous garantit une continuité de service parfaite. C'est du vrai B2B.",
+    author: 'Thomas Dubois',
+    role: 'Directeur des Achats, Groupe Horizon',
+    avatar:
+      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150&h=150',
+  },
+  {
+    id: '3',
+    quote:
+      'La plateforme de gestion de parc est un énorme plus. Nous suivons nos garanties et nos factures en un clic. Une vraie démarche RSE simplifiée.',
+    author: 'Julie Leroy',
+    role: 'Office Manager, GreenScale',
+    avatar:
+      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150&h=150',
+  },
+];

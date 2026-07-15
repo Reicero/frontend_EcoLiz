@@ -1,0 +1,935 @@
+import { useEffect, useMemo, useState } from "react";
+import type { ElementType, SyntheticEvent } from "react";
+import { Link, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronDown,
+  Leaf,
+  ShieldCheck,
+  ShoppingCart,
+  Truck,
+} from "lucide-react";
+
+import type { Product, ProductAttribute } from "../types/product";
+import { getProductBySlug } from "../services/woocommerce";
+import { addToCart } from "../services/cart";
+import { formatPrice } from "../utils/formatPrice";
+
+type SpecificationGroup =
+  | "Général"
+  | "Performances"
+  | "Affichage"
+  | "Réseau et connectivité"
+  | "Caractéristiques physiques"
+  | "Autres spécifications";
+
+type SpecificationRow = ProductAttribute & {
+  group: SpecificationGroup;
+};
+
+const GROUP_ORDER: SpecificationGroup[] = [
+  "Général",
+  "Performances",
+  "Affichage",
+  "Réseau et connectivité",
+  "Caractéristiques physiques",
+  "Autres spécifications",
+];
+
+const SUMMARY_ATTRIBUTE_NAMES = [
+  "Type d’équipement",
+  "Type de serveur",
+  "Processeur",
+  "RAM",
+  "Stockage",
+  "Carte graphique",
+  "Taille écran",
+  "Clavier",
+  "Résolution",
+  "Nombre de ports",
+  "Débit réseau",
+  "PoE",
+  "Norme Wi-Fi",
+];
+
+const HIDDEN_SPECIFICATION_NAMES = [
+  "marque",
+  "état",
+  "etat",
+  "grade",
+  "référence constructeur",
+  "reference constructeur",
+  "product group",
+  "intelarkid",
+];
+
+function decodeHtmlEntities(value: unknown) {
+  let result = String(value ?? "");
+
+  const namedEntities: Record<string, string> = {
+    amp: "&",
+    quot: '"',
+    apos: "'",
+    "#039": "'",
+    nbsp: " ",
+    rsquo: "’",
+    lsquo: "‘",
+    rdquo: "”",
+    ldquo: "“",
+    ndash: "–",
+    mdash: "—",
+    hellip: "…",
+    laquo: "«",
+    raquo: "»",
+    times: "×",
+    prime: "′",
+    Prime: "″",
+  };
+
+  for (let pass = 0; pass < 4; pass += 1) {
+    const previousResult = result;
+
+    result = result
+      .replace(/&#x([0-9a-f]+);/gi, (_, hexadecimal: string) =>
+        String.fromCodePoint(Number.parseInt(hexadecimal, 16))
+      )
+      .replace(/&#(\d+);/g, (_, decimal: string) =>
+        String.fromCodePoint(Number.parseInt(decimal, 10))
+      )
+      .replace(/&([a-zA-Z0-9#]+);/g, (match, entity: string) => {
+        return namedEntities[entity] ?? match;
+      });
+
+    if (result === previousResult) {
+      break;
+    }
+  }
+
+  return result.replace(/\s+/g, " ").trim();
+}
+
+function normalizeText(value: unknown) {
+  return decodeHtmlEntities(value)
+    .toLocaleLowerCase("fr")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’']/g, "'")
+    .trim();
+}
+
+function getSpecificationGroup(name: string): SpecificationGroup {
+  const normalizedName = normalizeText(name);
+
+  if (
+    [
+      "processor",
+      "processeur",
+      "cpu",
+      "core",
+      "thread",
+      "cache",
+      "frequency",
+      "frequence",
+      "memory",
+      "memoire",
+      "ram",
+      "storage",
+      "stockage",
+      "hdd",
+      "ssd",
+      "nvme",
+      "videocard",
+      "graphics",
+      "graphique",
+      "raid",
+    ].some((keyword) => normalizedName.includes(keyword))
+  ) {
+    return "Performances";
+  }
+
+  if (
+    [
+      "screen",
+      "ecran",
+      "display",
+      "resolution",
+      "panel",
+      "dalle",
+      "touch",
+      "pivot",
+      "tilt",
+      "swivel",
+      "vesa",
+      "webcam",
+      "camera",
+    ].some((keyword) => normalizedName.includes(keyword))
+  ) {
+    return "Affichage";
+  }
+
+  if (
+    [
+      "network",
+      "reseau",
+      "ethernet",
+      "port",
+      "poe",
+      "wifi",
+      "wi-fi",
+      "wlan",
+      "wwan",
+      "bluetooth",
+      "sfp",
+      "snmp",
+      "vlan",
+      "hdmi",
+      "displayport",
+      "usb",
+      "connectique",
+    ].some((keyword) => normalizedName.includes(keyword))
+  ) {
+    return "Réseau et connectivité";
+  }
+
+  if (
+    [
+      "width",
+      "height",
+      "depth",
+      "weight",
+      "dimension",
+      "largeur",
+      "hauteur",
+      "profondeur",
+      "poids",
+      "power",
+      "alimentation",
+      "form factor",
+      "format",
+      "enclosure",
+    ].some((keyword) => normalizedName.includes(keyword))
+  ) {
+    return "Caractéristiques physiques";
+  }
+
+  if (
+    [
+      "model",
+      "modele",
+      "product type",
+      "type de produit",
+      "type d'equipement",
+      "type de serveur",
+      "os",
+      "systeme",
+      "condition",
+      "warranty",
+      "garantie",
+    ].some((keyword) => normalizedName.includes(keyword))
+  ) {
+    return "Général";
+  }
+
+  return "Autres spécifications";
+}
+
+function deduplicateAttributes(attributes: ProductAttribute[]) {
+  const attributesByName = new Map<string, ProductAttribute>();
+
+  for (const attribute of attributes) {
+    const name = decodeHtmlEntities(attribute.name);
+    const normalizedName = normalizeText(name);
+
+    if (!name || !normalizedName || attribute.values.length === 0) {
+      continue;
+    }
+
+    const values = attribute.values.map(decodeHtmlEntities).filter(Boolean);
+    const existing = attributesByName.get(normalizedName);
+
+    if (existing) {
+      existing.values = Array.from(new Set([...existing.values, ...values]));
+    } else {
+      attributesByName.set(normalizedName, {
+        name,
+        values: Array.from(new Set(values)),
+      });
+    }
+  }
+
+  return Array.from(attributesByName.values());
+}
+
+function getAttributeValues(
+  attributes: ProductAttribute[],
+  expectedNames: string[]
+) {
+  const normalizedExpectedNames = expectedNames.map(normalizeText);
+
+  const attribute = attributes.find((item) => {
+    const normalizedName = normalizeText(item.name);
+
+    return normalizedExpectedNames.some(
+      (expectedName) =>
+        normalizedName === expectedName ||
+        normalizedName.includes(expectedName)
+    );
+  });
+
+  return attribute?.values ?? [];
+}
+
+function handleProductImageError(event: SyntheticEvent<HTMLImageElement>) {
+  const image = event.currentTarget;
+  const originalSrc = image.dataset.originalSrc || image.src;
+
+  if (
+    image.dataset.retryDone === "true" ||
+    originalSrc.includes("/placeholder-product.png")
+  ) {
+    return;
+  }
+
+  const retryUrl = new URL(originalSrc, window.location.href);
+
+  retryUrl.searchParams.set("ecoliz_image_retry", Date.now().toString());
+  image.dataset.retryDone = "true";
+  image.src = retryUrl.toString();
+}
+
+
+const CART_PRODUCT_METADATA_STORAGE_KEY = "ecoliz_cart_product_metadata_v1";
+
+function normalizeProductTagName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function getProductAttributeValue(product: Product, names: string[]): string {
+  const normalizedNames = names.map(normalizeProductTagName);
+
+  const attribute = product.attributes?.find((item) => {
+    const attributeName = normalizeProductTagName(item.name);
+    return normalizedNames.some((name) => attributeName.includes(name));
+  });
+
+  return attribute?.values?.[0] ?? "";
+}
+
+function getKeyboardLayout(product: Product): string {
+  return (
+    product.keyboardLanguage ||
+    getProductAttributeValue(product, [
+      "Clavier",
+      "Langue du clavier",
+      "Langue clavier",
+      "Disposition clavier",
+      "Keyboard",
+      "Keyboard layout",
+    ])
+  );
+}
+
+function isComputerProduct(product: Product): boolean {
+  const text = [
+    product.category,
+    product.productGroup,
+    product.name,
+    getProductAttributeValue(product, ["Type d’équipement", "Type d'equipement"]),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    text.includes("pc") ||
+    text.includes("notebook") ||
+    text.includes("laptop") ||
+    text.includes("portable") ||
+    text.includes("ordinateur")
+  );
+}
+
+function canAddKeyboardThermocollage(product: Product): boolean {
+  const keyboard = getKeyboardLayout(product).toUpperCase();
+  return isComputerProduct(product) && Boolean(keyboard) && keyboard !== "AZERTY";
+}
+
+function buildProductCartTags(product: Product) {
+  const wantedAttributes = [
+    "Processeur",
+    "RAM",
+    "Stockage",
+    "Carte graphique",
+    "Taille écran",
+    "Clavier",
+  ];
+
+  return wantedAttributes
+    .map((name) => {
+      const value =
+        name === "Clavier"
+          ? getKeyboardLayout(product)
+          : getProductAttributeValue(product, [name]);
+
+      return value ? { name, value } : null;
+    })
+    .filter((tag): tag is { name: string; value: string } => tag !== null);
+}
+
+function saveCartProductMetadata(product: Product, thermocollageRequested: boolean) {
+  try {
+    const raw = localStorage.getItem(CART_PRODUCT_METADATA_STORAGE_KEY);
+    const data = raw ? JSON.parse(raw) : {};
+    const thermocollageEligible = canAddKeyboardThermocollage(product);
+
+    data[String(product.id)] = {
+      tags: buildProductCartTags(product),
+      keyboardLanguage: getKeyboardLayout(product),
+      thermocollageEligible,
+      thermocollageRequested: thermocollageEligible ? thermocollageRequested : false,
+    };
+
+    localStorage.setItem(CART_PRODUCT_METADATA_STORAGE_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.warn("Impossible d'enregistrer les informations panier du produit :", error);
+  }
+}
+
+
+export function ProductPage() {
+  const { slug } = useParams<{ slug: string }>();
+
+  const [product, setProduct] = useState<Product | null>(null);
+  const [selectedImage, setSelectedImage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [cartSuccess, setCartSuccess] = useState(false);
+  const [cartError, setCartError] = useState("");
+  const [thermocollageRequested, setThermocollageRequested] = useState(false);
+
+  useEffect(() => {
+    if (!slug) {
+      setError("Produit introuvable.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    getProductBySlug(slug)
+      .then((data) => {
+        if (!data) {
+          setProduct(null);
+          setError("Produit introuvable.");
+          return;
+        }
+
+        setProduct(data);
+        setSelectedImage(data.image || "/placeholder-product.png");
+      })
+      .catch((requestError) => {
+        console.error("Erreur lors du chargement du produit :", requestError);
+        setError("Impossible de charger la fiche produit.");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [slug]);
+
+  const attributes = useMemo(
+    () => deduplicateAttributes(product?.attributes ?? []),
+    [product]
+  );
+
+  const summarySpecifications = useMemo(() => {
+    return SUMMARY_ATTRIBUTE_NAMES.flatMap((attributeName) => {
+      const values = getAttributeValues(attributes, [attributeName]);
+
+      return values.length > 0
+        ? [{ name: attributeName, value: values.join(", ") }]
+        : [];
+    }).slice(0, 5);
+  }, [attributes]);
+
+  const specificationGroups = useMemo(() => {
+    const rows: SpecificationRow[] = attributes
+      .filter(
+        (attribute) =>
+          !HIDDEN_SPECIFICATION_NAMES.includes(normalizeText(attribute.name))
+      )
+      .map((attribute) => ({
+        ...attribute,
+        group: getSpecificationGroup(attribute.name),
+      }));
+
+    return GROUP_ORDER.map((group) => ({
+      group,
+      rows: rows
+        .filter((row) => row.group === group)
+        .sort((left, right) =>
+          left.name.localeCompare(right.name, "fr", {
+            sensitivity: "base",
+          })
+        ),
+    })).filter((section) => section.rows.length > 0);
+  }, [attributes]);
+
+  const identityRows = useMemo(() => {
+    if (!product) {
+      return [];
+    }
+
+    return [
+      { label: "Fabricant", value: product.manufacturer },
+      { label: "Référence constructeur", value: product.manufacturerPartNumber },
+      { label: "Référence EcoLiz", value: product.sku },
+      { label: "EAN", value: product.ean },
+      { label: "Catégorie", value: product.category },
+      { label: "Famille produit", value: product.productGroup },
+    ]
+      .map((item) => ({
+        label: item.label,
+        value: decodeHtmlEntities(item.value),
+      }))
+      .filter((item) => Boolean(item.value));
+  }, [product]);
+
+  const showThermocollageOption = product ? canAddKeyboardThermocollage(product) : false;
+
+  const keyboardLayout = product ? getKeyboardLayout(product) : "";
+
+  const visibleSummaryAttributes = useMemo(() => {
+    if (!product) {
+      return summaryAttributes;
+    }
+
+    const hasKeyboardTag = summaryAttributes.some(
+      (item) => item.name.toLowerCase() === "clavier"
+    );
+
+    if (!keyboardLayout || hasKeyboardTag) {
+      return summaryAttributes;
+    }
+
+    return [
+      ...summaryAttributes,
+      {
+        name: "Clavier",
+        value: keyboardLayout,
+      },
+    ];
+  }, [product, summaryAttributes, keyboardLayout]);
+
+  async function handleAddToCart() {
+    if (!product || !product.stock) {
+      return;
+    }
+
+    try {
+      setAddingToCart(true);
+      setCartSuccess(false);
+      setCartError("");
+
+      await addToCart(product.id, 1);
+      saveCartProductMetadata(product, thermocollageRequested);
+      setCartSuccess(true);
+    } catch (requestError) {
+      console.error("Erreur ajout panier :", requestError);
+      setCartError("Impossible d'ajouter ce produit au panier.");
+    } finally {
+      setAddingToCart(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-sky-50 pt-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="rounded-2xl border border-sky-100 bg-white px-6 py-16 text-center text-sky-900/60">
+            Chargement du produit…
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <main className="min-h-screen bg-sky-50 pt-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <Link
+            to="/boutique"
+            className="mb-6 inline-flex items-center gap-2 text-sky-700 hover:text-sky-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Retour à la boutique
+          </Link>
+
+          <div className="rounded-2xl border border-sky-100 bg-white p-8">
+            <h1 className="mb-2 text-2xl font-bold text-sky-950">
+              Produit introuvable
+            </h1>
+            <p className="text-sky-900/60">
+              {error || "Impossible d’afficher cette fiche produit."}
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const productName = decodeHtmlEntities(product.name);
+  const productDescription = decodeHtmlEntities(product.description);
+  const originalPrice = Number(
+    (product as Product & { originalPrice?: number }).originalPrice ?? 0
+  );
+  const discountPercent =
+    originalPrice > product.price
+      ? Math.round(((originalPrice - product.price) / originalPrice) * 100)
+      : null;
+  const images =
+    product.images && product.images.length > 0
+      ? product.images
+      : [product.image || "/placeholder-product.png"];
+
+  return (
+    <main className="relative min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,#9fe8ff_0,#d8f5ff_38%,#eefbff_76%,#dff3ff_100%)] pb-24 pt-32">
+      <div className="absolute -right-20 top-28 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl" />
+      <div className="absolute -left-24 bottom-24 h-80 w-80 rounded-full bg-sky-400/18 blur-3xl" />
+
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <Link
+          to="/boutique"
+          className="mb-7 inline-flex items-center gap-2 font-medium text-sky-700 transition-colors hover:text-sky-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Retour à la boutique
+        </Link>
+
+        <section className="overflow-hidden rounded-3xl border border-cyan-200 bg-white shadow-[0_24px_70px_rgba(3,105,161,0.18)]">
+          <div className="h-2 bg-gradient-to-r from-sky-900 via-sky-500 to-cyan-400" />
+          <div className="grid min-w-0 lg:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.45fr)]">
+            <div className="min-w-0 border-b border-sky-100 bg-sky-50/70 p-5 sm:p-7 lg:border-b-0 lg:border-r">
+              <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-sky-100 bg-white">
+                <img
+                  src={selectedImage || "/placeholder-product.png"}
+                  alt={productName}
+                  data-original-src={selectedImage || "/placeholder-product.png"}
+                  onError={handleProductImageError}
+                  className="h-full w-full object-contain p-3 mix-blend-multiply"
+                />
+              </div>
+
+              {images.length > 1 && (
+                <div className="mt-4 grid grid-cols-4 gap-3">
+                  {images.slice(0, 8).map((image) => (
+                    <button
+                      key={image}
+                      type="button"
+                      onClick={() => setSelectedImage(image)}
+                      aria-label="Afficher cette image du produit"
+                      className={`aspect-square overflow-hidden rounded-xl border bg-white p-1 transition-all ${
+                        selectedImage === image
+                          ? "border-sky-700 ring-2 ring-sky-700/20"
+                          : "border-sky-100 hover:border-sky-300"
+                      }`}
+                    >
+                      <img
+                        src={image}
+                        alt=""
+                        data-original-src={image}
+                        onError={handleProductImageError}
+                        className="h-full w-full object-contain mix-blend-multiply"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="min-w-0 p-5 sm:p-7 lg:p-9">
+              <div className="mb-4 flex flex-wrap gap-2">
+                <StatusPill
+                  label={product.stock ? "En stock" : "Rupture de stock"}
+                  variant={product.stock ? "success" : "warning"}
+                />
+
+                {product.conditionLabel &&
+                  product.conditionLabel !== "Non renseigné" && (
+                    <StatusPill
+                      label={decodeHtmlEntities(product.conditionLabel)}
+                      variant="brand"
+                    />
+                  )}
+
+                {discountPercent && (
+                  <StatusPill
+                    label={`Promotion -${discountPercent}%`}
+                    variant="promo"
+                  />
+                )}
+
+                <StatusPill label="Garantie sur devis" variant="info" />
+              </div>
+
+              <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-sky-700">
+                {decodeHtmlEntities(product.category)}
+              </p>
+
+              <h1 className="max-w-full break-words text-3xl font-bold leading-[1.08] tracking-tight text-sky-950 [overflow-wrap:anywhere] sm:text-4xl">
+                {productName}
+              </h1>
+
+              {summarySpecifications.length > 0 && (
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {summarySpecifications.map((item) => (
+                    <span
+                      key={`${item.name}-${item.value}`}
+                      className="max-w-full rounded-full border border-sky-100 bg-sky-50 px-3 py-1.5 text-sm text-sky-900/75"
+                    >
+                      <strong className="font-semibold text-sky-950">
+                        {item.name} :
+                      </strong>{" "}
+                      <span className="break-words">{item.value}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {identityRows.length > 0 && (
+                <dl className="mt-7 grid min-w-0 gap-x-8 gap-y-3 border-y border-sky-100 py-5 sm:grid-cols-2">
+                  {identityRows.map((item) => (
+                    <div
+                      key={item.label}
+                      className="grid min-w-0 grid-cols-[120px_minmax(0,1fr)] gap-3 text-sm"
+                    >
+                      <dt className="text-sky-900/50">{item.label}</dt>
+                      <dd className="min-w-0 break-words font-medium text-sky-950 [overflow-wrap:anywhere]">
+                        {item.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+
+              <div className="mt-7">
+                <p className="text-4xl font-bold tracking-tight text-sky-950">
+                  {formatPrice(product.price)} HT
+                </p>
+                {discountPercent && (
+                  <p className="mt-1 text-lg text-sky-900/45 line-through">
+                    {formatPrice(originalPrice)} HT
+                  </p>
+                )}
+                {product.priceTTC && (
+                  <p className="mt-1 text-lg text-sky-900/55">
+                    {formatPrice(product.priceTTC)} TTC
+                  </p>
+                )}
+              </div>
+
+              {cartSuccess && (
+                <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-semibold text-sky-950">
+                      Produit ajouté au panier.
+                    </p>
+                    <p className="text-sm text-sky-900/60">
+                      Vous pouvez continuer vos achats ou consulter votre panier.
+                    </p>
+                  </div>
+                  <Link
+                    to="/panier"
+                    className="inline-flex shrink-0 items-center justify-center rounded-xl bg-sky-700 px-4 py-2 text-sm font-medium text-white hover:bg-sky-800"
+                  >
+                    Voir le panier
+                  </Link>
+                </div>
+              )}
+
+              {cartError && (
+                <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 font-medium text-red-700">
+                  {cartError}
+                </div>
+              )}
+
+
+              {showThermocollageOption && (
+                <label className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <input
+                    type="checkbox"
+                    checked={thermocollageRequested}
+                    onChange={(event) => setThermocollageRequested(event.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-amber-300 text-amber-700 focus:ring-amber-600"
+                  />
+                  <span>
+                    <span className="font-semibold">Ajouter un thermocollage AZERTY</span>
+                    <span className="mt-1 block text-amber-800">
+                      Ce produit possède un clavier {getKeyboardLayout(product)}. Le thermocollage permet d’adapter le clavier pour un usage AZERTY.
+                    </span>
+                  </span>
+                </label>
+              )}
+
+              <div className="mt-7 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  disabled={!product.stock || addingToCart}
+                  className="inline-flex min-w-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-5 py-4 font-semibold text-white shadow-lg shadow-sky-900/20 transition-colors hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <ShoppingCart className="h-4 w-4 shrink-0" />
+                  {addingToCart
+                    ? "Ajout en cours…"
+                    : product.stock
+                      ? "Ajouter au panier"
+                      : "Produit indisponible"}
+                </button>
+
+                <Link
+                  to="/contact"
+                  className="inline-flex items-center justify-center rounded-xl border border-sky-200 bg-white px-5 py-4 font-semibold text-sky-900 transition-colors hover:bg-sky-50"
+                >
+                  Demander un devis
+                </Link>
+              </div>
+
+              <div className="mt-7 grid gap-4 border-t border-sky-100 pt-6 sm:grid-cols-3">
+                <TrustItem icon={ShieldCheck} text="Garantie sur devis" />
+                <TrustItem icon={Truck} text="Livraison professionnelle" />
+                <TrustItem icon={Leaf} text="Matériel professionnel" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-8 overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-[0_12px_34px_rgba(3,105,161,0.1)]">
+          <details open className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 sm:px-8">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wide text-sky-700">
+                  Informations
+                </p>
+                <h2 className="mt-1 text-2xl font-bold text-sky-950">
+                  Description du produit
+                </h2>
+              </div>
+              <ChevronDown className="h-5 w-5 shrink-0 text-sky-900/50 transition-transform group-open:rotate-180" />
+            </summary>
+
+            <div className="border-t border-sky-100 px-6 py-6 sm:px-8">
+              <p className="max-w-5xl whitespace-pre-line break-words leading-7 text-sky-900/70 [overflow-wrap:anywhere]">
+                {productDescription ||
+                  "Aucune description détaillée n’est disponible pour ce produit."}
+              </p>
+            </div>
+          </details>
+        </section>
+
+        <section className="mt-6 overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-[0_12px_34px_rgba(3,105,161,0.1)]">
+          <details open className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 sm:px-8">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wide text-sky-700">
+                  Données fournisseur
+                </p>
+                <h2 className="mt-1 text-2xl font-bold text-sky-950">
+                  Spécifications techniques
+                </h2>
+              </div>
+              <ChevronDown className="h-5 w-5 shrink-0 text-sky-900/50 transition-transform group-open:rotate-180" />
+            </summary>
+
+            <div className="border-t border-sky-100 px-4 py-5 sm:px-8 sm:py-7">
+              {specificationGroups.length > 0 ? (
+                <div className="space-y-8">
+                  {specificationGroups.map((section) => (
+                    <div key={section.group}>
+                      <h3 className="mb-3 text-lg font-bold text-sky-950">
+                        {section.group}
+                      </h3>
+
+                      <div className="overflow-hidden rounded-xl border border-sky-100">
+                        <dl>
+                          {section.rows.map((row, index) => (
+                            <div
+                              key={`${section.group}-${row.name}`}
+                              className={`grid min-w-0 gap-2 px-4 py-3 text-sm sm:grid-cols-[minmax(180px,0.8fr)_minmax(0,1.8fr)] sm:gap-6 ${
+                                index % 2 === 0 ? "bg-sky-50/70" : "bg-white"
+                              }`}
+                            >
+                              <dt className="font-semibold text-sky-950">
+                                {row.name}
+                              </dt>
+                              <dd className="min-w-0 break-words text-sky-900/75 [overflow-wrap:anywhere]">
+                                {row.values.join(", ")}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl bg-sky-50 px-5 py-8 text-center text-sky-900/55">
+                  Les caractéristiques techniques seront complétées prochainement.
+                </div>
+              )}
+            </div>
+          </details>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function TrustItem({
+  icon: Icon,
+  text,
+}: {
+  icon: ElementType;
+  text: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-start gap-2 text-sm text-sky-900/65">
+      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
+      <span className="min-w-0 break-words">{text}</span>
+    </div>
+  );
+}
+
+function StatusPill({
+  label,
+  variant,
+}: {
+  label: string;
+  variant: "success" | "warning" | "brand" | "info" | "promo";
+}) {
+  const styles = {
+    success: "border-sky-200 bg-sky-50 text-sky-700",
+    warning: "border-amber-200 bg-amber-50 text-amber-700",
+    brand: "border-sky-100 bg-sky-50 text-sky-700",
+    info: "border-cyan-100 bg-cyan-50 text-cyan-700",
+    promo: "border-cyan-200 bg-cyan-300 text-sky-950",
+  };
+  const baseClass =
+    variant === "promo"
+      ? "inline-flex max-w-full items-center rounded-full border px-4 py-2 text-sm font-black uppercase tracking-wide shadow-[0_0_20px_rgba(103,232,249,0.35)]"
+      : "inline-flex max-w-full items-center rounded-full border px-3 py-1 text-xs font-medium";
+
+  return (
+    <span
+      className={`${baseClass} ${styles[variant]}`}
+    >
+      <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+      <span className="break-words">{decodeHtmlEntities(label)}</span>
+    </span>
+  );
+}

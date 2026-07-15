@@ -1,0 +1,41 @@
+export interface ContactPayload {
+  firstname: string;
+  lastname: string;
+  email: string;
+  phone?: string;
+  company?: string;
+  subject: string;
+  orderNumber?: string;
+  message: string;
+  website?: string;
+}
+
+export async function sendContactMessage(payload: ContactPayload) {
+  const response = await fetch("/wp-api/ecoliz/v1/support-request", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      firstname: payload.firstname,
+      lastname: payload.lastname,
+      email: payload.email,
+      phone: payload.phone ?? "",
+      company: payload.company ?? "",
+      subject: payload.subject,
+      order_number: payload.orderNumber ?? "",
+      message: payload.message,
+      website: payload.website ?? "",
+    }),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message || "Impossible d'envoyer le message pour le moment."
+    );
+  }
+
+  return data;
+}
