@@ -9,6 +9,7 @@ import {
   LogOut,
   Mail,
   MapPin,
+  MessagesSquare,
   PackageCheck,
   Phone,
   Save,
@@ -19,6 +20,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { fetchMyOrders } from "../services/ecoliz-api";
+import {
+  fetchMySupportRequests,
+  type SupportTicket,
+} from "../services/contact";
 import {
   changeCustomerPassword,
   getCurrentCustomer,
@@ -34,6 +39,7 @@ type AccountTab =
   | "addresses"
   | "commandes"
   | "documents"
+  | "support"
   | "security";
 
 type ClientDocument = {
@@ -142,6 +148,7 @@ const navItems: Array<{
   { key: "addresses", label: "Mes adresses", icon: MapPin },
   { key: "commandes", label: "Commandes & devis", icon: FileText },
   { key: "documents", label: "Mes documents", icon: FileText },
+  { key: "support", label: "Mes demandes", icon: MessagesSquare },
   { key: "security", label: "Sécurité", icon: Settings },
 ];
 
@@ -204,8 +211,12 @@ export function Account() {
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentsError, setDocumentsError] = useState<string | null>(null);
 
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [supportError, setSupportError] = useState<string | null>(null);
+
   useEffect(() => {
-    const storedUser = localStorage.getItem("ecoliz_user");
+    const storedUser = sessionStorage.getItem("ecoliz_user");
 
     if (!storedUser) {
       navigate("/connexion", { replace: true });
@@ -216,7 +227,7 @@ export function Account() {
       const parsedUser = JSON.parse(storedUser);
       applyUser(parsedUser);
     } catch {
-      localStorage.removeItem("ecoliz_user");
+      sessionStorage.removeItem("ecoliz_user");
       navigate("/connexion", { replace: true });
       return;
     }
@@ -290,9 +301,33 @@ export function Account() {
       });
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    setSupportLoading(true);
+
+    fetchMySupportRequests()
+      .then((tickets) => {
+        setSupportTickets(Array.isArray(tickets) ? tickets : []);
+        setSupportError(null);
+      })
+      .catch((error) => {
+        console.error("Erreur récupération demandes support :", error);
+        setSupportError(
+          error instanceof Error
+            ? error.message
+            : "Impossible de charger vos demandes."
+        );
+        setSupportTickets([]);
+      })
+      .finally(() => {
+        setSupportLoading(false);
+      });
+  }, [user]);
+
   function applyUser(nextUser: EcolizUser) {
     setUser(nextUser);
-    localStorage.setItem("ecoliz_user", JSON.stringify(nextUser));
+    sessionStorage.setItem("ecoliz_user", JSON.stringify(nextUser));
 
     setProfileForm({
       firstName: nextUser.firstName ?? "",
@@ -984,6 +1019,122 @@ export function Account() {
                 </div>
               )}
 
+            {active === "support" && (
+              <div className="bg-white rounded-2xl border border-brand-100 overflow-hidden shadow-sm">
+                <div className="px-6 py-5 border-b border-brand-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <h2 className="font-bold text-brand-950">
+                      Mes demandes
+                    </h2>
+
+                    <p className="text-sm text-brand-900/60 mt-1">
+                      Retrouvez les demandes envoyées au support EcoLiz.
+                    </p>
+                  </div>
+
+                  <Link
+                    to="/contact"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 transition-colors"
+                  >
+                    <MessagesSquare className="w-4 h-4" />
+                    Nouvelle demande
+                  </Link>
+                </div>
+
+                <div className="p-6">
+                  {supportLoading && (
+                    <p className="text-sm text-brand-900/60">
+                      Chargement de vos demandes…
+                    </p>
+                  )}
+
+                  {!supportLoading && supportError && (
+                    <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                      <span>{supportError}</span>
+                    </div>
+                  )}
+
+                  {!supportLoading &&
+                    !supportError &&
+                    supportTickets.length === 0 && (
+                      <div className="rounded-2xl border border-brand-100 bg-brand-50 p-6 text-center">
+                        <MessagesSquare className="w-8 h-8 mx-auto text-brand-700 mb-3" />
+
+                        <h3 className="font-bold text-brand-950">
+                          Aucune demande pour le moment
+                        </h3>
+
+                        <p className="text-sm text-brand-900/60 mt-2">
+                          Vos demandes envoyées à EcoLiz apparaîtront ici.
+                        </p>
+                      </div>
+                    )}
+
+                  {!supportLoading &&
+                    !supportError &&
+                    supportTickets.length > 0 && (
+                      <div className="space-y-4">
+                        {supportTickets.map((ticket) => (
+                          <article
+                            key={ticket.id}
+                            className="rounded-2xl border border-brand-100 bg-brand-50 p-5"
+                          >
+                            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
+                                  {ticket.ticket_number}
+                                </p>
+
+                                <h3 className="font-bold text-brand-950 mt-1">
+                                  {ticket.subject || "Demande EcoLiz"}
+                                </h3>
+
+                                <p className="text-xs text-brand-900/50 mt-2">
+                                  Créée le {formatSupportDate(ticket.created_at)}
+                                </p>
+                              </div>
+
+                              <span
+                                className={`self-start inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${supportStatusClass(
+                                  ticket.status
+                                )}`}
+                              >
+                                <span className="h-2 w-2 rounded-full bg-current" />
+                                État :{" "}
+                                {ticket.status_label ||
+                                  formatSupportStatus(ticket.status)}
+                              </span>
+                            </div>
+
+                            {ticket.order_number && (
+                              <p className="text-sm text-brand-900/60 mt-4">
+                                Commande concernée :{" "}
+                                <span className="font-semibold text-brand-950">
+                                  {ticket.order_number}
+                                </span>
+                              </p>
+                            )}
+
+                            {ticket.message && (
+                              <div className="mt-4 rounded-xl border border-brand-100 bg-white p-4">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-brand-900/50 mb-2">
+                                  Votre message
+                                </p>
+
+                                <p className="text-sm text-brand-900/70 whitespace-pre-wrap">
+                                  {ticket.message}
+                                </p>
+                              </div>
+                            )}
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              </div>
+            )}
+
             {active === "security" && (
               <InfoPanel title="Sécurité du compte">
                 <div className="grid md:grid-cols-2 gap-4">
@@ -1420,6 +1571,51 @@ function OrderAddressCard({
       </div>
     </div>
   );
+}
+
+function formatSupportStatus(status: string) {
+  const labels: Record<string, string> = {
+    nouveau: "Nouveau",
+    en_cours: "En cours",
+    resolu: "Résolu",
+    ferme: "Fermé",
+  };
+
+  return labels[status] || status || "Statut inconnu";
+}
+
+function supportStatusClass(status: string) {
+  if (status === "resolu") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (status === "ferme") {
+    return "border-slate-200 bg-slate-100 text-slate-700";
+  }
+
+  if (status === "en_cours") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+
+  return "border-sky-200 bg-sky-50 text-sky-700";
+}
+
+function formatSupportDate(value: string) {
+  if (!value) return "date inconnue";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function StatusBadge({ status }: { status: string }) {

@@ -44,7 +44,7 @@ export function Navbar() {
   const location = useLocation();
 
   useEffect(() => {
-    setIsLoggedIn(Boolean(localStorage.getItem("ecoliz_user")));
+    setIsLoggedIn(Boolean(sessionStorage.getItem("ecoliz_user")));
   }, [location.pathname]);
 
   useEffect(() => {

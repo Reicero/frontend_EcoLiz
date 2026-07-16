@@ -199,7 +199,7 @@ async function resolveMissingImages(items: WooCartItem[]): Promise<Record<number
 }
 
 function getStoredUser(): EcolizUser | null {
-  const storedUser = localStorage.getItem('ecoliz_user')
+  const storedUser = sessionStorage.getItem('ecoliz_user')
 
   if (!storedUser) {
     return null

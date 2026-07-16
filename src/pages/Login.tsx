@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Mail, Lock, ArrowRight } from 'lucide-react'
+import { ArrowLeft, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { Button } from '../components/ui/Button'
-import { loginCustomer } from '../services/auth'
+import { loginCustomer, requestPasswordReset } from '../services/auth'
 
 export function Login() {
   const navigate = useNavigate()
@@ -13,9 +13,10 @@ export function Login() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
-    const user = localStorage.getItem('ecoliz_user')
+    const user = sessionStorage.getItem('ecoliz_user')
     if (user) navigate(redirectTo, { replace: true })
   }, [navigate, redirectTo])
 
@@ -40,11 +41,44 @@ export function Login() {
     try {
       setLoading(true)
       const result = await loginCustomer(formData)
-      localStorage.setItem('ecoliz_user', JSON.stringify(result.user))
+      sessionStorage.setItem('ecoliz_user', JSON.stringify(result.user))
       setSuccess('Connexion réussie. Redirection...')
       setTimeout(() => navigate(redirectTo), 800)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de se connecter.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePasswordReset = async () => {
+    setError(null)
+    setSuccess(null)
+
+    const email = formData.email.trim()
+
+    if (!email) {
+      setError("Saisissez d'abord votre adresse email.")
+      return
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("L'adresse email n'est pas valide.")
+      return
+    }
+
+    try {
+      setLoading(true)
+      await requestPasswordReset({ email })
+      setSuccess(
+        "Si un compte existe avec cette adresse, un email de réinitialisation vient d'être envoyé."
+      )
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Impossible d'envoyer l'email de réinitialisation."
+      )
     } finally {
       setLoading(false)
     }
@@ -113,14 +147,37 @@ export function Login() {
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-brand-900/40" />
                 <input
                   id="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-brand-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition bg-white"
+                  className="w-full pl-11 pr-12 py-3 rounded-xl border border-brand-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition bg-white"
                   placeholder="Votre mot de passe"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-900/40 hover:text-brand-700 transition-colors"
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                >
+                  {showPassword ? (
+                    <Eye className="h-5 w-5" />
+                  ) : (
+                    <EyeOff className="h-5 w-5" />
+                  )}
+                </button>
               </div>
+            </div>
+
+            <div className="text-right -mt-2">
+              <button
+                type="button"
+                onClick={handlePasswordReset}
+                disabled={loading}
+                className="text-sm font-medium text-brand-700 hover:text-brand-800 transition-colors disabled:opacity-50"
+              >
+                Mot de passe oublié ?
+              </button>
             </div>
 
             <div>

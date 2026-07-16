@@ -110,16 +110,16 @@ const legalContent: Record<string, LegalPage> = {
         ],
       },
       {
-        heading: 'Article 9 – Service après-vente',
+        heading: 'Article 9 – Retours, échanges et service après-vente',
         body: [
-          "En cas de problème sur un produit ou une commande, le client peut contacter EcoLiz afin qu'une analyse soit réalisée.",
-          "Les modalités de prise en charge, de retour, de réparation, de remplacement ou d'avoir sont définies selon la situation, la garantie applicable et les conditions commerciales validées.",
-        ],
-      },
-      {
-        heading: 'Article 10 – Validation',
-        body: [
-          "Les présentes CGV constituent une base d'information commerciale et devront être validées par l'entreprise avant publication définitive.",
+          "En cas de problème avec un produit ou une commande, le client doit contacter EcoLiz afin qu'une analyse de la situation soit réalisée avant tout retour.",
+          "Les retours sont acceptés pour les produits défectueux, non conformes à la commande ou faisant l'objet d'une prise en charge au titre de la garantie applicable.",
+          "Tout retour doit faire l'objet d'une demande préalable auprès d'EcoLiz. Aucun produit ne doit être retourné sans validation préalable et sans communication des modalités de retour.",
+          "Les produits retournés doivent, dans la mesure du possible, être accompagnés de leurs accessoires et éléments fournis lors de la livraison.",
+          "Les retours de produits non défectueux ou liés à un simple changement d'avis ne sont pas acceptés, sauf accord commercial préalable et écrit d'EcoLiz.",
+          "Selon la situation et après analyse du produit, EcoLiz pourra proposer la réparation du produit, son remplacement par un produit équivalent, un échange, un avoir ou un remboursement.",
+          "Les frais de retour sont déterminés en fonction de l'origine du problème et des conditions de prise en charge communiquées par EcoLiz avant le retour du produit.",
+          "Pour toute demande de retour ou de service après-vente, le client peut contacter EcoLiz via la page de contact du site.",
         ],
       },
     ],

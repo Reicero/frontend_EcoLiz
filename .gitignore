@@ -28,3 +28,6 @@ ecoliz-sync/.env
 ecoliz-sync/FlexIT_feed.csv
 ecoliz-sync/logs/
 ecoliz-sync/*.backup.js
+*.bak
+*.bak-*
+*.broken-*

@@ -35,7 +35,7 @@ async function ecolizRequest(endpoint: string) {
  * Fetch orders for the current logged-in user.
  */
 export async function fetchMyOrders(): Promise<Order[]> {
-  const user = JSON.parse(localStorage.getItem("ecoliz_user") || "{}");
+  const user = JSON.parse(sessionStorage.getItem("ecoliz_user") || "{}");
   const customerId = user?.id;
 
   const endpoint = customerId

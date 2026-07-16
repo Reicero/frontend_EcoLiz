@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Mail, Phone, MapPin, Send } from "lucide-react";
 import { sendContactMessage } from "../services/contact";
 
@@ -19,6 +19,32 @@ export function Contact() {
     message: "",
     website: "",
   });
+
+  useEffect(() => {
+    try {
+      const storedUser = sessionStorage.getItem("ecoliz_user");
+
+      if (!storedUser) {
+        return;
+      }
+
+      const currentUser = JSON.parse(storedUser);
+
+      setFormData((current) => ({
+        ...current,
+        firstname: current.firstname || currentUser.firstName || "",
+        lastname: current.lastname || currentUser.lastName || "",
+        email: current.email || currentUser.email || "",
+        phone: current.phone || currentUser.phone || "",
+        company: current.company || currentUser.company || "",
+      }));
+    } catch (error) {
+      console.warn(
+        "Impossible de préremplir le formulaire de contact :",
+        error
+      );
+    }
+  }, []);
 
   function updateField(field: keyof typeof formData, value: string) {
     setFormData((current) => ({

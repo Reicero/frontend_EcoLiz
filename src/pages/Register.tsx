@@ -6,6 +6,9 @@ import {
   Lock,
   Building2,
   ArrowRight,
+  Eye,
+  EyeOff,
+  Phone,
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { registerCustomer } from "../services/auth";
@@ -14,6 +17,10 @@ type CompanySuggestion = {
   name: string;
   siret: string;
   address?: string;
+  address1: string;
+  postcode: string;
+  city: string;
+  country: string;
 };
 
 type RechercheEntrepriseEtablissement = {
@@ -79,10 +86,16 @@ function mapCompanySuggestion(
     return null;
   }
 
+  const selectedEstablishment = establishment || company.siege;
+
   return {
     name,
     siret,
-    address: buildAddress(establishment || company.siege),
+    address: buildAddress(selectedEstablishment),
+    address1: selectedEstablishment?.adresse || "",
+    postcode: selectedEstablishment?.code_postal || "",
+    city: selectedEstablishment?.libelle_commune || "",
+    country: "FR",
   };
 }
 
@@ -110,13 +123,67 @@ async function searchCompanySuggestions(
     .filter(Boolean) as CompanySuggestion[];
 }
 
+
+async function getCompanyDataForRegistration(siret: string) {
+  const normalizedSiret = normalizeSiret(siret);
+
+  if (normalizedSiret.length !== 14) {
+    return null;
+  }
+
+  const response = await fetch(
+    `/wp-api/ecoliz/v1/company-search?q=${encodeURIComponent(normalizedSiret)}&per_page=10`
+  );
+
+  if (!response.ok) {
+    throw new Error("Impossible de récupérer l'adresse de l'entreprise.");
+  }
+
+  const data = await response.json();
+  const results = Array.isArray(data?.results) ? data.results : [];
+
+  for (const company of results) {
+    const establishments = Array.isArray(company?.matching_etablissements)
+      ? company.matching_etablissements
+      : [];
+
+    const establishment =
+      establishments.find(
+        (item: RechercheEntrepriseEtablissement) =>
+          normalizeSiret(item?.siret || "") === normalizedSiret
+      ) ||
+      (normalizeSiret(company?.siege?.siret || "") === normalizedSiret
+        ? company.siege
+        : null);
+
+    if (!establishment) {
+      continue;
+    }
+
+    return {
+      company:
+        company?.nom_complet ||
+        company?.nom_raison_sociale ||
+        company?.denomination ||
+        "",
+      address1: establishment?.adresse || "",
+      postcode: establishment?.code_postal || "",
+      city: establishment?.libelle_commune || "",
+      country: "FR",
+    };
+  }
+
+  return null;
+}
+
 export function Register() {
+  const [showPassword, setShowPassword] = useState(false)
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo || "/compte";
 
 useEffect(() => {
-  const user = localStorage.getItem("ecoliz_user");
+  const user = sessionStorage.getItem("ecoliz_user");
 
   if (user) {
     navigate(redirectTo, { replace: true });
@@ -126,12 +193,18 @@ useEffect(() => {
   const [formData, setFormData] = useState({
     company: "",
     siret: "",
+    address1: "",
+    postcode: "",
+    city: "",
+    country: "FR",
     firstName: "",
     lastName: "",
+    phone: "",
     email: "",
     password: "",
   });
   const [newsletterConsent, setNewsletterConsent] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -168,6 +241,35 @@ useEffect(() => {
         setCompanySearchError(null);
 
         const suggestions = await searchCompanySuggestions(query, controller.signal);
+
+        // Lorsqu'un SIRET complet de 14 chiffres correspond exactement
+        // à une entreprise, on remplit automatiquement toutes les données.
+        if (normalizedSiret.length === 14) {
+          const exactSuggestion = suggestions.find(
+            (suggestion) =>
+              normalizeSiret(suggestion.siret) === normalizedSiret
+          );
+
+          if (exactSuggestion) {
+            setSelectedSiret(exactSuggestion.siret);
+            setCompanySuggestions([]);
+            setCompanySearchError(null);
+            setCompanySearchSource(null);
+
+            setFormData((current) => ({
+              ...current,
+              company: exactSuggestion.name,
+              siret: exactSuggestion.siret,
+              address1: exactSuggestion.address1,
+              postcode: exactSuggestion.postcode,
+              city: exactSuggestion.city,
+              country: exactSuggestion.country,
+            }));
+
+            return;
+          }
+        }
+
         setCompanySuggestions(suggestions);
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
@@ -198,6 +300,10 @@ useEffect(() => {
       ...current,
       company: suggestion.name,
       siret: suggestion.siret,
+      address1: suggestion.address1,
+      postcode: suggestion.postcode,
+      city: suggestion.city,
+      country: suggestion.country,
     }));
   };
 
@@ -261,6 +367,16 @@ useEffect(() => {
       return "Le nom est obligatoire.";
     }
 
+    if (!formData.phone.trim()) {
+      return "Le numéro de téléphone est obligatoire.";
+    }
+
+    const phoneDigits = formData.phone.replace(/\D/g, "");
+
+    if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+      return "Le numéro de téléphone n’est pas valide.";
+    }
+
     if (!formData.email.trim()) {
       return "L’adresse email est obligatoire.";
     }
@@ -295,10 +411,46 @@ useEffect(() => {
     return;
   }
 
+  if (!termsAccepted) {
+    setError(
+      "Vous devez accepter les conditions générales de vente et la politique de confidentialité."
+    );
+    return;
+  }
+
   try {
     setLoading(true);
 
-    const result = await registerCustomer({ ...formData, siret: normalizeSiret(formData.siret) });
+    const normalizedSiret = normalizeSiret(formData.siret);
+
+    let registrationPayload = {
+      ...formData,
+      phone: formData.phone.trim(),
+      billing_phone: formData.phone.trim(),
+      siret: normalizedSiret,
+    };
+
+    try {
+      const companyData = await getCompanyDataForRegistration(normalizedSiret);
+
+      if (companyData) {
+        registrationPayload = {
+          ...registrationPayload,
+          ...companyData,
+        };
+
+        console.log("Données entreprise envoyées à l'inscription :", companyData);
+      } else {
+        console.warn("Aucune adresse trouvée pour le SIRET :", normalizedSiret);
+      }
+    } catch (companyError) {
+      console.warn(
+        "Impossible de récupérer automatiquement l'adresse :",
+        companyError
+      );
+    }
+
+    const result = await registerCustomer(registrationPayload);
 
     if (newsletterConsent) {
       try {
@@ -325,7 +477,7 @@ useEffect(() => {
       }
     }
 
-    localStorage.setItem("ecoliz_user", JSON.stringify(result.user));
+    sessionStorage.setItem("ecoliz_user", JSON.stringify(result.user));
 
     setSuccess("Compte créé avec succès. Redirection vers la commande...");
 
@@ -447,8 +599,7 @@ useEffect(() => {
                         company: e.target.value,
                       });
                     }}
-                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-brand-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition bg-white"
-                    placeholder="Acme Corp"
+                    className="w-full pl-11 pr-12 py-3 rounded-xl border border-brand-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition bg-white"
                   />
                 </div>
 
@@ -482,7 +633,6 @@ useEffect(() => {
                     });
                   }}
                   className="w-full px-4 py-3 rounded-xl border border-brand-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition bg-white"
-                  placeholder="123 456 789 00012"
                 />
 
                 {companySearchSource === "siret" && renderCompanySuggestions()}
@@ -540,6 +690,35 @@ useEffect(() => {
 
               <div className="col-span-2">
                 <label
+                  htmlFor="phone"
+                  className="block text-sm font-medium text-brand-900 mb-2"
+                >
+                  Téléphone professionnel *
+                </label>
+
+                <div className="relative">
+                  <Phone className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-brand-900/40" />
+
+                  <input
+                    id="phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    required
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        phone: e.target.value,
+                      })
+                    }
+                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-brand-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="col-span-2">
+                <label
                   htmlFor="email"
                   className="block text-sm font-medium text-brand-900 mb-2"
                 >
@@ -579,7 +758,7 @@ useEffect(() => {
 
                   <input
                     id="password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     value={formData.password}
                     onChange={(e) =>
@@ -591,12 +770,60 @@ useEffect(() => {
                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-brand-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition bg-white"
                     placeholder="8 caractères minimum"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-900/40 hover:text-brand-700 transition-colors"
+                    aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                  >
+                    {showPassword ? (
+                      <Eye className="h-5 w-5" />
+                    ) : (
+                      <EyeOff className="h-5 w-5" />
+                    )}
+                  </button>
                 </div>
 
                 <p className="mt-2 text-xs text-brand-900/50">
                   Le mot de passe doit contenir au moins 8 caractères.
                 </p>
               </div>
+            </div>
+
+            <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4">
+              <label className="flex items-start gap-3 text-sm text-brand-900">
+                <input
+                  type="checkbox"
+                  required
+                  checked={termsAccepted}
+                  onChange={(event) => setTermsAccepted(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-brand-300 text-brand-700 focus:ring-brand-500"
+                />
+
+                <span>
+                  J’accepte les{" "}
+                  <Link
+                    to="/cgv"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(event) => event.stopPropagation()}
+                    className="font-semibold text-brand-700 underline hover:text-brand-900"
+                  >
+                    conditions générales de vente
+                  </Link>{" "}
+                  et reconnais avoir pris connaissance de la{" "}
+                  <Link
+                    to="/rgpd"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(event) => event.stopPropagation()}
+                    className="font-semibold text-brand-700 underline hover:text-brand-900"
+                  >
+                    politique de confidentialité
+                  </Link>
+                  .
+                </span>
+              </label>
             </div>
 
             <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4">

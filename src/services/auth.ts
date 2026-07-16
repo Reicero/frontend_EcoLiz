@@ -3,8 +3,13 @@ const ECOLIZ_API_URL = "/wp-api/ecoliz/v1";
 export type RegisterPayload = {
   company: string;
   siret: string;
+  address1: string;
+  postcode: string;
+  city: string;
+  country: string;
   firstName: string;
   lastName: string;
+  phone: string;
   email: string;
   password: string;
 };
@@ -46,7 +51,7 @@ export type PasswordResetPayload = {
 
 function getStoredCustomerId() {
   try {
-    const user = JSON.parse(localStorage.getItem("ecoliz_user") || "{}");
+    const user = JSON.parse(sessionStorage.getItem("ecoliz_user") || "{}");
     return user?.id || null;
   } catch {
     return null;
@@ -92,7 +97,7 @@ async function authRequest(endpoint: string, body?: unknown) {
 
 function saveUserIfPresent(data: any) {
   if (data?.user) {
-    localStorage.setItem("ecoliz_user", JSON.stringify(data.user));
+    sessionStorage.setItem("ecoliz_user", JSON.stringify(data.user));
   }
 
   return data;
@@ -134,6 +139,18 @@ export async function logoutCustomer() {
   try {
     await authRequest("/logout", {});
   } finally {
-    localStorage.removeItem("ecoliz_user");
+    sessionStorage.removeItem("ecoliz_user");
   }
+}
+
+export type ConfirmPasswordResetPayload = {
+  login: string;
+  key: string;
+  password: string;
+};
+
+export async function confirmPasswordReset(
+  payload: ConfirmPasswordResetPayload
+) {
+  return authRequest("/password-reset-confirm", payload);
 }

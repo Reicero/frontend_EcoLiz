@@ -17,12 +17,13 @@ import { Cart } from './pages/Cart'
 import Checkout from './pages/Checkout'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
+import { ResetPassword } from './pages/ResetPassword'
 import { Testimonial } from './pages/Testimonial'
 import { CookieBanner } from './components/layout/Cookies'
 import { BitdefenderPopup } from "./components/layout/BitdefenderPopup";
 import { SeoManager } from "./components/seo/SeoManager";
 
-const AUTH_ROUTES = ['/connexion', '/inscription']
+const AUTH_ROUTES = ['/connexion', '/inscription', '/reinitialiser-mot-de-passe']
 
 function AppLayout() {
   const { pathname } = useLocation()
@@ -52,6 +53,7 @@ function AppLayout() {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/connexion" element={<Login />} />
           <Route path="/inscription" element={<Register />} />
+          <Route path="/reinitialiser-mot-de-passe" element={<ResetPassword />} />
         </Routes>
       </main>
       {!isAuthRoute && (

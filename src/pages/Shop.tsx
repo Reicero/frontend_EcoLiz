@@ -1708,7 +1708,7 @@ export function Shop() {
 
   const storedCustomer = (() => {
     try {
-      return JSON.parse(localStorage.getItem("ecoliz_user") || "null") as any;
+      return JSON.parse(sessionStorage.getItem("ecoliz_user") || "null") as any;
     } catch {
       return null;
     }
