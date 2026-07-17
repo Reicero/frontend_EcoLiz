@@ -7,6 +7,31 @@ import { getCart } from '../services/cart'
 import { placeOrder } from '../services/checkout'
 import { config } from '../config/env'
 
+const CART_PRODUCT_METADATA_STORAGE_KEY =
+  "ecoliz_cart_product_metadata_v1"
+
+type CheckoutCartProductMetadata = {
+  thermocollageEligible?: boolean
+  thermocollageRequested?: boolean
+}
+
+function getCheckoutCartProductMetadata(
+  productId: number
+): CheckoutCartProductMetadata | null {
+  try {
+    const raw = localStorage.getItem(CART_PRODUCT_METADATA_STORAGE_KEY)
+
+    if (!raw) {
+      return null
+    }
+
+    const data = JSON.parse(raw)
+    return data[String(productId)] ?? null
+  } catch {
+    return null
+  }
+}
+
 type EcolizUser = {
   id?: number | string
   email: string
@@ -44,6 +69,8 @@ type WooCart = {
   totals?: {
     total_price?: string
     total_items?: string
+    total_fees?: string
+    total_fees_tax?: string
     currency_minor_unit?: number
   }
 }
@@ -251,6 +278,14 @@ export default function Checkout() {
       return sum + (lineTotal ? Number(lineTotal) : 0)
     }, 0) / Math.pow(10, minorUnit)
 
+  const deliveryFeeHT =
+    Number(cart?.totals?.total_fees ?? 0) / Math.pow(10, minorUnit)
+
+  const deliveryOnQuote = paidItemsCount > 10
+
+  const totalWithDeliveryHT =
+    totalHT + (deliveryOnQuote ? 0 : deliveryFeeHT)
+
   useEffect(() => {
     async function loadCartSummary() {
       try {
@@ -317,7 +352,34 @@ export default function Checkout() {
         ? "Services sur devis : les services sélectionnés devront faire l’objet d’un devis personnalisé."
         : ""
 
-      const customerNote = [formData.note.trim(), serviceNote]
+      const deliveryNote = deliveryOnQuote
+        ? "Frais de livraison sur devis : la commande contient plus de 10 produits payants. Le montant du transport doit être confirmé avant paiement."
+        : ""
+
+      const thermocollageProducts = paidItems.filter((item) =>
+        Boolean(
+          getCheckoutCartProductMetadata(item.id)
+            ?.thermocollageRequested
+        )
+      )
+
+      const thermocollageNote =
+        thermocollageProducts.length > 0
+          ? [
+              "Thermocollage AZERTY offert demandé pour :",
+              ...thermocollageProducts.map(
+                (item) =>
+                  `- ${item.name} (quantité : ${item.quantity})`
+              ),
+            ].join("\n")
+          : ""
+
+      const customerNote = [
+        formData.note.trim(),
+        serviceNote,
+        deliveryNote,
+        thermocollageNote,
+      ]
         .filter(Boolean)
         .join("\n\n")
 
@@ -663,19 +725,42 @@ export default function Checkout() {
                     </div>
                   )}
 
+                  {paidItemsCount > 0 && (
+                    <div className="flex items-center justify-between text-brand-900/70">
+                      <span>Frais de livraison</span>
+                      <span>
+                        {deliveryOnQuote
+                          ? "Sur devis"
+                          : `${formatWooPrice(
+                              String(deliveryFeeHT * Math.pow(10, minorUnit)),
+                              minorUnit
+                            )} HT`}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-xl font-bold text-brand-950">
-                    <span>Total HT</span>
+                    <span>
+                      {deliveryOnQuote
+                        ? "Total HT hors livraison"
+                        : "Total HT"}
+                    </span>
                     <span>
                       {hasPaidItems
-                        ? formatWooPrice(String(totalHT * Math.pow(10, minorUnit)), minorUnit)
+                        ? formatWooPrice(
+                            String(totalWithDeliveryHT * Math.pow(10, minorUnit)),
+                            minorUnit
+                          )
                         : "Sur devis"}
                     </span>
                   </div>
 
                   <p className="text-xs text-brand-900/50">
-                    {hasQuoteItems
-                      ? "Les services sélectionnés seront traités comme une demande de devis personnalisée."
-                      : "Les frais éventuels et conditions de paiement sont confirmés à la validation."}
+                    {deliveryOnQuote
+                      ? "Les frais de livraison seront chiffrés sur devis et confirmés avant paiement."
+                      : hasQuoteItems
+                        ? "Les services sélectionnés seront traités comme une demande de devis personnalisée."
+                        : "Les frais de livraison sont inclus dans le total affiché."}
                   </p>
                 </div>
               </>

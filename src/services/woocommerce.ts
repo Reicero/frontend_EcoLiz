@@ -938,17 +938,21 @@ export async function getProductBySlug(
   slug: string
 ): Promise<Product | null> {
   try {
-    const params = new URLSearchParams({
-      slug: slug.trim(),
-    });
+    let cleanedSlug = slug.trim();
 
-    const { data } = await fetchJson<any[]>(
-      `${WOO_API_URL}/products?${params}`
+    try {
+      cleanedSlug = decodeURIComponent(cleanedSlug);
+    } catch {
+      // Le slug était déjà décodé.
+    }
+
+    const encodedSlug = encodeURIComponent(cleanedSlug);
+
+    const { data } = await fetchJson<any>(
+      `${WOO_API_URL}/products/${encodedSlug}`
     );
 
-    return Array.isArray(data) && data.length > 0
-      ? mapWooProduct(data[0])
-      : null;
+    return data?.id ? mapWooProduct(data) : null;
   } catch (error) {
     console.error("Erreur lors de la récupération du produit :", error);
     throw error;

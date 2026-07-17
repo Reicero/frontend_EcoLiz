@@ -42,6 +42,8 @@ type WooCart = {
     total_price?: string
     total_items?: string
     total_discount?: string
+    total_fees?: string
+    total_fees_tax?: string
     currency_minor_unit?: number
   }
 }
@@ -121,6 +123,26 @@ function getCartProductMetadata(productId: number): CartProductMetadata | null {
   }
 }
 
+function updateCartProductThermocollage(
+  productId: number,
+  requested: boolean
+): void {
+  const raw = localStorage.getItem(CART_PRODUCT_METADATA_STORAGE_KEY)
+  const data = raw ? JSON.parse(raw) : {}
+  const currentMetadata = data[String(productId)] ?? {}
+
+  data[String(productId)] = {
+    ...currentMetadata,
+    thermocollageEligible: true,
+    thermocollageRequested: requested,
+  }
+
+  localStorage.setItem(
+    CART_PRODUCT_METADATA_STORAGE_KEY,
+    JSON.stringify(data)
+  )
+}
+
 function formatWooPrice(value?: string, minorUnit = 2): string {
   if (!value) return '0,00 €'
   const num = Number(value) / Math.pow(10, minorUnit)
@@ -169,6 +191,24 @@ export function Cart() {
   useEffect(() => {
     loadCart()
   }, [])
+
+  function handleThermocollageChange(
+    item: WooCartItem,
+    requested: boolean
+  ) {
+    try {
+      setError(null)
+      updateCartProductThermocollage(item.id, requested)
+
+      // Force le réaffichage après la modification du localStorage.
+      setCart((currentCart) =>
+        currentCart ? { ...currentCart } : currentCart
+      )
+    } catch (err) {
+      console.error("Erreur modification thermocollage :", err)
+      setError("Impossible de modifier l’option de thermocollage.")
+    }
+  }
 
   async function handleUpdateQuantity(item: WooCartItem, quantity: number) {
     if (quantity < 1) return
@@ -303,6 +343,14 @@ export function Cart() {
 
   const totalAfterDiscountHT = Math.max(totalHT - couponDiscountHT, 0)
 
+  const deliveryFeeHT =
+    Number(cart?.totals?.total_fees ?? 0) / Math.pow(10, minorUnit)
+
+  const deliveryOnQuote = paidItemsCount > 10
+
+  const totalWithDeliveryHT =
+    totalAfterDiscountHT + (deliveryOnQuote ? 0 : deliveryFeeHT)
+
   const checkoutLabel = "Valider mon panier"
 
   return (
@@ -368,13 +416,23 @@ export function Cart() {
                           )}
 
                           {metadata?.thermocollageEligible && (
-                            <p className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                              metadata.thermocollageRequested
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-amber-50 text-amber-700"
-                            }`}>
-                              Thermocollage AZERTY : {metadata.thermocollageRequested ? "demandé" : "non demandé"}
-                            </p>
+                            <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-900">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(metadata.thermocollageRequested)}
+                                onChange={(event) =>
+                                  handleThermocollageChange(
+                                    item,
+                                    event.target.checked
+                                  )
+                                }
+                                className="h-4 w-4 accent-brand-700"
+                              />
+
+                              <span>
+                                Thermocollage AZERTY offert
+                              </span>
+                            </label>
                           )}
 
                           {isQuoteOnly ? (
@@ -490,14 +548,66 @@ export function Cart() {
                     </div>
                   )}
 
+                  {hasPaidItems && (
+                    <div className="flex items-center justify-between text-brand-900/70">
+                      <span>Sous-total produits</span>
+                      <span>
+                        {formatWooPrice(
+                          String(totalHT * Math.pow(10, minorUnit)),
+                          minorUnit
+                        )} HT
+                      </span>
+                    </div>
+                  )}
+
+                  {couponDiscountHT > 0 && (
+                    <div className="flex items-center justify-between text-emerald-700">
+                      <span>Remise</span>
+                      <span>
+                        -{formatWooPrice(
+                          String(couponDiscountHT * Math.pow(10, minorUnit)),
+                          minorUnit
+                        )} HT
+                      </span>
+                    </div>
+                  )}
+
+                  {paidItemsCount > 0 && (
+                    <div className="flex items-center justify-between text-brand-900/70">
+                      <span>Frais de livraison</span>
+                      <span>
+                        {deliveryOnQuote
+                          ? "Sur devis"
+                          : `${formatWooPrice(
+                              String(deliveryFeeHT * Math.pow(10, minorUnit)),
+                              minorUnit
+                            )} HT`}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-brand-950 font-bold text-xl">
-                    <span>Total HT</span>
+                    <span>
+                      {deliveryOnQuote
+                        ? "Total HT hors livraison"
+                        : "Total HT"}
+                    </span>
+
                     <span>
                       {hasPaidItems
-                        ? formatWooPrice(String(totalAfterDiscountHT * Math.pow(10, minorUnit)), minorUnit)
+                        ? formatWooPrice(
+                            String(totalWithDeliveryHT * Math.pow(10, minorUnit)),
+                            minorUnit
+                          )
                         : "Sur devis"}
                     </span>
                   </div>
+
+                  {deliveryOnQuote && (
+                    <p className="text-xs text-brand-900/50">
+                      Les frais de livraison seront confirmés sur devis avant paiement.
+                    </p>
+                  )}
                 </div>
 
                 {hasPaidItems && (

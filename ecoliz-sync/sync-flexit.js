@@ -2523,11 +2523,55 @@ if (existingProduct) {
           log(`Nettoyage d'une ancienne promotion WooCommerce : ${sku}`);
         }
 
-        await wcRequest("put", `/products/${existingProduct.id}`, productData);
+        try {
+          await wcRequest("put", `/products/${existingProduct.id}`, productData);
+        } catch (error) {
+          const errorData = error?.response?.data || {};
+          const errorText = JSON.stringify(errorData || error?.message || error);
+
+          if (
+            errorData.code === "woocommerce_product_image_upload_error" ||
+            errorText.includes("woocommerce_product_image_upload_error")
+          ) {
+            log(`Image FlexIT inaccessible pour ${sku}, nouvelle tentative sans image.`);
+
+            const productDataWithoutImage = { ...productData };
+            delete productDataWithoutImage.images;
+
+            await wcRequest(
+              "put",
+              `/products/${existingProduct.id}`,
+              productDataWithoutImage
+            );
+          } else {
+            throw error;
+          }
+        }
+
         updated++;
         log(`Mis à jour : ${sku} - ${productData.name}`);
       } else {
-        await wcRequest("post", "/products", productData);
+        try {
+          await wcRequest("post", "/products", productData);
+        } catch (error) {
+          const errorData = error?.response?.data || {};
+          const errorText = JSON.stringify(errorData || error?.message || error);
+
+          if (
+            errorData.code === "woocommerce_product_image_upload_error" ||
+            errorText.includes("woocommerce_product_image_upload_error")
+          ) {
+            log(`Image FlexIT inaccessible pour ${sku}, création sans image.`);
+
+            const productDataWithoutImage = { ...productData };
+            delete productDataWithoutImage.images;
+
+            await wcRequest("post", "/products", productDataWithoutImage);
+          } else {
+            throw error;
+          }
+        }
+
         created++;
         log(`Créé : ${sku} - ${productData.name}`);
       }
