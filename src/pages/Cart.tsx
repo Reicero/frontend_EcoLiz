@@ -106,6 +106,8 @@ type CartProductTag = {
 
 type CartProductMetadata = {
   tags?: CartProductTag[]
+  category?: string
+  productGroup?: string
   keyboardLayout?: string
   thermocollageEligible?: boolean
   thermocollageRequested?: boolean
@@ -121,6 +123,79 @@ function getCartProductMetadata(productId: number): CartProductMetadata | null {
   } catch {
     return null
   }
+}
+
+const PC_DELIVERY_CATEGORY_NAMES = new Set([
+  "notebook",
+  "notebooks",
+  "pc fixe",
+  "pc fixes",
+  "pc-fixe",
+  "pc-fixes",
+  "workstation",
+  "workstations fixes",
+  "workstation mobile",
+  "workstations mobiles",
+  "workstation-mobile",
+  "workstations-mobiles",
+  "chromebooks",
+  "chromebooks-pc",
+  "tablettes",
+  "tablettes-pc",
+  "all-in-one",
+  "all-in-one-pc",
+])
+
+function getCartMetadataTagValue(
+  metadata: CartProductMetadata | null,
+  label: string
+): string {
+  return (
+    metadata?.tags?.find(
+      (tag) => normalizeCartText(tag.name) === normalizeCartText(label)
+    )?.value ?? ""
+  )
+}
+
+function getCartItemDeliveryCategory(item: WooCartItem): string {
+  const metadata = getCartProductMetadata(item.id)
+
+  return (
+    metadata?.category ||
+    getCartMetadataTagValue(metadata, "Catégorie")
+  )
+}
+
+const PC_DELIVERY_TAG_LABELS = new Set([
+  "processeur",
+  "ram",
+  "stockage",
+  "taille ecran",
+  "clavier",
+  "resolution",
+])
+
+function hasPcDeliveryMetadataTags(metadata: CartProductMetadata | null): boolean {
+  const matchingTags =
+    metadata?.tags?.filter((tag) =>
+      PC_DELIVERY_TAG_LABELS.has(normalizeCartText(tag.name))
+    ) ?? []
+
+  return matchingTags.length >= 2
+}
+
+function isPcDeliveryCartItem(item: WooCartItem): boolean {
+  if (isQuoteOnlyCartItem(item)) {
+    return false
+  }
+
+  const metadata = getCartProductMetadata(item.id)
+  const category = normalizeCartText(getCartItemDeliveryCategory(item))
+
+  return (
+    PC_DELIVERY_CATEGORY_NAMES.has(category) ||
+    hasPcDeliveryMetadataTags(metadata)
+  )
 }
 
 function updateCartProductThermocollage(
@@ -346,7 +421,19 @@ export function Cart() {
   const deliveryFeeHT =
     Number(cart?.totals?.total_fees ?? 0) / Math.pow(10, minorUnit)
 
-  const deliveryOnQuote = paidItemsCount > 10
+  const pcItemsCount = paidItems.reduce(
+    (sum, item) => sum + (isPcDeliveryCartItem(item) ? item.quantity : 0),
+    0
+  )
+
+  const hasNonPcPaidItems = paidItems.some(
+    (item) => !isPcDeliveryCartItem(item)
+  )
+
+  const hasAutomaticDeliveryFee = deliveryFeeHT > 0
+  const deliveryOnQuote = hasNonPcPaidItems && !hasAutomaticDeliveryFee
+  const deliveryIsFree =
+    hasPaidItems && !deliveryOnQuote && deliveryFeeHT <= 0 && pcItemsCount > 10
 
   const totalWithDeliveryHT =
     totalAfterDiscountHT + (deliveryOnQuote ? 0 : deliveryFeeHT)
@@ -578,10 +665,12 @@ export function Cart() {
                       <span>
                         {deliveryOnQuote
                           ? "Sur devis"
-                          : `${formatWooPrice(
-                              String(deliveryFeeHT * Math.pow(10, minorUnit)),
-                              minorUnit
-                            )} HT`}
+                          : deliveryIsFree
+                            ? "Offert"
+                            : `${formatWooPrice(
+                                String(deliveryFeeHT * Math.pow(10, minorUnit)),
+                                minorUnit
+                              )} HT`}
                       </span>
                     </div>
                   )}
@@ -603,9 +692,11 @@ export function Cart() {
                     </span>
                   </div>
 
-                  {deliveryOnQuote && (
+                  {(deliveryOnQuote || deliveryIsFree) && (
                     <p className="text-xs text-brand-900/50">
-                      Les frais de livraison seront confirmés sur devis avant paiement.
+                      {deliveryOnQuote
+                        ? "Les frais de livraison des produits hors PC seront confirmés sur devis avant paiement."
+                        : "Livraison offerte pour plus de 10 PC."}
                     </p>
                   )}
                 </div>

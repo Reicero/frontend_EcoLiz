@@ -518,6 +518,8 @@ export function ProductPage() {
 
       data[String(product.id)] = {
         tags: summarySpecifications,
+        category: product.category ? decodeHtmlEntities(product.category) : "",
+        productGroup: product.productGroup ? decodeHtmlEntities(product.productGroup) : "",
         keyboardLayout,
         thermocollageEligible: showThermocollageOption,
         thermocollageRequested: showThermocollageOption ? thermocollageRequested : false,

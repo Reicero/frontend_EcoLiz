@@ -10,7 +10,15 @@ import { config } from '../config/env'
 const CART_PRODUCT_METADATA_STORAGE_KEY =
   "ecoliz_cart_product_metadata_v1"
 
+type CheckoutCartProductTag = {
+  name: string
+  value: string
+}
+
 type CheckoutCartProductMetadata = {
+  tags?: CheckoutCartProductTag[]
+  category?: string
+  productGroup?: string
   thermocollageEligible?: boolean
   thermocollageRequested?: boolean
 }
@@ -73,6 +81,88 @@ type WooCart = {
     total_fees_tax?: string
     currency_minor_unit?: number
   }
+}
+
+function normalizeCheckoutText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+}
+
+const PC_DELIVERY_CATEGORY_NAMES = new Set([
+  "notebook",
+  "notebooks",
+  "pc fixe",
+  "pc fixes",
+  "pc-fixe",
+  "pc-fixes",
+  "workstation",
+  "workstations fixes",
+  "workstation mobile",
+  "workstations mobiles",
+  "workstation-mobile",
+  "workstations-mobiles",
+  "chromebooks",
+  "chromebooks-pc",
+  "tablettes",
+  "tablettes-pc",
+  "all-in-one",
+  "all-in-one-pc",
+])
+
+function getCheckoutMetadataTagValue(
+  metadata: CheckoutCartProductMetadata | null,
+  label: string
+): string {
+  return (
+    metadata?.tags?.find(
+      (tag) => normalizeCheckoutText(tag.name) === normalizeCheckoutText(label)
+    )?.value ?? ""
+  )
+}
+
+function getCheckoutCartItemDeliveryCategory(item: WooCartItem): string {
+  const metadata = getCheckoutCartProductMetadata(item.id)
+
+  return (
+    metadata?.category ||
+    getCheckoutMetadataTagValue(metadata, "Catégorie")
+  )
+}
+
+const PC_DELIVERY_TAG_LABELS = new Set([
+  "processeur",
+  "ram",
+  "stockage",
+  "taille ecran",
+  "clavier",
+  "resolution",
+])
+
+function hasPcDeliveryMetadataTags(
+  metadata: CheckoutCartProductMetadata | null
+): boolean {
+  const matchingTags =
+    metadata?.tags?.filter((tag) =>
+      PC_DELIVERY_TAG_LABELS.has(normalizeCheckoutText(tag.name))
+    ) ?? []
+
+  return matchingTags.length >= 2
+}
+
+function isPcDeliveryCartItem(item: WooCartItem): boolean {
+  const metadata = getCheckoutCartProductMetadata(item.id)
+  const category = normalizeCheckoutText(
+    getCheckoutCartItemDeliveryCategory(item)
+  )
+
+  return (
+    PC_DELIVERY_CATEGORY_NAMES.has(category) ||
+    hasPcDeliveryMetadataTags(metadata)
+  )
 }
 
 const WOO_API_URL = config.wooApiUrl.replace(/\/+$/, '')
@@ -281,7 +371,19 @@ export default function Checkout() {
   const deliveryFeeHT =
     Number(cart?.totals?.total_fees ?? 0) / Math.pow(10, minorUnit)
 
-  const deliveryOnQuote = paidItemsCount > 10
+  const pcItemsCount = paidItems.reduce(
+    (sum, item) => sum + (isPcDeliveryCartItem(item) ? item.quantity : 0),
+    0
+  )
+
+  const hasNonPcPaidItems = paidItems.some(
+    (item) => !isPcDeliveryCartItem(item)
+  )
+
+  const hasAutomaticDeliveryFee = deliveryFeeHT > 0
+  const deliveryOnQuote = hasNonPcPaidItems && !hasAutomaticDeliveryFee
+  const deliveryIsFree =
+    hasPaidItems && !deliveryOnQuote && deliveryFeeHT <= 0 && pcItemsCount > 10
 
   const totalWithDeliveryHT =
     totalHT + (deliveryOnQuote ? 0 : deliveryFeeHT)
@@ -353,7 +455,7 @@ export default function Checkout() {
         : ""
 
       const deliveryNote = deliveryOnQuote
-        ? "Frais de livraison sur devis : la commande contient plus de 10 produits payants. Le montant du transport doit être confirmé avant paiement."
+        ? "Frais de livraison sur devis : la commande contient au moins un produit payant hors PC. Le montant du transport doit être confirmé avant paiement."
         : ""
 
       const thermocollageProducts = paidItems.filter((item) =>
@@ -731,10 +833,12 @@ export default function Checkout() {
                       <span>
                         {deliveryOnQuote
                           ? "Sur devis"
-                          : `${formatWooPrice(
-                              String(deliveryFeeHT * Math.pow(10, minorUnit)),
-                              minorUnit
-                            )} HT`}
+                          : deliveryIsFree
+                            ? "Offert"
+                            : `${formatWooPrice(
+                                String(deliveryFeeHT * Math.pow(10, minorUnit)),
+                                minorUnit
+                              )} HT`}
                       </span>
                     </div>
                   )}
@@ -757,10 +861,12 @@ export default function Checkout() {
 
                   <p className="text-xs text-brand-900/50">
                     {deliveryOnQuote
-                      ? "Les frais de livraison seront chiffrés sur devis et confirmés avant paiement."
-                      : hasQuoteItems
-                        ? "Les services sélectionnés seront traités comme une demande de devis personnalisée."
-                        : "Les frais de livraison sont inclus dans le total affiché."}
+                      ? "Les frais de livraison des produits hors PC seront chiffrés sur devis et confirmés avant paiement."
+                      : deliveryIsFree
+                        ? "Livraison offerte pour plus de 10 PC."
+                        : hasQuoteItems
+                          ? "Les services sélectionnés seront traités comme une demande de devis personnalisée."
+                          : "Les frais de livraison sont inclus dans le total affiché."}
                   </p>
                 </div>
               </>
