@@ -314,7 +314,7 @@ export function ProductPage() {
   const [addingToCart, setAddingToCart] = useState(false);
   const [cartSuccess, setCartSuccess] = useState(false);
   const [cartError, setCartError] = useState("");
-  const [thermocollageRequested, setThermocollageRequested] = useState(false);
+  const [thermocollageRequested, setThermocollageRequested] = useState(true);
 
   useEffect(() => {
     if (!slug) {
