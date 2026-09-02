@@ -79,6 +79,29 @@ function findFilterSlugs(
   key: ProductFilterKey,
   matcher: (option: WooFilterOption) => boolean
 ) {
+  useEffect(() => {
+    if (!hasRestoredShopState.current) {
+      return;
+    }
+
+    if (filterGroups.length === 0) {
+      return;
+    }
+
+    if (hasAppliedDefaultShopFilters()) {
+      return;
+    }
+
+    const defaultFilters = getDefaultAzertyThermocollageFilters(filterGroups);
+
+    if (hasSelectedTextFilters(defaultFilters)) {
+      setSelectedFilters((currentFilters) =>
+        mergeShopFiltersWithDefaults(currentFilters, defaultFilters)
+      );
+      markDefaultShopFiltersAsApplied();
+    }
+  }, [filterGroups]);
+
   return (
     filterGroups
       .find((group) => group.key === key)
@@ -814,6 +837,186 @@ function buildContextualFilterGroups(
     .filter((group) => group.options.length > 0);
 }
 
+
+const SHOP_FILTERS_STORAGE_KEY = "ecoliz_shop_filters_v1";
+const SHOP_DEFAULT_FILTERS_APPLIED_KEY = "ecoliz_shop_default_filters_applied_v2";
+
+type SavedShopState = {
+  searchInput?: string;
+  searchTerm?: string;
+  selectedCategoryIds?: number[];
+  selectedMainCategoryTitle?: string | null;
+  selectedStockStatuses?: Array<"instock" | "outofstock">;
+  selectedFilters?: SelectedFilters;
+  sortOption?: SortOption;
+  productsPerPage?: number;
+  currentPage?: number;
+};
+
+function normalizeShopFilterText(value: unknown) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function hasSelectedTextFilters(filters: SelectedFilters) {
+  return Object.values(filters).some(
+    (values) => Array.isArray(values) && values.length > 0
+  );
+}
+
+function isKeyboardFilterGroup(group: WooFilterGroup) {
+  const label = normalizeShopFilterText(`${group.key} ${group.title}`);
+
+  return (
+    label.includes("clavier") ||
+    label.includes("keyboard") ||
+    label.includes("langue-du-clavier") ||
+    label.includes("langue du clavier")
+  );
+}
+
+function getDefaultKeyboardFilter(filterGroups: WooFilterGroup[]): SelectedFilters {
+  const keyboardGroup = filterGroups.find(isKeyboardFilterGroup);
+
+  if (!keyboardGroup) {
+    return {};
+  }
+
+  const azertyOption = keyboardGroup.options.find((option) => {
+    const label = normalizeShopFilterText(`${option.slug} ${option.name}`);
+    return label.includes("azerty");
+  });
+
+  if (!azertyOption) {
+    return {};
+  }
+
+  return {
+    [keyboardGroup.key]: [azertyOption.slug],
+  } as SelectedFilters;
+}
+
+
+function getDefaultAzertyThermocollageFilters(
+  filterGroups: WooFilterGroup[]
+): SelectedFilters {
+  const defaults: SelectedFilters = {};
+
+  for (const group of filterGroups) {
+    const groupLabel = normalizeShopFilterText(`${group.key} ${group.title}`);
+
+    const isKeyboardGroup =
+      groupLabel.includes("clavier") ||
+      groupLabel.includes("keyboard") ||
+      groupLabel.includes("langue-du-clavier") ||
+      groupLabel.includes("langue du clavier");
+
+    const exactAzertyThermoOptions = group.options.filter((option) => {
+      const label = normalizeShopFilterText(`${option.slug} ${option.name}`);
+      return (
+        label.includes("azerty") &&
+        (
+          label.includes("thermocollage") ||
+          label.includes("termocollage") ||
+          label.includes("thermo")
+        )
+      );
+    });
+
+    if (exactAzertyThermoOptions.length > 0) {
+      defaults[group.key] = exactAzertyThermoOptions.map((option) => option.slug);
+      continue;
+    }
+
+    const azertyOptions = group.options.filter((option) => {
+      const label = normalizeShopFilterText(`${option.slug} ${option.name}`);
+      return label.includes("azerty");
+    });
+
+    const thermoOptions = group.options.filter((option) => {
+      const label = normalizeShopFilterText(`${option.slug} ${option.name}`);
+      return (
+        label.includes("thermocollage") ||
+        label.includes("termocollage") ||
+        label.includes("thermo")
+      );
+    });
+
+    const selectedOptions = [
+      ...(isKeyboardGroup ? azertyOptions : azertyOptions),
+      ...thermoOptions,
+    ];
+
+    if (selectedOptions.length > 0) {
+      defaults[group.key] = Array.from(
+        new Set(selectedOptions.map((option) => option.slug))
+      );
+    }
+  }
+
+  return defaults;
+}
+
+function mergeShopFiltersWithDefaults(
+  currentFilters: SelectedFilters,
+  defaultFilters: SelectedFilters
+): SelectedFilters {
+  const merged: SelectedFilters = { ...currentFilters };
+
+  for (const [key, values] of Object.entries(defaultFilters)) {
+    const currentValues = merged[key] ?? [];
+    merged[key] = Array.from(new Set([...currentValues, ...values]));
+  }
+
+  return merged;
+}
+
+function hasAppliedDefaultShopFilters() {
+  try {
+    return window.sessionStorage.getItem(SHOP_DEFAULT_FILTERS_APPLIED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function markDefaultShopFiltersAsApplied() {
+  try {
+    window.sessionStorage.setItem(SHOP_DEFAULT_FILTERS_APPLIED_KEY, "true");
+  } catch {
+    // Non bloquant.
+  }
+}
+
+
+function readSavedShopState(): SavedShopState | null {
+  try {
+    const raw = window.sessionStorage.getItem(SHOP_FILTERS_STORAGE_KEY);
+
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(raw) as SavedShopState;
+  } catch {
+    return null;
+  }
+}
+
+function saveShopState(state: SavedShopState) {
+  try {
+    window.sessionStorage.setItem(
+      SHOP_FILTERS_STORAGE_KEY,
+      JSON.stringify(state)
+    );
+  } catch {
+    // La sauvegarde des filtres est un confort utilisateur, pas bloquant.
+  }
+}
+
+
 function handleProductImageError(event: SyntheticEvent<HTMLImageElement>) {
   const image = event.currentTarget;
   const originalSrc = image.dataset.originalSrc || image.src;
@@ -1146,6 +1349,10 @@ function PromotionSection({
 
 export function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const shopFiltersRestoredV5 = useRef(false);
+  const shopFiltersCanSaveV5 = useRef(false);
+  const hasRestoredShopState = useRef(false);
+  const shouldPersistShopState = useRef(false);
   const filterProductsCache = useRef<Record<string, Product[]>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [promotionProducts, setPromotionProducts] = useState<Product[]>([]);
@@ -1690,6 +1897,130 @@ export function Shop() {
   const pageTitle = searchTerm
     ? `Résultats pour "${searchTerm}"`
     : selectedMainCategory?.title ?? "Résultats de recherche";
+
+
+  // EcoLiz : conserver les filtres boutique quand on ouvre un produit puis retour arrière.
+  useEffect(() => {
+    if (shopFiltersRestoredV5.current) {
+      return;
+    }
+
+    shopFiltersRestoredV5.current = true;
+
+    try {
+      const raw = window.sessionStorage.getItem("ecoliz_shop_filters_v5");
+
+      if (raw) {
+        const saved = JSON.parse(raw) as {
+          searchInput?: string;
+          searchTerm?: string;
+          selectedCategoryIds?: number[];
+          selectedMainCategoryTitle?: string | null;
+          selectedStockStatuses?: Array<"instock" | "outofstock">;
+          selectedFilters?: SelectedFilters;
+          sortOption?: SortOption;
+          currentPage?: number;
+        };
+
+        if (typeof saved.searchInput === "string") {
+          setSearchInput(saved.searchInput);
+        }
+
+        if (typeof saved.searchTerm === "string") {
+          setSearchTerm(saved.searchTerm);
+        }
+
+        if (Array.isArray(saved.selectedCategoryIds)) {
+          setSelectedCategoryIds(
+            saved.selectedCategoryIds
+              .map((id) => Number(id))
+              .filter((id) => Number.isFinite(id))
+          );
+        }
+
+        if (
+          typeof saved.selectedMainCategoryTitle === "string" ||
+          saved.selectedMainCategoryTitle === null
+        ) {
+          setSelectedMainCategoryTitle(saved.selectedMainCategoryTitle);
+        }
+
+        if (Array.isArray(saved.selectedStockStatuses)) {
+          setSelectedStockStatuses(
+            saved.selectedStockStatuses.filter(
+              (status): status is "instock" | "outofstock" =>
+                status === "instock" || status === "outofstock"
+            )
+          );
+        }
+
+        if (
+          saved.selectedFilters &&
+          typeof saved.selectedFilters === "object" &&
+          !Array.isArray(saved.selectedFilters)
+        ) {
+          setSelectedFilters(saved.selectedFilters);
+        }
+
+        if (
+          saved.sortOption &&
+          ["default", "price-asc", "price-desc", "name-asc", "name-desc"].includes(
+            saved.sortOption
+          )
+        ) {
+          setSortOption(saved.sortOption);
+        }
+
+        if (
+          typeof saved.currentPage === "number" &&
+          Number.isFinite(saved.currentPage) &&
+          saved.currentPage > 0
+        ) {
+          setCurrentPage(Math.floor(saved.currentPage));
+        }
+      }
+    } catch {
+      // Non bloquant.
+    }
+
+    setTimeout(() => {
+      shopFiltersCanSaveV5.current = true;
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    if (!shopFiltersCanSaveV5.current) {
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(
+        "ecoliz_shop_filters_v5",
+        JSON.stringify({
+          searchInput,
+          searchTerm,
+          selectedCategoryIds,
+          selectedMainCategoryTitle,
+          selectedStockStatuses,
+          selectedFilters,
+          sortOption,
+          currentPage,
+        })
+      );
+    } catch {
+      // Non bloquant.
+    }
+  }, [
+    searchInput,
+    searchTerm,
+    selectedCategoryIds,
+    selectedMainCategoryTitle,
+    selectedStockStatuses,
+    selectedFilters,
+    sortOption,
+    currentPage,
+  ]);
+
 
   const textFilterCount = Object.values(selectedFilters).reduce(
     (total, values) => total + (values?.length ?? 0),
